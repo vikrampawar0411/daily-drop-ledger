@@ -19,15 +19,17 @@ const OrderCalendar = () => {
     { id: 3, name: "Daily Essentials", products: ["Fresh Milk", "Indian Express"] }
   ];
 
-  const handlePlaceOrder = (vendor: string, product: string, quantity: number) => {
-    if (selectedDate) {
-      const unit = product.toLowerCase().includes('milk') 
-        ? (quantity > 1 ? 'litres' : 'litre') 
-        : (quantity > 1 ? 'copies' : 'copy');
-      
-      addOrder(selectedDate, { vendor, product, quantity, unit });
-      setShowOrderForm(false);
-    }
+  const handlePlaceOrder = (vendor: string, product: string, quantity: number, dates: Date[]) => {
+    const unit = product.toLowerCase().includes('milk') 
+      ? (quantity > 1 ? 'litres' : 'litre') 
+      : (quantity > 1 ? 'copies' : 'copy');
+    
+    // Add order for each selected date
+    dates.forEach(date => {
+      addOrder(date, { vendor, product, quantity, unit });
+    });
+    
+    setShowOrderForm(false);
   };
 
   const handleDeleteOrder = (orderId: number) => {
