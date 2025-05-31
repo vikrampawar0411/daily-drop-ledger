@@ -1,6 +1,5 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Milk, Newspaper, Users, DollarSign, TrendingUp, MapPin } from "lucide-react";
+import { Milk, Newspaper, Users, DollarSign, TrendingUp, MapPin, Receipt } from "lucide-react";
 
 const VendorDashboard = () => {
   const todayStats = {
