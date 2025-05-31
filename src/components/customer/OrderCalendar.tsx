@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarPlus, Milk, Newspaper, Plus } from "lucide-react";
+import { CalendarPlus, Milk, Newspaper, Plus, Trash2, Edit } from "lucide-react";
 
 const OrderCalendar = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -20,29 +20,31 @@ const OrderCalendar = () => {
     { id: 3, name: "Daily Essentials", products: ["Fresh Milk", "Indian Express"] }
   ];
 
-  const orders = [
+  const [orders, setOrders] = useState([
     {
       date: "2024-12-01",
       orders: [
-        { vendor: "Fresh Dairy Co.", product: "Fresh Milk", quantity: 2, unit: "litres" },
-        { vendor: "News Express", product: "Times of India", quantity: 1, unit: "copy" }
+        { id: 1, vendor: "Fresh Dairy Co.", product: "Fresh Milk", quantity: 2, unit: "litres" },
+        { id: 2, vendor: "News Express", product: "Times of India", quantity: 1, unit: "copy" },
+        { id: 3, vendor: "Daily Essentials", product: "Indian Express", quantity: 1, unit: "copy" }
       ]
     },
     {
       date: "2024-12-02",
       orders: [
-        { vendor: "Fresh Dairy Co.", product: "Fresh Milk", quantity: 2, unit: "litres" }
+        { id: 4, vendor: "Fresh Dairy Co.", product: "Fresh Milk", quantity: 2, unit: "litres" },
+        { id: 5, vendor: "News Express", product: "Times of India", quantity: 1, unit: "copy" }
       ]
     },
     {
       date: "2024-12-03",
       orders: [
-        { vendor: "Fresh Dairy Co.", product: "Fresh Milk", quantity: 2, unit: "litres" },
-        { vendor: "News Express", product: "Times of India", quantity: 1, unit: "copy" },
-        { vendor: "Daily Essentials", product: "Indian Express", quantity: 1, unit: "copy" }
+        { id: 6, vendor: "Fresh Dairy Co.", product: "Fresh Milk", quantity: 2, unit: "litres" },
+        { id: 7, vendor: "News Express", product: "Times of India", quantity: 1, unit: "copy" },
+        { id: 8, vendor: "Daily Essentials", product: "Indian Express", quantity: 1, unit: "copy" }
       ]
     }
-  ];
+  ]);
 
   const getOrdersForDate = (date: Date) => {
     const dateString = date.toISOString().split('T')[0];
@@ -56,16 +58,47 @@ const OrderCalendar = () => {
 
   const handlePlaceOrder = () => {
     if (selectedDate && selectedVendor && selectedProduct && quantity > 0) {
-      console.log("Placing order:", {
-        date: selectedDate.toISOString().split('T')[0],
+      const dateString = selectedDate.toISOString().split('T')[0];
+      const newOrder = {
+        id: Date.now(),
         vendor: selectedVendor,
         product: selectedProduct,
-        quantity
+        quantity,
+        unit: selectedProduct.toLowerCase().includes('milk') ? (quantity > 1 ? 'litres' : 'litre') : (quantity > 1 ? 'copies' : 'copy')
+      };
+
+      setOrders(prevOrders => {
+        const existingDateIndex = prevOrders.findIndex(order => order.date === dateString);
+        if (existingDateIndex >= 0) {
+          const updatedOrders = [...prevOrders];
+          updatedOrders[existingDateIndex].orders.push(newOrder);
+          return updatedOrders;
+        } else {
+          return [...prevOrders, { date: dateString, orders: [newOrder] }];
+        }
       });
+
       setShowOrderForm(false);
       setSelectedVendor("");
       setSelectedProduct("");
       setQuantity(1);
+    }
+  };
+
+  const handleDeleteOrder = (orderId: number) => {
+    if (selectedDate) {
+      const dateString = selectedDate.toISOString().split('T')[0];
+      setOrders(prevOrders => {
+        return prevOrders.map(dateOrder => {
+          if (dateOrder.date === dateString) {
+            return {
+              ...dateOrder,
+              orders: dateOrder.orders.filter(order => order.id !== orderId)
+            };
+          }
+          return dateOrder;
+        }).filter(dateOrder => dateOrder.orders.length > 0);
+      });
     }
   };
 
@@ -119,8 +152,13 @@ const OrderCalendar = () => {
         {/* Order Details */}
         <Card>
           <CardHeader>
-            <CardTitle>
+            <CardTitle className="flex items-center justify-between">
               {selectedDate ? `Orders for ${selectedDate.toLocaleDateString()}` : "Select a date"}
+              {selectedDate && getOrdersForDate(selectedDate).length > 0 && (
+                <Badge variant="outline" className="text-sm">
+                  {getOrdersForDate(selectedDate).length} orders
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -128,8 +166,8 @@ const OrderCalendar = () => {
               <div className="space-y-4">
                 {getOrdersForDate(selectedDate).length > 0 ? (
                   <div className="space-y-3">
-                    {getOrdersForDate(selectedDate).map((order, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    {getOrdersForDate(selectedDate).map((order) => (
+                      <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center space-x-3">
                           {order.product.toLowerCase().includes('milk') ? (
                             <Milk className="h-5 w-5 text-blue-600" />
@@ -141,9 +179,19 @@ const OrderCalendar = () => {
                             <div className="text-sm text-gray-600">{order.vendor}</div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-medium">{order.quantity} {order.unit}</div>
-                          <Badge variant="outline" className="text-xs">Scheduled</Badge>
+                        <div className="flex items-center space-x-2">
+                          <div className="text-right mr-2">
+                            <div className="font-medium">{order.quantity} {order.unit}</div>
+                            <Badge variant="outline" className="text-xs">Scheduled</Badge>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteOrder(order.id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     ))}
