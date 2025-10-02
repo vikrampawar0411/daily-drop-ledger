@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, ShoppingCart, Calendar, Package, Plus, Bell } from "lucide-react";
+import { VendorOrderTabs } from "./components/VendorOrderTabs";
 
 const CustomerDashboard = () => {
   const customerStats = {
@@ -145,6 +146,9 @@ const CustomerDashboard = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Vendor Order Details */}
+      <VendorOrderTabs />
 
       {/* Recent Orders */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
