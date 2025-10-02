@@ -1,6 +1,6 @@
 
 export interface Order {
-  id: number;
+  id: string;
   vendor: string;
   product: string;
   quantity: number;

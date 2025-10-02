@@ -1,33 +1,65 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import type { DateOrders, Order } from "../types/order";
 
 export const useOrders = () => {
-  const [orders, setOrders] = useState<DateOrders[]>([
-    {
-      date: "2024-12-01",
-      orders: [
-        { id: 1, vendor: "Fresh Dairy Co.", product: "Fresh Milk", quantity: 2, unit: "litres" },
-        { id: 2, vendor: "News Express", product: "Times of India", quantity: 1, unit: "copy" },
-        { id: 3, vendor: "Daily Essentials", product: "Indian Express", quantity: 1, unit: "copy" }
-      ]
-    },
-    {
-      date: "2024-12-02",
-      orders: [
-        { id: 4, vendor: "Fresh Dairy Co.", product: "Fresh Milk", quantity: 2, unit: "litres" },
-        { id: 5, vendor: "News Express", product: "Times of India", quantity: 1, unit: "copy" }
-      ]
-    },
-    {
-      date: "2024-12-03",
-      orders: [
-        { id: 6, vendor: "Fresh Dairy Co.", product: "Fresh Milk", quantity: 2, unit: "litres" },
-        { id: 7, vendor: "News Express", product: "Times of India", quantity: 1, unit: "copy" },
-        { id: 8, vendor: "Daily Essentials", product: "Indian Express", quantity: 1, unit: "copy" }
-      ]
+  const [orders, setOrders] = useState<DateOrders[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const fetchOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select(`
+          *,
+          vendor:vendors(name),
+          product:products(name)
+        `)
+        .order("order_date", { ascending: false });
+
+      if (error) throw error;
+
+      // Group orders by date
+      const groupedOrders: { [key: string]: Order[] } = {};
+      
+      data?.forEach((order: any) => {
+        const dateString = order.order_date;
+        if (!groupedOrders[dateString]) {
+          groupedOrders[dateString] = [];
+        }
+        groupedOrders[dateString].push({
+          id: order.id,
+          vendor: order.vendor?.name || "Unknown",
+          product: order.product?.name || "Unknown",
+          quantity: parseFloat(order.quantity),
+          unit: order.unit,
+        });
+      });
+
+      const formattedOrders: DateOrders[] = Object.entries(groupedOrders).map(
+        ([date, orders]) => ({
+          date,
+          orders,
+        })
+      );
+
+      setOrders(formattedOrders);
+    } catch (error: any) {
+      toast({
+        title: "Error fetching orders",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
   const getOrdersForDate = (date: Date): Order[] => {
     const dateString = date.toISOString().split('T')[0];
@@ -39,45 +71,126 @@ export const useOrders = () => {
     return orders.some(order => order.date === dateString);
   };
 
-  const addOrder = (date: Date, order: Omit<Order, 'id'>): void => {
+  const addOrder = async (date: Date, order: Omit<Order, 'id'>): Promise<void> => {
     const dateString = date.toISOString().split('T')[0];
-    const newOrder: Order = {
-      ...order,
-      id: Date.now()
-    };
+    
+    try {
+      // First, get vendor and product IDs
+      const { data: vendors } = await supabase
+        .from("vendors")
+        .select("id")
+        .eq("name", order.vendor)
+        .single();
 
-    setOrders(prevOrders => {
-      const existingDateIndex = prevOrders.findIndex(order => order.date === dateString);
-      if (existingDateIndex >= 0) {
-        const updatedOrders = [...prevOrders];
-        updatedOrders[existingDateIndex].orders.push(newOrder);
-        return updatedOrders;
-      } else {
-        return [...prevOrders, { date: dateString, orders: [newOrder] }];
+      const { data: products } = await supabase
+        .from("products")
+        .select("id, price")
+        .eq("name", order.product)
+        .single();
+
+      if (!vendors || !products) {
+        throw new Error("Vendor or product not found");
       }
-    });
+
+      const { data: newOrder, error } = await supabase
+        .from("orders")
+        .insert([{
+          order_date: dateString,
+          vendor_id: vendors.id,
+          product_id: products.id,
+          quantity: order.quantity,
+          unit: order.unit,
+          price_per_unit: products.price,
+          total_amount: order.quantity * products.price,
+          status: "pending",
+        }])
+        .select(`
+          *,
+          vendor:vendors(name),
+          product:products(name)
+        `)
+        .single();
+
+      if (error) throw error;
+
+      // Update local state
+      const formattedOrder: Order = {
+        id: newOrder.id,
+        vendor: newOrder.vendor?.name || "Unknown",
+        product: newOrder.product?.name || "Unknown",
+        quantity: parseFloat(newOrder.quantity),
+        unit: newOrder.unit,
+      };
+
+      setOrders(prevOrders => {
+        const existingDateIndex = prevOrders.findIndex(order => order.date === dateString);
+        if (existingDateIndex >= 0) {
+          const updatedOrders = [...prevOrders];
+          updatedOrders[existingDateIndex].orders.push(formattedOrder);
+          return updatedOrders;
+        } else {
+          return [...prevOrders, { date: dateString, orders: [formattedOrder] }];
+        }
+      });
+
+      toast({
+        title: "Success",
+        description: "Order added successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error adding order",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
-  const deleteOrder = (date: Date, orderId: number): void => {
+  const deleteOrder = async (date: Date, orderId: string): Promise<void> => {
     const dateString = date.toISOString().split('T')[0];
-    setOrders(prevOrders => {
-      return prevOrders.map(dateOrder => {
-        if (dateOrder.date === dateString) {
-          return {
-            ...dateOrder,
-            orders: dateOrder.orders.filter(order => order.id !== orderId)
-          };
-        }
-        return dateOrder;
-      }).filter(dateOrder => dateOrder.orders.length > 0);
-    });
+    
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .delete()
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      setOrders(prevOrders => {
+        return prevOrders.map(dateOrder => {
+          if (dateOrder.date === dateString) {
+            return {
+              ...dateOrder,
+              orders: dateOrder.orders.filter(order => order.id !== orderId)
+            };
+          }
+          return dateOrder;
+        }).filter(dateOrder => dateOrder.orders.length > 0);
+      });
+
+      toast({
+        title: "Success",
+        description: "Order deleted successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error deleting order",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   return {
     orders,
+    loading,
     getOrdersForDate,
     hasOrdersOnDate,
     addOrder,
-    deleteOrder
+    deleteOrder,
+    refetch: fetchOrders,
   };
 };
