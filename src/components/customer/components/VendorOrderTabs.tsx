@@ -1,6 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, TrendingUp } from "lucide-react";
+import { Calendar, Package } from "lucide-react";
 
 interface VendorOrder {
   date: string;
@@ -10,12 +10,21 @@ interface VendorOrder {
   amount: number;
 }
 
+interface MonthlyProductStats {
+  product: string;
+  totalQuantity: number;
+  unit: string;
+  pricePerUnit: number;
+  totalAmount: number;
+}
+
 interface VendorStats {
   name: string;
   dailyOrders: VendorOrder[];
   monthlyTotal: number;
   monthlyOrders: number;
   avgDailySpend: number;
+  monthlyProducts: MonthlyProductStats[];
 }
 
 const vendorStats: VendorStats[] = [
@@ -27,7 +36,10 @@ const vendorStats: VendorStats[] = [
     ],
     monthlyTotal: 3600,
     monthlyOrders: 30,
-    avgDailySpend: 120
+    avgDailySpend: 120,
+    monthlyProducts: [
+      { product: "Fresh Milk", totalQuantity: 60, unit: "litres", pricePerUnit: 60, totalAmount: 3600 }
+    ]
   },
   {
     name: "News Express",
@@ -37,16 +49,23 @@ const vendorStats: VendorStats[] = [
     ],
     monthlyTotal: 240,
     monthlyOrders: 30,
-    avgDailySpend: 8
+    avgDailySpend: 8,
+    monthlyProducts: [
+      { product: "Times of India", totalQuantity: 30, unit: "copies", pricePerUnit: 8, totalAmount: 240 }
+    ]
   },
   {
     name: "Daily Essentials",
     dailyOrders: [
       { date: "2024-12-01", product: "Indian Express", quantity: 1, unit: "copy", amount: 6 },
     ],
-    monthlyTotal: 180,
+    monthlyTotal: 360,
     monthlyOrders: 30,
-    avgDailySpend: 6
+    avgDailySpend: 12,
+    monthlyProducts: [
+      { product: "Indian Express", totalQuantity: 30, unit: "copies", pricePerUnit: 6, totalAmount: 180 },
+      { product: "Fresh Milk", totalQuantity: 30, unit: "litres", pricePerUnit: 6, totalAmount: 180 }
+    ]
   }
 ];
 
@@ -94,6 +113,41 @@ export const VendorOrderTabs = () => {
                     </div>
                   </CardContent>
                 </Card>
+              </div>
+
+              {/* Monthly Product Details */}
+              <div>
+                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  Monthly Order Details by Product
+                </h4>
+                <div className="space-y-2">
+                  {vendor.monthlyProducts.map((product, idx) => (
+                    <div
+                      key={idx}
+                      className="p-4 bg-muted/50 rounded-lg"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-medium text-base">{product.product}</div>
+                        <div className="text-lg font-bold text-primary">₹{product.totalAmount}</div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <div className="text-muted-foreground">Total Quantity</div>
+                          <div className="font-semibold">{product.totalQuantity} {product.unit}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Price per Unit</div>
+                          <div className="font-semibold">₹{product.pricePerUnit}/{product.unit.slice(0, -1)}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Total Amount</div>
+                          <div className="font-semibold">₹{product.totalAmount}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Daily Orders */}
