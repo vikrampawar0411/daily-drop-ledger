@@ -1,73 +1,77 @@
-
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, ShoppingCart, Calendar, Package, Plus, Bell } from "lucide-react";
 import { VendorOrderTabs } from "./components/VendorOrderTabs";
+import { useOrders } from "@/hooks/useOrders";
+import { useVendors } from "@/hooks/useVendors";
 
 const CustomerDashboard = () => {
-  const customerStats = {
-    activeVendors: 3,
-    totalOrders: 45,
-    upcomingDeliveries: 8,
-    monthlySpend: 1250
-  };
+  const { orders, loading: ordersLoading } = useOrders();
+  const { vendors, loading: vendorsLoading } = useVendors();
 
-  const recentOrders = [
-    {
-      id: 1,
-      vendorName: "Fresh Dairy Co.",
-      product: "Fresh Milk",
-      quantity: 2,
-      unit: "litres",
-      deliveryDate: "2024-12-01",
-      status: "delivered"
-    },
-    {
-      id: 2,
-      vendorName: "News Express",
-      product: "Times of India",
-      quantity: 1,
-      unit: "copy",
-      deliveryDate: "2024-12-01",
-      status: "delivered"
-    },
-    {
-      id: 3,
-      vendorName: "Fresh Dairy Co.",
-      product: "Fresh Milk",
-      quantity: 2,
-      unit: "litres",
-      deliveryDate: "2024-12-02",
-      status: "scheduled"
-    }
-  ];
+  const customerStats = useMemo(() => {
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    const uniqueVendors = new Set(orders.map(o => o.vendor.id));
+    const upcomingOrders = orders.filter(o => 
+      new Date(o.order_date) >= today && o.status === 'pending'
+    );
+    const monthlyOrders = orders.filter(o => 
+      new Date(o.order_date) >= firstDayOfMonth
+    );
+    const monthlySpend = monthlyOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
 
-  const connectedVendors = [
-    {
-      id: 1,
-      name: "Fresh Dairy Co.",
-      products: ["Fresh Milk", "Organic Milk"],
-      area: "Bandra West",
-      rating: 4.8,
-      activeOrders: 5
-    },
-    {
-      id: 2,
-      name: "News Express",
-      products: ["Times of India", "Maharashtra Times"],
-      area: "Bandra West",
-      rating: 4.6,
-      activeOrders: 2
-    },
-    {
-      id: 3,
-      name: "Daily Essentials",
-      products: ["Fresh Milk", "Economic Times"],
-      area: "Bandra West",
-      rating: 4.5,
-      activeOrders: 1
-    }
-  ];
+    return {
+      activeVendors: uniqueVendors.size,
+      totalOrders: orders.length,
+      upcomingDeliveries: upcomingOrders.length,
+      monthlySpend: Math.round(monthlySpend)
+    };
+  }, [orders]);
+
+  const recentOrders = useMemo(() => {
+    return orders
+      .slice(0, 5)
+      .map(order => ({
+        id: order.id,
+        vendorName: order.vendor.name,
+        product: order.product.name,
+        quantity: order.quantity,
+        unit: order.unit,
+        deliveryDate: order.order_date,
+        status: order.status
+      }));
+  }, [orders]);
+
+  const connectedVendors = useMemo(() => {
+    return vendors.slice(0, 5).map(vendor => {
+      const vendorOrders = orders.filter(o => o.vendor.id === vendor.id);
+      const activeOrders = vendorOrders.filter(o => o.status === 'pending').length;
+      
+      return {
+        id: vendor.id,
+        name: vendor.name,
+        category: vendor.category,
+        area: "N/A",
+        rating: 0,
+        activeOrders
+      };
+    });
+  }, [vendors, orders]);
+
+  if (ordersLoading || vendorsLoading) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-gray-600">Loading dashboard...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -187,19 +191,15 @@ const CustomerDashboard = () => {
           <CardContent className="space-y-3">
             {connectedVendors.map((vendor) => (
               <div key={vendor.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <div className="font-medium">{vendor.name}</div>
-                  <div className="text-sm text-gray-600">{vendor.area}</div>
-                  <div className="text-xs text-gray-500">
-                    {vendor.products.join(", ")}
-                  </div>
+              <div>
+                <div className="font-medium">{vendor.name}</div>
+                <div className="text-sm text-gray-600">{vendor.category}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-gray-500">
+                  {vendor.activeOrders} active orders
                 </div>
-                <div className="text-right">
-                  <div className="text-sm font-medium">★ {vendor.rating}</div>
-                  <div className="text-xs text-gray-500">
-                    {vendor.activeOrders} active orders
-                  </div>
-                </div>
+              </div>
               </div>
             ))}
           </CardContent>
