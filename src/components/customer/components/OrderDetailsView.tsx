@@ -8,7 +8,7 @@ import type { Order } from "../types/order";
 interface OrderDetailsViewProps {
   selectedDate: Date | undefined;
   orders: Order[];
-  onDeleteOrder: (orderId: number) => void;
+  onDeleteOrder: (orderId: string) => void;
   onShowOrderForm: () => void;
 }
 

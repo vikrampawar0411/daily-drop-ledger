@@ -32,7 +32,7 @@ const OrderCalendar = () => {
     setShowOrderForm(false);
   };
 
-  const handleDeleteOrder = (orderId: number) => {
+  const handleDeleteOrder = (orderId: string) => {
     if (selectedDate) {
       deleteOrder(selectedDate, orderId);
     }

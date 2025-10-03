@@ -103,6 +103,7 @@ export const useOrders = () => {
           price_per_unit: products.price,
           total_amount: order.quantity * products.price,
           status: "pending",
+          customer_id: null,
         }])
         .select(`
           *,
@@ -118,7 +119,7 @@ export const useOrders = () => {
         id: newOrder.id,
         vendor: newOrder.vendor?.name || "Unknown",
         product: newOrder.product?.name || "Unknown",
-        quantity: parseFloat(newOrder.quantity),
+        quantity: Number(newOrder.quantity),
         unit: newOrder.unit,
       };
 
