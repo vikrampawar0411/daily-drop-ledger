@@ -6,7 +6,11 @@ import { VendorOrderTabs } from "./components/VendorOrderTabs";
 import { useOrders } from "@/hooks/useOrders";
 import { useVendors } from "@/hooks/useVendors";
 
-const CustomerDashboard = () => {
+interface CustomerDashboardProps {
+  onNavigate?: (tab: string) => void;
+}
+
+const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   const { orders, loading: ordersLoading } = useOrders();
   const { vendors, loading: vendorsLoading } = useVendors();
 
@@ -135,15 +139,26 @@ const CustomerDashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button className="h-20 flex flex-col items-center justify-center space-y-2">
+            <Button 
+              className="h-20 flex flex-col items-center justify-center space-y-2"
+              onClick={() => onNavigate?.('calendar')}
+            >
               <Plus className="h-6 w-6" />
               <span>Place New Order</span>
             </Button>
-            <Button variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2">
+            <Button 
+              variant="outline" 
+              className="h-20 flex flex-col items-center justify-center space-y-2"
+              onClick={() => onNavigate?.('vendors')}
+            >
               <Users className="h-6 w-6" />
               <span>Find Vendors</span>
             </Button>
-            <Button variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2">
+            <Button 
+              variant="outline" 
+              className="h-20 flex flex-col items-center justify-center space-y-2"
+              onClick={() => onNavigate?.('history')}
+            >
               <Bell className="h-6 w-6" />
               <span>Manage Subscriptions</span>
             </Button>

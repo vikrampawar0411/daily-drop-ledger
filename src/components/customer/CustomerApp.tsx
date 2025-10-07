@@ -65,7 +65,7 @@ const CustomerApp = ({ onBack }: CustomerAppProps) => {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <CustomerDashboard />
+            <CustomerDashboard onNavigate={setActiveTab} />
           </TabsContent>
 
           <TabsContent value="vendors">
