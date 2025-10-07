@@ -89,8 +89,8 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormP
                   </SelectTrigger>
                   <SelectContent>
                     {selectedVendorData?.products.map(product => (
-                      <SelectItem key={product} value={product}>
-                        {product}
+                      <SelectItem key={product.id} value={product.name}>
+                        {product.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -3,30 +3,39 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CalendarPlus } from "lucide-react";
 import { useOrders } from "./hooks/useOrders";
+import { useVendors } from "@/hooks/useVendors";
+import { useProducts } from "@/hooks/useProducts";
 import OrderCalendarView from "./components/OrderCalendarView";
 import OrderDetailsView from "./components/OrderDetailsView";
 import OrderForm from "./components/OrderForm";
-import type { Vendor } from "./types/order";
 
 const OrderCalendar = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [showOrderForm, setShowOrderForm] = useState(false);
   const { getOrdersForDate, hasOrdersOnDate, addOrder, deleteOrder } = useOrders();
+  const { vendors, loading: vendorsLoading } = useVendors();
+  const { products, loading: productsLoading } = useProducts();
 
-  const vendors: Vendor[] = [
-    { id: 1, name: "Fresh Dairy Co.", products: ["Fresh Milk", "Organic Milk"] },
-    { id: 2, name: "News Express", products: ["Times of India", "Maharashtra Times"] },
-    { id: 3, name: "Daily Essentials", products: ["Fresh Milk", "Indian Express"] }
-  ];
+  // Group products by vendor for the order form
+  const vendorsWithProducts = vendors.map(vendor => {
+    const vendorProducts = products
+      .filter(p => p.vendor_id === vendor.id && p.is_active)
+      .map(p => ({ id: p.id, name: p.name }));
+    
+    return {
+      id: vendor.id,
+      name: vendor.name,
+      products: vendorProducts
+    };
+  });
 
-  const handlePlaceOrder = (vendor: string, product: string, quantity: number, dates: Date[]) => {
-    const unit = product.toLowerCase().includes('milk') 
-      ? (quantity > 1 ? 'litres' : 'litre') 
-      : (quantity > 1 ? 'copies' : 'copy');
+  const handlePlaceOrder = (vendorName: string, productName: string, quantity: number, dates: Date[]) => {
+    const selectedProduct = products.find(p => p.name === productName);
+    const unit = selectedProduct?.unit || 'unit';
     
     // Add order for each selected date
     dates.forEach(date => {
-      addOrder(date, { vendor, product, quantity, unit });
+      addOrder(date, { vendor: vendorName, product: productName, quantity, unit });
     });
     
     setShowOrderForm(false);
@@ -38,6 +47,16 @@ const OrderCalendar = () => {
     }
   };
 
+  if (vendorsLoading || productsLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center p-12">
+          <p className="text-gray-600">Loading calendar...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -45,6 +64,7 @@ const OrderCalendar = () => {
         <Button 
           onClick={() => setShowOrderForm(!showOrderForm)}
           className="bg-green-600 hover:bg-green-700"
+          disabled={vendorsWithProducts.length === 0}
         >
           <CalendarPlus className="h-4 w-4 mr-2" />
           Schedule Order
@@ -69,7 +89,7 @@ const OrderCalendar = () => {
       {showOrderForm && (
         <OrderForm
           selectedDate={selectedDate}
-          vendors={vendors}
+          vendors={vendorsWithProducts}
           onPlaceOrder={handlePlaceOrder}
           onCancel={() => setShowOrderForm(false)}
         />

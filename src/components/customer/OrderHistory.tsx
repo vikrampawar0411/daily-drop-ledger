@@ -1,96 +1,36 @@
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Filter, Download, Milk, Newspaper, Calendar, CheckCircle, Clock, XCircle } from "lucide-react";
+import { useOrders } from "@/hooks/useOrders";
 
 const OrderHistory = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVendor, setSelectedVendor] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
-  const [selectedMonth, setSelectedMonth] = useState("all");
+  const { orders, loading } = useOrders();
 
-  const orders = [
-    {
-      id: 1,
-      orderNumber: "ORD-001",
-      date: "2024-11-30",
-      vendor: "Fresh Dairy Co.",
-      products: [
-        { name: "Fresh Milk", quantity: 2, unit: "litres", price: 50 }
-      ],
-      total: 50,
-      status: "delivered",
-      deliveryTime: "6:30 AM"
-    },
-    {
-      id: 2,
-      orderNumber: "ORD-002",
-      date: "2024-11-30",
-      vendor: "News Express",
-      products: [
-        { name: "Times of India", quantity: 1, unit: "copy", price: 5 }
-      ],
-      total: 5,
-      status: "delivered",
-      deliveryTime: "6:00 AM"
-    },
-    {
-      id: 3,
-      orderNumber: "ORD-003",
-      date: "2024-11-29",
-      vendor: "Fresh Dairy Co.",
-      products: [
-        { name: "Fresh Milk", quantity: 2, unit: "litres", price: 50 },
-        { name: "Organic Milk", quantity: 1, unit: "litre", price: 35 }
-      ],
-      total: 85,
-      status: "delivered",
-      deliveryTime: "6:30 AM"
-    },
-    {
-      id: 4,
-      orderNumber: "ORD-004",
-      date: "2024-11-28",
-      vendor: "Daily Essentials",
-      products: [
-        { name: "Fresh Milk", quantity: 1, unit: "litre", price: 23 }
-      ],
-      total: 23,
-      status: "cancelled",
-      deliveryTime: "7:00 AM"
-    },
-    {
-      id: 5,
-      orderNumber: "ORD-005",
-      date: "2024-12-01",
-      vendor: "Fresh Dairy Co.",
-      products: [
-        { name: "Fresh Milk", quantity: 2, unit: "litres", price: 50 }
-      ],
-      total: 50,
-      status: "scheduled",
-      deliveryTime: "6:30 AM"
-    }
-  ];
+  const vendors = useMemo(() => {
+    return [...new Set(orders.map(o => o.vendor.name))];
+  }, [orders]);
 
-  const vendors = ["Fresh Dairy Co.", "News Express", "Daily Essentials"];
-  const statuses = ["delivered", "scheduled", "cancelled"];
-  const months = ["November 2024", "December 2024"];
+  const statuses = ["pending", "delivered", "cancelled"];
 
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.vendor.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesVendor = selectedVendor === "all" || order.vendor === selectedVendor;
-    const matchesStatus = selectedStatus === "all" || order.status === selectedStatus;
-    // Add month filtering logic here if needed
-    
-    return matchesSearch && matchesVendor && matchesStatus;
-  });
+  const filteredOrders = useMemo(() => {
+    return orders.filter(order => {
+      const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           order.vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           order.product.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesVendor = selectedVendor === "all" || order.vendor.name === selectedVendor;
+      const matchesStatus = selectedStatus === "all" || order.status === selectedStatus;
+      
+      return matchesSearch && matchesVendor && matchesStatus;
+    });
+  }, [orders, searchTerm, selectedVendor, selectedStatus]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -121,18 +61,28 @@ const OrderHistory = () => {
   const getTotalSpent = () => {
     return filteredOrders
       .filter(order => order.status === "delivered")
-      .reduce((total, order) => total + order.total, 0);
+      .reduce((total, order) => total + Number(order.total_amount), 0);
   };
 
   const getOrderStats = () => {
     const delivered = filteredOrders.filter(order => order.status === "delivered").length;
-    const scheduled = filteredOrders.filter(order => order.status === "scheduled").length;
+    const pending = filteredOrders.filter(order => order.status === "pending").length;
     const cancelled = filteredOrders.filter(order => order.status === "cancelled").length;
     
-    return { delivered, scheduled, cancelled, total: filteredOrders.length };
+    return { delivered, pending, cancelled, total: filteredOrders.length };
   };
 
   const stats = getOrderStats();
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center p-12">
+          <p className="text-gray-600">Loading order history...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -165,8 +115,8 @@ const OrderHistory = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{stats.scheduled}</div>
-              <div className="text-sm text-gray-600">Scheduled</div>
+              <div className="text-2xl font-bold text-blue-600">{stats.pending}</div>
+              <div className="text-sm text-gray-600">Pending</div>
             </div>
           </CardContent>
         </Card>
@@ -189,7 +139,7 @@ const OrderHistory = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
@@ -223,22 +173,10 @@ const OrderHistory = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger>
-                <SelectValue placeholder="All months" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Months</SelectItem>
-                {months.map(month => (
-                  <SelectItem key={month} value={month}>{month}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Button variant="outline" onClick={() => {
               setSearchTerm("");
               setSelectedVendor("all");
               setSelectedStatus("all");
-              setSelectedMonth("all");
             }}>
               Clear Filters
             </Button>
@@ -253,16 +191,14 @@ const OrderHistory = () => {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-lg">{order.orderNumber}</CardTitle>
+                  <CardTitle className="text-lg">Order #{order.id.slice(0, 8)}</CardTitle>
                   <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                     <div className="flex items-center space-x-1">
                       <Calendar className="h-4 w-4" />
-                      <span>{new Date(order.date).toLocaleDateString()}</span>
+                      <span>{new Date(order.order_date).toLocaleDateString()}</span>
                     </div>
                     <span>•</span>
-                    <span>{order.vendor}</span>
-                    <span>•</span>
-                    <span>{order.deliveryTime}</span>
+                    <span>{order.vendor.name}</span>
                   </div>
                 </div>
                 <Badge className={getStatusColor(order.status)}>
@@ -273,23 +209,21 @@ const OrderHistory = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <span className="font-medium text-sm">Products:</span>
+                <span className="font-medium text-sm">Product:</span>
                 <div className="grid grid-cols-1 gap-2 mt-2">
-                  {order.products.map((product, index) => (
-                    <div key={index} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                      <div className="flex items-center space-x-3">
-                        {product.name.toLowerCase().includes('milk') ? (
-                          <Milk className="h-4 w-4 text-blue-600" />
-                        ) : (
-                          <Newspaper className="h-4 w-4 text-orange-600" />
-                        )}
-                        <span className="text-sm">
-                          {product.quantity} {product.unit} {product.name}
-                        </span>
-                      </div>
-                      <span className="text-sm font-medium">₹{product.price}</span>
+                  <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                    <div className="flex items-center space-x-3">
+                      {order.product.category.toLowerCase().includes('dairy') ? (
+                        <Milk className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <Newspaper className="h-4 w-4 text-orange-600" />
+                      )}
+                      <span className="text-sm">
+                        {order.quantity} {order.unit} {order.product.name}
+                      </span>
                     </div>
-                  ))}
+                    <span className="text-sm font-medium">₹{order.product.price}</span>
+                  </div>
                 </div>
               </div>
 
@@ -303,14 +237,14 @@ const OrderHistory = () => {
                       Reorder
                     </Button>
                   )}
-                  {order.status === "scheduled" && (
+                  {order.status === "pending" && (
                     <Button size="sm" variant="outline">
                       Modify Order
                     </Button>
                   )}
                 </div>
                 <div className="text-lg font-bold">
-                  Total: ₹{order.total}
+                  Total: ₹{order.total_amount}
                 </div>
               </div>
             </CardContent>
@@ -326,7 +260,6 @@ const OrderHistory = () => {
               setSearchTerm("");
               setSelectedVendor("all");
               setSelectedStatus("all");
-              setSelectedMonth("all");
             }}>
               Clear Filters
             </Button>

@@ -13,7 +13,7 @@ export interface DateOrders {
 }
 
 export interface Vendor {
-  id: number;
+  id: string;
   name: string;
-  products: string[];
+  products: { id: string; name: string }[];
 }
