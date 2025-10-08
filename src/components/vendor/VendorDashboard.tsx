@@ -1,23 +1,78 @@
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Milk, Newspaper, Users, DollarSign, TrendingUp, MapPin, Receipt } from "lucide-react";
+import { useOrders } from "@/hooks/useOrders";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const VendorDashboard = () => {
-  const todayStats = {
-    totalOrders: 125,
-    milkOrders: 85,
-    newspaperOrders: 40,
-    totalRevenue: 2450.75,
-    areasServed: 8,
-    societiesServed: 15
-  };
+  const { orders, loading } = useOrders();
 
-  const areaStats = [
-    { area: "Bandra West", societies: 3, orders: 25, revenue: 650 },
-    { area: "Andheri East", societies: 4, orders: 35, revenue: 890 },
-    { area: "Powai", societies: 2, orders: 18, revenue: 470 },
-    { area: "Goregaon West", societies: 3, orders: 22, revenue: 580 },
-    { area: "Malad East", societies: 3, orders: 25, revenue: 610 }
-  ];
+  const todayStats = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const todayOrders = orders.filter(order => 
+      order.order_date.startsWith(today)
+    );
+
+    const totalRevenue = todayOrders.reduce((sum, order) => sum + Number(order.total_amount), 0);
+    
+    // Count unique customers (areas)
+    const uniqueCustomers = new Set(todayOrders.map(order => order.customer?.address).filter(Boolean));
+    
+    // Group by product category
+    const milkOrders = todayOrders.filter(order => 
+      order.product?.category?.toLowerCase() === 'milk'
+    ).length;
+    const newspaperOrders = todayOrders.filter(order => 
+      order.product?.category?.toLowerCase() === 'newspaper'
+    ).length;
+
+    return {
+      totalOrders: todayOrders.length,
+      milkOrders,
+      newspaperOrders,
+      totalRevenue: totalRevenue.toFixed(2),
+      areasServed: uniqueCustomers.size,
+      societiesServed: uniqueCustomers.size // Using customer count as society count
+    };
+  }, [orders]);
+
+  const areaStats = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const todayOrders = orders.filter(order => 
+      order.order_date.startsWith(today)
+    );
+
+    const areaMap = new Map();
+    
+    todayOrders.forEach(order => {
+      const area = order.customer?.address || 'Unknown Area';
+      if (!areaMap.has(area)) {
+        areaMap.set(area, {
+          area,
+          societies: 1,
+          orders: 0,
+          revenue: 0
+        });
+      }
+      const stats = areaMap.get(area);
+      stats.orders += 1;
+      stats.revenue += Number(order.total_amount);
+    });
+
+    return Array.from(areaMap.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+  }, [orders]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -73,27 +128,31 @@ const VendorDashboard = () => {
 
       {/* Area-wise Performance */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Area-wise Performance</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer-wise Performance</h3>
         <Card>
           <CardContent className="pt-6">
-            <div className="space-y-4">
-              {areaStats.map((area) => (
-                <div key={area.area} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">{area.area}</h4>
-                    <p className="text-sm text-gray-600">{area.societies} societies</p>
+            {areaStats.length > 0 ? (
+              <div className="space-y-4">
+                {areaStats.map((area) => (
+                  <div key={area.area} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-900">{area.area}</h4>
+                      <p className="text-sm text-gray-600">{area.societies} customer{area.societies > 1 ? 's' : ''}</p>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-600">{area.orders}</div>
+                      <div className="text-xs text-gray-500">orders</div>
+                    </div>
+                    <div className="text-center ml-4">
+                      <div className="text-lg font-bold text-green-600">₹{area.revenue.toFixed(2)}</div>
+                      <div className="text-xs text-gray-500">revenue</div>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-blue-600">{area.orders}</div>
-                    <div className="text-xs text-gray-500">orders</div>
-                  </div>
-                  <div className="text-center ml-4">
-                    <div className="text-lg font-bold text-green-600">₹{area.revenue}</div>
-                    <div className="text-xs text-gray-500">revenue</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-gray-500 py-8">No orders today</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -113,7 +172,7 @@ const VendorDashboard = () => {
               <div className="text-3xl font-bold text-blue-600">{todayStats.milkOrders}</div>
               <div className="flex items-center space-x-2 text-sm text-gray-600 mt-2">
                 <TrendingUp className="h-4 w-4" />
-                <span>68% of total orders</span>
+                <span>{todayStats.totalOrders > 0 ? Math.round((todayStats.milkOrders / todayStats.totalOrders) * 100) : 0}% of total orders</span>
               </div>
             </CardContent>
           </Card>
@@ -129,7 +188,7 @@ const VendorDashboard = () => {
               <div className="text-3xl font-bold text-orange-600">{todayStats.newspaperOrders}</div>
               <div className="flex items-center space-x-2 text-sm text-gray-600 mt-2">
                 <TrendingUp className="h-4 w-4" />
-                <span>32% of total orders</span>
+                <span>{todayStats.totalOrders > 0 ? Math.round((todayStats.newspaperOrders / todayStats.totalOrders) * 100) : 0}% of total orders</span>
               </div>
             </CardContent>
           </Card>
