@@ -1,14 +1,28 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Milk, Newspaper, Users, UserPlus } from "lucide-react";
+import { Milk, Newspaper, Users, UserPlus, LogOut } from "lucide-react";
 import VendorApp from "@/components/vendor/VendorApp";
 import CustomerApp from "@/components/customer/CustomerApp";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   const [userType, setUserType] = useState<'vendor' | 'customer' | null>(null);
+  const { user, signOut, getUserRole } = useAuth();
+  const [userRole, setUserRole] = useState<'admin' | 'staff' | 'vendor' | 'customer' | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      getUserRole().then(setUserRole);
+    }
+  }, [user]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    setUserType(null);
+  };
 
   if (userType === 'vendor') {
     return <VendorApp onBack={() => setUserType(null)} />;
@@ -23,7 +37,7 @@ const Index = () => {
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center h-16">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
               <div className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-green-600 text-white px-3 py-2 rounded-lg">
                 <Milk className="h-6 w-6" />
@@ -33,6 +47,13 @@ const Index = () => {
                 <h1 className="text-xl font-bold text-gray-900">Daily Drop Ledger</h1>
                 <p className="text-sm text-gray-600">Vendor-Customer Distribution Platform</p>
               </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600">{user?.email}</span>
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
             </div>
           </div>
         </div>

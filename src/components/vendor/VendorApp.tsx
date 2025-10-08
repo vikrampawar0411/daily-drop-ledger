@@ -3,11 +3,12 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Milk, Newspaper, Users, Receipt, TrendingUp, Calendar, MapPin, ArrowLeft } from "lucide-react";
+import { Milk, Newspaper, Users, Receipt, TrendingUp, Calendar, MapPin, ArrowLeft, LogOut } from "lucide-react";
 import VendorDashboard from "./VendorDashboard";
 import CustomerManagement from "./CustomerManagement";
 import OrderManagement from "./OrderManagement";
 import ProductManagement from "./ProductManagement";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface VendorAppProps {
   onBack: () => void;
@@ -15,6 +16,11 @@ interface VendorAppProps {
 
 const VendorApp = ({ onBack }: VendorAppProps) => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const { signOut, user } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
@@ -35,9 +41,16 @@ const VendorApp = ({ onBack }: VendorAppProps) => {
                 <p className="text-sm text-gray-600">Manage your distribution network</p>
               </div>
             </div>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <Calendar className="h-4 w-4" />
-              <span>{new Date().toLocaleDateString()}</span>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <Calendar className="h-4 w-4" />
+                <span>{new Date().toLocaleDateString()}</span>
+              </div>
+              <span className="text-sm text-gray-600">{user?.email}</span>
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
             </div>
           </div>
         </div>

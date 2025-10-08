@@ -3,11 +3,12 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Receipt, Calendar, ShoppingCart, ArrowLeft } from "lucide-react";
+import { Users, Receipt, Calendar, ShoppingCart, ArrowLeft, LogOut } from "lucide-react";
 import CustomerDashboard from "./CustomerDashboard";
 import VendorDirectory from "./VendorDirectory";
 import OrderHistory from "./OrderHistory";
 import OrderCalendar from "./OrderCalendar";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CustomerAppProps {
   onBack: () => void;
@@ -15,6 +16,11 @@ interface CustomerAppProps {
 
 const CustomerApp = ({ onBack }: CustomerAppProps) => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const { signOut, user } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
@@ -34,9 +40,16 @@ const CustomerApp = ({ onBack }: CustomerAppProps) => {
                 <p className="text-sm text-gray-600">Manage your orders and vendors</p>
               </div>
             </div>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <Calendar className="h-4 w-4" />
-              <span>{new Date().toLocaleDateString()}</span>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <Calendar className="h-4 w-4" />
+                <span>{new Date().toLocaleDateString()}</span>
+              </div>
+              <span className="text-sm text-gray-600">{user?.email}</span>
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
             </div>
           </div>
         </div>
