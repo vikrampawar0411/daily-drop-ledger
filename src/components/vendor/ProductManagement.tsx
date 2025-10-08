@@ -5,87 +5,48 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Edit, Trash2, Package, Milk, Newspaper } from "lucide-react";
+import { Plus, Package, Milk, Newspaper } from "lucide-react";
+import { useProducts } from "@/hooks/useProducts";
+import { useAuth } from "@/contexts/AuthContext";
 
 const ProductManagement = () => {
-  const [products, setProducts] = useState([
-    {
-      id: 1,
-      name: "Fresh Milk",
-      category: "Milk",
-      price: 25,
-      unit: "per litre",
-      availability: "Daily",
-      description: "Fresh cow milk delivered daily",
-      isActive: true
-    },
-    {
-      id: 2,
-      name: "Times of India",
-      category: "Newspaper",
-      price: 5,
-      unit: "per copy",
-      availability: "Daily",
-      description: "English daily newspaper",
-      isActive: true
-    },
-    {
-      id: 3,
-      name: "Organic Milk",
-      category: "Milk",
-      price: 35,
-      unit: "per litre",
-      availability: "Daily",
-      description: "Organic milk from local farms",
-      isActive: true
-    },
-    {
-      id: 4,
-      name: "Maharashtra Times",
-      category: "Newspaper",
-      price: 4,
-      unit: "per copy",
-      availability: "Daily",
-      description: "Marathi daily newspaper",
-      isActive: false
-    }
-  ]);
-
+  const { products, loading, addProduct, toggleProductStatus } = useProducts();
+  const { user } = useAuth();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: "",
     category: "",
     price: "",
     unit: "",
-    availability: "",
+    availability: "Daily",
     description: ""
   });
 
-  const handleAddProduct = () => {
-    if (newProduct.name && newProduct.category && newProduct.price) {
-      const product = {
-        id: products.length + 1,
-        ...newProduct,
-        price: parseFloat(newProduct.price),
-        isActive: true
-      };
-      setProducts([...products, product]);
-      setNewProduct({
-        name: "",
-        category: "",
-        price: "",
-        unit: "",
-        availability: "",
-        description: ""
-      });
-      setShowAddForm(false);
+  const handleAddProduct = async () => {
+    if (newProduct.name && newProduct.category && newProduct.price && user) {
+      try {
+        await addProduct({
+          vendor_id: user.id,
+          name: newProduct.name,
+          category: newProduct.category,
+          price: parseFloat(newProduct.price),
+          unit: newProduct.unit,
+          availability: newProduct.availability,
+          description: newProduct.description || null,
+        });
+        setNewProduct({
+          name: "",
+          category: "",
+          price: "",
+          unit: "",
+          availability: "Daily",
+          description: ""
+        });
+        setShowAddForm(false);
+      } catch (error) {
+        // Error handled by hook
+      }
     }
-  };
-
-  const toggleProductStatus = (id: number) => {
-    setProducts(products.map(product => 
-      product.id === id ? { ...product, isActive: !product.isActive } : product
-    ));
   };
 
   const getProductIcon = (category: string) => {
@@ -99,14 +60,22 @@ const ProductManagement = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading products...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Product Management</h2>
-        <Button 
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
+        <h2 className="text-2xl font-bold">Product Management</h2>
+        <Button onClick={() => setShowAddForm(!showAddForm)}>
           <Plus className="h-4 w-4 mr-2" />
           Add Product
         </Button>
@@ -188,60 +157,71 @@ const ProductManagement = () => {
       )}
 
       {/* Products Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {products.map((product) => (
-          <Card key={product.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  {getProductIcon(product.category)}
-                  <CardTitle className="text-lg">{product.name}</CardTitle>
+      {products.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-lg font-medium">No products found</p>
+            <p className="text-sm text-muted-foreground mt-2">Get started by adding your first product</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {products.map((product) => (
+            <Card key={product.id} className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    {getProductIcon(product.category)}
+                    <CardTitle className="text-lg">{product.name}</CardTitle>
+                  </div>
+                  <Badge variant={product.is_active ? "default" : "secondary"}>
+                    {product.is_active ? "Active" : "Inactive"}
+                  </Badge>
                 </div>
-                <Badge variant={product.isActive ? "default" : "secondary"}>
-                  {product.isActive ? "Active" : "Inactive"}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span className="font-medium">Category:</span>
-                  <div className="text-gray-600">{product.category}</div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="font-medium">Category:</span>
+                    <div className="text-muted-foreground">{product.category}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Price:</span>
+                    <div className="text-muted-foreground">₹{product.price} {product.unit}</div>
+                  </div>
                 </div>
-                <div>
-                  <span className="font-medium">Price:</span>
-                  <div className="text-gray-600">₹{product.price} {product.unit}</div>
+                
+                <div className="text-sm">
+                  <span className="font-medium">Availability:</span>
+                  <div className="text-muted-foreground">{product.availability}</div>
                 </div>
-              </div>
-              
-              <div className="text-sm">
-                <span className="font-medium">Availability:</span>
-                <div className="text-gray-600">{product.availability}</div>
-              </div>
-              
-              <div className="text-sm">
-                <span className="font-medium">Description:</span>
-                <div className="text-gray-600">{product.description}</div>
-              </div>
+                
+                {product.description && (
+                  <div className="text-sm">
+                    <span className="font-medium">Description:</span>
+                    <div className="text-muted-foreground">{product.description}</div>
+                  </div>
+                )}
 
-              <div className="flex space-x-2 pt-2">
-                <Button size="sm" variant="outline" className="flex-1">
-                  <Edit className="h-3 w-3 mr-1" />
-                  Edit
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant={product.isActive ? "outline" : "default"}
-                  onClick={() => toggleProductStatus(product.id)}
-                  className="flex-1"
-                >
-                  {product.isActive ? "Deactivate" : "Activate"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                <div className="flex space-x-2 pt-2">
+                  <Button size="sm" variant="outline" className="flex-1">
+                    Edit
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant={product.is_active ? "outline" : "default"}
+                    onClick={() => toggleProductStatus(product.id)}
+                    className="flex-1"
+                  >
+                    {product.is_active ? "Deactivate" : "Activate"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

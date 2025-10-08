@@ -94,7 +94,7 @@ export type Database = {
       orders: {
         Row: {
           created_at: string
-          customer_id: string | null
+          customer_id: string
           delivered_at: string | null
           id: string
           order_date: string
@@ -109,7 +109,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          customer_id?: string | null
+          customer_id?: string
           delivered_at?: string | null
           id?: string
           order_date: string
@@ -124,7 +124,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          customer_id?: string | null
+          customer_id?: string
           delivered_at?: string | null
           id?: string
           order_date?: string
@@ -157,6 +157,13 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
             referencedColumns: ["id"]
           },
         ]
@@ -207,6 +214,13 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
             referencedColumns: ["id"]
           },
         ]
@@ -297,7 +311,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      vendors_public: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
@@ -306,6 +343,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      make_user_admin: {
+        Args: { target_user_id: string }
+        Returns: undefined
       }
     }
     Enums: {
