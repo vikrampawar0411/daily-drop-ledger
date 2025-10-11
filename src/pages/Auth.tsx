@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Milk, Newspaper } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGuest } from '@/contexts/GuestContext';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
@@ -16,6 +17,7 @@ const Auth = () => {
   const [role, setRole] = useState<'vendor' | 'customer'>('customer');
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
+  const { enableGuestMode } = useGuest();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -91,6 +93,11 @@ const Auth = () => {
         description: 'Account created! Please check your email to verify your account.',
       });
     }
+  };
+
+  const handleGuestAccess = () => {
+    enableGuestMode();
+    navigate('/');
   };
 
   return (
@@ -194,6 +201,19 @@ const Auth = () => {
                 </form>
               </TabsContent>
             </Tabs>
+            
+            <div className="mt-4 text-center">
+              <Button 
+                variant="outline" 
+                onClick={handleGuestAccess}
+                className="w-full"
+              >
+                Continue as Guest
+              </Button>
+              <p className="text-xs text-gray-500 mt-2">
+                Access the app without signing in
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
