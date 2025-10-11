@@ -75,9 +75,8 @@ export const useOrders = () => {
     const dateString = date.toISOString().split('T')[0];
     
     try {
-      // Get current user ID from auth
+      // Get current user ID from auth (optional for guest users)
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
 
       // First, get vendor and product IDs
       const { data: vendors } = await supabase
@@ -107,7 +106,7 @@ export const useOrders = () => {
           price_per_unit: products.price,
           total_amount: order.quantity * products.price,
           status: "pending",
-          customer_id: user.id,
+          customer_id: user?.id || null,
         }])
         .select(`
           *,
