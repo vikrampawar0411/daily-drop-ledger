@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Package } from "lucide-react";
+import { useOrders } from "@/hooks/useOrders";
 
 interface VendorOrder {
   date: string;
@@ -20,6 +22,7 @@ interface MonthlyProductStats {
 
 interface VendorStats {
   name: string;
+  vendorId: string;
   dailyOrders: VendorOrder[];
   monthlyTotal: number;
   monthlyOrders: number;
@@ -27,49 +30,114 @@ interface VendorStats {
   monthlyProducts: MonthlyProductStats[];
 }
 
-const vendorStats: VendorStats[] = [
-  {
-    name: "Fresh Dairy Co.",
-    dailyOrders: [
-      { date: "2024-12-01", product: "Fresh Milk", quantity: 2, unit: "litres", amount: 120 },
-      { date: "2024-12-02", product: "Fresh Milk", quantity: 2, unit: "litres", amount: 120 },
-    ],
-    monthlyTotal: 3600,
-    monthlyOrders: 30,
-    avgDailySpend: 120,
-    monthlyProducts: [
-      { product: "Fresh Milk", totalQuantity: 60, unit: "litres", pricePerUnit: 60, totalAmount: 3600 }
-    ]
-  },
-  {
-    name: "News Express",
-    dailyOrders: [
-      { date: "2024-12-01", product: "Times of India", quantity: 1, unit: "copy", amount: 8 },
-      { date: "2024-12-02", product: "Times of India", quantity: 1, unit: "copy", amount: 8 },
-    ],
-    monthlyTotal: 240,
-    monthlyOrders: 30,
-    avgDailySpend: 8,
-    monthlyProducts: [
-      { product: "Times of India", totalQuantity: 30, unit: "copies", pricePerUnit: 8, totalAmount: 240 }
-    ]
-  },
-  {
-    name: "Daily Essentials",
-    dailyOrders: [
-      { date: "2024-12-01", product: "Indian Express", quantity: 1, unit: "copy", amount: 6 },
-    ],
-    monthlyTotal: 360,
-    monthlyOrders: 30,
-    avgDailySpend: 12,
-    monthlyProducts: [
-      { product: "Indian Express", totalQuantity: 30, unit: "copies", pricePerUnit: 6, totalAmount: 180 },
-      { product: "Fresh Milk", totalQuantity: 30, unit: "litres", pricePerUnit: 6, totalAmount: 180 }
-    ]
-  }
-];
-
 export const VendorOrderTabs = () => {
+  const { orders, loading } = useOrders();
+
+  const vendorStats: VendorStats[] = useMemo(() => {
+    // Group orders by vendor
+    const vendorMap = new Map<string, any[]>();
+    
+    orders.forEach(order => {
+      if (order.vendor && order.vendor.id) {
+        if (!vendorMap.has(order.vendor.id)) {
+          vendorMap.set(order.vendor.id, []);
+        }
+        vendorMap.get(order.vendor.id)!.push(order);
+      }
+    });
+
+    // Calculate stats for each vendor
+    return Array.from(vendorMap.entries()).map(([vendorId, vendorOrders]) => {
+      const vendorName = vendorOrders[0]?.vendor?.name || "Unknown Vendor";
+      
+      // Daily orders (most recent 10)
+      const dailyOrders: VendorOrder[] = vendorOrders
+        .slice(0, 10)
+        .map(order => ({
+          date: order.order_date,
+          product: order.product?.name || "Unknown",
+          quantity: Number(order.quantity),
+          unit: order.unit,
+          amount: Number(order.total_amount)
+        }));
+
+      // Monthly product aggregation
+      const productMap = new Map<string, {
+        totalQuantity: number;
+        unit: string;
+        pricePerUnit: number;
+        totalAmount: number;
+      }>();
+
+      vendorOrders.forEach(order => {
+        const productName = order.product?.name || "Unknown";
+        if (!productMap.has(productName)) {
+          productMap.set(productName, {
+            totalQuantity: 0,
+            unit: order.unit,
+            pricePerUnit: Number(order.price_per_unit || 0),
+            totalAmount: 0
+          });
+        }
+        const stats = productMap.get(productName)!;
+        stats.totalQuantity += Number(order.quantity);
+        stats.totalAmount += Number(order.total_amount);
+      });
+
+      const monthlyProducts: MonthlyProductStats[] = Array.from(productMap.entries()).map(
+        ([product, stats]) => ({
+          product,
+          ...stats
+        })
+      );
+
+      const monthlyTotal = vendorOrders.reduce((sum, order) => 
+        sum + Number(order.total_amount), 0
+      );
+      const monthlyOrders = vendorOrders.length;
+      const avgDailySpend = monthlyOrders > 0 ? monthlyTotal / monthlyOrders : 0;
+
+      return {
+        name: vendorName,
+        vendorId,
+        dailyOrders,
+        monthlyTotal,
+        monthlyOrders,
+        avgDailySpend,
+        monthlyProducts
+      };
+    });
+  }, [orders]);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Vendor Order Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-gray-500">
+            Loading vendor order details...
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (vendorStats.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Vendor Order Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-gray-500">
+            No order data available. Place some orders to see vendor statistics.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   return (
     <Card>
       <CardHeader>
