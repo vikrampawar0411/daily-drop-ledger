@@ -289,13 +289,14 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormP
 
         <div className="flex space-x-2">
           <Button 
+            type="button"
             onClick={handlePlaceOrder} 
             className="bg-green-600 hover:bg-green-700"
             disabled={selectedDates.length === 0 || !selectedVendor || !selectedProduct}
           >
             Schedule Order for {selectedDates.length} {selectedDates.length === 1 ? 'Day' : 'Days'}
           </Button>
-          <Button variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
         </div>
