@@ -10,12 +10,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useGuest } from '@/contexts/GuestContext';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { CustomerSignupForm, CustomerSignupData } from '@/components/auth/CustomerSignupForm';
+import { VendorSignupForm, VendorSignupData } from '@/components/auth/VendorSignupForm';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'vendor' | 'customer'>('customer');
   const [isLoading, setIsLoading] = useState(false);
+  const [signupStep, setSignupStep] = useState<'credentials' | 'details'>('credentials');
   const { signIn, signUp, user } = useAuth();
   const { enableGuestMode } = useGuest();
   const { toast } = useToast();
@@ -77,8 +80,20 @@ const Auth = () => {
       return;
     }
 
+    // Move to details step
+    setSignupStep('details');
+  };
+
+  const handleCustomerSignup = async (data: CustomerSignupData) => {
     setIsLoading(true);
-    const { error } = await signUp(email, password, role);
+    const { error } = await signUp(data.email, data.password, 'customer', {
+      name: data.name,
+      phone: data.phone,
+      area_id: data.area_id,
+      society_id: data.society_id,
+      wing_number: data.wing_number,
+      flat_plot_house_number: data.flat_plot_house_number,
+    });
     setIsLoading(false);
 
     if (error) {
@@ -92,7 +107,43 @@ const Auth = () => {
         title: 'Success',
         description: 'Account created! Please check your email to verify your account.',
       });
+      setSignupStep('credentials');
+      setEmail('');
+      setPassword('');
     }
+  };
+
+  const handleVendorSignup = async (data: VendorSignupData) => {
+    setIsLoading(true);
+    const { error } = await signUp(data.email, data.password, 'vendor', {
+      businessName: data.businessName,
+      category: data.category,
+      contactPerson: data.contactPerson,
+      phone: data.phone,
+      businessEmail: data.businessEmail,
+      address: data.address,
+    });
+    setIsLoading(false);
+
+    if (error) {
+      toast({
+        title: 'Sign Up Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Success',
+        description: 'Account created! Please check your email to verify your account.',
+      });
+      setSignupStep('credentials');
+      setEmail('');
+      setPassword('');
+    }
+  };
+
+  const handleBackToCredentials = () => {
+    setSignupStep('credentials');
   };
 
   const handleGuestAccess = () => {
@@ -112,7 +163,7 @@ const Auth = () => {
           <p className="text-gray-600 mt-2">Vendor-Customer Distribution Platform</p>
         </div>
 
-        <Card>
+        <Card className="max-h-[90vh] overflow-y-auto">
           <CardHeader>
             <CardTitle>Welcome</CardTitle>
             <CardDescription>Sign in to your account or create a new one</CardDescription>
@@ -154,51 +205,73 @@ const Auth = () => {
               </TabsContent>
 
               <TabsContent value="signup">
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="name@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      minLength={6}
-                    />
-                    <p className="text-xs text-gray-500">Must be at least 6 characters</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>I am a</Label>
-                    <RadioGroup value={role} onValueChange={(value) => setRole(value as 'vendor' | 'customer')}>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="customer" id="customer" />
-                        <Label htmlFor="customer" className="font-normal cursor-pointer">
-                          Customer
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="vendor" id="vendor" />
-                        <Label htmlFor="vendor" className="font-normal cursor-pointer">
-                          Vendor
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Creating account...' : 'Sign Up'}
-                  </Button>
-                </form>
+                {signupStep === 'credentials' ? (
+                  <form onSubmit={handleSignUp} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-email">Email</Label>
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        placeholder="name@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-password">Password</Label>
+                      <Input
+                        id="signup-password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={6}
+                      />
+                      <p className="text-xs text-gray-500">Must be at least 6 characters</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>I am a</Label>
+                      <RadioGroup value={role} onValueChange={(value) => setRole(value as 'vendor' | 'customer')}>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="customer" id="customer" />
+                          <Label htmlFor="customer" className="font-normal cursor-pointer">
+                            Customer
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="vendor" id="vendor" />
+                          <Label htmlFor="vendor" className="font-normal cursor-pointer">
+                            Vendor
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                      Continue
+                    </Button>
+                  </form>
+                ) : (
+                  <>
+                    {role === 'customer' ? (
+                      <CustomerSignupForm
+                        email={email}
+                        password={password}
+                        onSubmit={handleCustomerSignup}
+                        onBack={handleBackToCredentials}
+                        isLoading={isLoading}
+                      />
+                    ) : (
+                      <VendorSignupForm
+                        email={email}
+                        password={password}
+                        onSubmit={handleVendorSignup}
+                        onBack={handleBackToCredentials}
+                        isLoading={isLoading}
+                      />
+                    )}
+                  </>
+                )}
               </TabsContent>
             </Tabs>
             

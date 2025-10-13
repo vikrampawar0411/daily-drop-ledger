@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, role: 'vendor' | 'customer') => Promise<{ error: any }>;
+  signUp: (email: string, password: string, role: 'vendor' | 'customer', additionalData?: any) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   getUserRole: () => Promise<'admin' | 'staff' | 'vendor' | 'customer' | null>;
@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, role: 'vendor' | 'customer') => {
+  const signUp = async (email: string, password: string, role: 'vendor' | 'customer', additionalData?: any) => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { data, error } = await supabase.auth.signUp({
@@ -69,6 +69,48 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             user_id: data.user!.id,
             role: role
           });
+
+          // Insert into customers or vendors table based on role
+          if (role === 'customer' && additionalData) {
+            const selectedArea = await supabase
+              .from('areas')
+              .select('name')
+              .eq('id', additionalData.area_id)
+              .single();
+            
+            const selectedSociety = await supabase
+              .from('societies')
+              .select('name')
+              .eq('id', additionalData.society_id)
+              .single();
+            
+            const address = [
+              additionalData.wing_number,
+              additionalData.flat_plot_house_number,
+              selectedSociety.data?.name,
+              selectedArea.data?.name
+            ].filter(Boolean).join(", ");
+
+            await supabase.from('customers').insert({
+              name: additionalData.name,
+              phone: additionalData.phone,
+              email: email,
+              address: address,
+              area_id: additionalData.area_id,
+              society_id: additionalData.society_id,
+              wing_number: additionalData.wing_number,
+              flat_plot_house_number: additionalData.flat_plot_house_number,
+            });
+          } else if (role === 'vendor' && additionalData) {
+            await supabase.from('vendors').insert({
+              name: additionalData.businessName,
+              category: additionalData.category,
+              contact_person: additionalData.contactPerson,
+              phone: additionalData.phone,
+              email: additionalData.businessEmail,
+              address: additionalData.address,
+            });
+          }
         } catch (err) {
           console.error('Error creating profile:', err);
         }
