@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,11 +16,13 @@ interface VendorAppProps {
 }
 
 const VendorApp = ({ onBack }: VendorAppProps) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
   const { signOut, user } = useAuth();
 
   const handleSignOut = async () => {
     await signOut();
+    navigate('/auth');
   };
 
   return (

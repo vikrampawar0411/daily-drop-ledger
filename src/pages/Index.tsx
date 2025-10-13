@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,6 +10,7 @@ import CustomerApp from "@/components/customer/CustomerApp";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
+  const navigate = useNavigate();
   const [userType, setUserType] = useState<'vendor' | 'customer' | null>(null);
   const { user, signOut, getUserRole } = useAuth();
   const [userRole, setUserRole] = useState<'admin' | 'staff' | 'vendor' | 'customer' | null>(null);
@@ -22,6 +24,7 @@ const Index = () => {
   const handleSignOut = async () => {
     await signOut();
     setUserType(null);
+    navigate('/auth');
   };
 
   if (userType === 'vendor') {
