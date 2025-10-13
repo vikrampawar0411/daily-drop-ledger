@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (role === 'customer' && additionalData) {
             const selectedArea = await supabase
               .from('areas')
-              .select('name')
+              .select('name, city_id')
               .eq('id', additionalData.area_id)
               .maybeSingle();
             
@@ -91,11 +91,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               .eq('id', additionalData.society_id)
               .maybeSingle();
             
+            let cityName = '';
+            let stateName = '';
+            
+            if (selectedArea.data?.city_id) {
+              const selectedCity = await supabase
+                .from('cities')
+                .select('name, state_id')
+                .eq('id', selectedArea.data.city_id)
+                .maybeSingle();
+              
+              cityName = selectedCity.data?.name || '';
+              
+              if (selectedCity.data?.state_id) {
+                const selectedState = await supabase
+                  .from('states')
+                  .select('name')
+                  .eq('id', selectedCity.data.state_id)
+                  .maybeSingle();
+                
+                stateName = selectedState.data?.name || '';
+              }
+            }
+            
             const address = [
-              additionalData.wing_number,
               additionalData.flat_plot_house_number,
+              additionalData.wing_number,
               selectedSociety.data?.name,
-              selectedArea.data?.name
+              selectedArea.data?.name,
+              cityName,
+              stateName
             ].filter(Boolean).join(", ");
 
             await supabase.from('customers').insert({

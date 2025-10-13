@@ -77,7 +77,14 @@ const CustomerManagement = () => {
       const { error } = await supabase
         .from("customers")
         .insert([{
-          ...formData,
+          name: formData.name,
+          phone: formData.phone,
+          email: formData.email,
+          product_id: formData.product_id || null,
+          area_id: formData.area_id,
+          society_id: formData.society_id,
+          wing_number: formData.wing_number,
+          flat_plot_house_number: formData.flat_plot_house_number,
           address: fullAddress,
         }]);
 
