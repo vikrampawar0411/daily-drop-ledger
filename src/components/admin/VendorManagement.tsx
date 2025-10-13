@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,66 +5,69 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Search, MapPin, Users, Phone, Mail } from "lucide-react";
-import { useCustomers } from "@/hooks/useCustomers";
+import { Search, Store, Phone, Mail, MapPin } from "lucide-react";
+import { useVendors } from "@/hooks/useVendors";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-const CustomerManagement = () => {
+const VendorManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const { customers, loading, refetch } = useCustomers();
+  const { vendors, loading, refetch } = useVendors();
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
     name: "",
+    category: "",
+    contact_person: "",
     phone: "",
     email: "",
     address: "",
-    route: "",
   });
 
-  const filteredCustomers = customers.filter(customer => {
-    const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         customer.phone.includes(searchTerm);
+  const filteredVendors = vendors.filter(vendor => {
+    const matchesSearch = vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         vendor.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (vendor.phone && vendor.phone.includes(searchTerm));
     
     return matchesSearch;
   });
 
-  const handleAddCustomer = async () => {
+  const handleAddVendor = async () => {
     try {
-      if (!formData.name || !formData.phone || !formData.address) {
+      if (!formData.name || !formData.category) {
         toast({
           title: "Validation Error",
-          description: "Name, phone, and address are required",
+          description: "Name and category are required",
           variant: "destructive",
         });
         return;
       }
 
       const { error } = await supabase
-        .from("customers")
+        .from("vendors")
         .insert([formData]);
 
       if (error) throw error;
 
       toast({
         title: "Success",
-        description: "Customer added successfully",
+        description: "Vendor added successfully",
       });
 
       setIsAddDialogOpen(false);
       setFormData({
         name: "",
+        category: "",
+        contact_person: "",
         phone: "",
         email: "",
         address: "",
-        route: "",
       });
       refetch();
     } catch (error: any) {
       toast({
-        title: "Error adding customer",
+        title: "Error adding vendor",
         description: error.message,
         variant: "destructive",
       });
@@ -77,7 +79,7 @@ const CustomerManagement = () => {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading customers...</p>
+          <p className="mt-4 text-muted-foreground">Loading vendors...</p>
         </div>
       </div>
     );
@@ -86,30 +88,48 @@ const CustomerManagement = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Customer Management</h2>
+        <h2 className="text-2xl font-bold">Vendor Management</h2>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>
-              <Users className="h-4 w-4 mr-2" />
-              Add Customer
+              <Store className="h-4 w-4 mr-2" />
+              Add Vendor
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Customer</DialogTitle>
+              <DialogTitle>Add New Vendor</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
+                <Label htmlFor="name">Vendor Name *</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Customer name"
+                  placeholder="Enter vendor name"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone *</Label>
+                <Label htmlFor="category">Category *</Label>
+                <Input
+                  id="category"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  placeholder="e.g., Dairy, Grocery, etc."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="contact_person">Contact Person</Label>
+                <Input
+                  id="contact_person"
+                  value={formData.contact_person}
+                  onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                  placeholder="Contact person name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone</Label>
                 <Input
                   id="phone"
                   value={formData.phone}
@@ -128,7 +148,7 @@ const CustomerManagement = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="address">Address *</Label>
+                <Label htmlFor="address">Address</Label>
                 <Input
                   id="address"
                   value={formData.address}
@@ -136,17 +156,8 @@ const CustomerManagement = () => {
                   placeholder="Full address"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="route">Route</Label>
-                <Input
-                  id="route"
-                  value={formData.route}
-                  onChange={(e) => setFormData({ ...formData, route: e.target.value })}
-                  placeholder="Delivery route"
-                />
-              </div>
-              <Button onClick={handleAddCustomer} className="w-full">
-                Add Customer
+              <Button onClick={handleAddVendor} className="w-full">
+                Add Vendor
               </Button>
             </div>
           </DialogContent>
@@ -159,7 +170,7 @@ const CustomerManagement = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
-              placeholder="Search by name or phone..."
+              placeholder="Search by name, category or phone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -168,48 +179,53 @@ const CustomerManagement = () => {
         </CardContent>
       </Card>
 
-      {/* Customer List */}
-      {filteredCustomers.length === 0 ? (
+      {/* Vendor List */}
+      {filteredVendors.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-lg font-medium">No customers found</p>
+            <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-lg font-medium">No vendors found</p>
             <p className="text-sm text-muted-foreground mt-2">
-              {searchTerm ? "Try adjusting your search" : "Get started by adding your first customer"}
+              {searchTerm ? "Try adjusting your search" : "Get started by adding your first vendor"}
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredCustomers.map((customer) => (
-            <Card key={customer.id} className="hover:shadow-lg transition-shadow">
+          {filteredVendors.map((vendor) => (
+            <Card key={vendor.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{customer.name}</CardTitle>
-                  <Badge variant={customer.is_active ? "default" : "secondary"}>
-                    {customer.is_active ? "Active" : "Inactive"}
+                  <CardTitle className="text-lg">{vendor.name}</CardTitle>
+                  <Badge variant={vendor.is_active ? "default" : "secondary"}>
+                    {vendor.is_active ? "Active" : "Inactive"}
                   </Badge>
                 </div>
+                <p className="text-sm text-muted-foreground">{vendor.category}</p>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                  <Phone className="h-4 w-4" />
-                  <span>{customer.phone}</span>
-                </div>
-                {customer.route && (
-                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
-                    <span>Route: {customer.route}</span>
+                {vendor.contact_person && (
+                  <div className="text-sm">
+                    <div className="font-medium">Contact Person</div>
+                    <div className="text-muted-foreground">{vendor.contact_person}</div>
                   </div>
                 )}
-                <div className="text-sm">
-                  <div className="font-medium">Address</div>
-                  <div className="text-muted-foreground">{customer.address}</div>
-                </div>
-                {customer.email && (
+                {vendor.phone && (
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <Phone className="h-4 w-4" />
+                    <span>{vendor.phone}</span>
+                  </div>
+                )}
+                {vendor.email && (
                   <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                     <Mail className="h-4 w-4" />
-                    <span>{customer.email}</span>
+                    <span>{vendor.email}</span>
+                  </div>
+                )}
+                {vendor.address && (
+                  <div className="flex items-start space-x-2 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4 mt-0.5" />
+                    <span>{vendor.address}</span>
                   </div>
                 )}
                 <div className="flex space-x-2 pt-2">
@@ -217,7 +233,7 @@ const CustomerManagement = () => {
                     Edit
                   </Button>
                   <Button size="sm" variant="outline" className="flex-1">
-                    Orders
+                    View Details
                   </Button>
                 </div>
               </CardContent>
@@ -229,4 +245,4 @@ const CustomerManagement = () => {
   );
 };
 
-export default CustomerManagement;
+export default VendorManagement;

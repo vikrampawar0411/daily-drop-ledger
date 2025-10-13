@@ -6,9 +6,9 @@ import { LogOut, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import Dashboard from "@/components/Dashboard";
 import CustomerManagement from "@/components/vendor/CustomerManagement";
+import VendorManagement from "./VendorManagement";
 import OrderManagement from "@/components/vendor/OrderManagement";
 import ProductManagement from "@/components/vendor/ProductManagement";
-import CustomerList from "@/components/CustomerList";
 import { MasterTablesManagement } from "./MasterTablesManagement";
 
 const AdminApp = () => {
@@ -52,11 +52,11 @@ const AdminApp = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-6 mb-8">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="customers">All Customers</TabsTrigger>
-            <TabsTrigger value="orders">All Orders</TabsTrigger>
-            <TabsTrigger value="products">All Products</TabsTrigger>
+            <TabsTrigger value="customers">Customers</TabsTrigger>
+            <TabsTrigger value="vendors">Vendors</TabsTrigger>
+            <TabsTrigger value="orders">Orders</TabsTrigger>
+            <TabsTrigger value="products">Products</TabsTrigger>
             <TabsTrigger value="master">Master Tables</TabsTrigger>
-            <TabsTrigger value="users">User Management</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">
@@ -65,6 +65,10 @@ const AdminApp = () => {
 
           <TabsContent value="customers">
             <CustomerManagement />
+          </TabsContent>
+
+          <TabsContent value="vendors">
+            <VendorManagement />
           </TabsContent>
 
           <TabsContent value="orders">
@@ -77,10 +81,6 @@ const AdminApp = () => {
 
           <TabsContent value="master">
             <MasterTablesManagement />
-          </TabsContent>
-
-          <TabsContent value="users">
-            <CustomerList />
           </TabsContent>
         </Tabs>
       </div>
