@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, MapPin, Users, Phone, Mail } from "lucide-react";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useToast } from "@/hooks/use-toast";
@@ -136,11 +137,12 @@ const CustomerManagement = () => {
               Add Customer
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>Add New Customer</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <ScrollArea className="max-h-[60vh] pr-4">
+              <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name *</Label>
                 <Input
@@ -290,6 +292,9 @@ const CustomerManagement = () => {
                   placeholder="Flat / Plot / House number"
                 />
               </div>
+              </div>
+            </ScrollArea>
+            <div className="pt-4 border-t">
               <Button onClick={handleAddCustomer} className="w-full">
                 Add Customer
               </Button>

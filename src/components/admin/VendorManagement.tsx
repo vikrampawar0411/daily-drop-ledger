@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, Store, Phone, Mail, MapPin } from "lucide-react";
 import { useVendors } from "@/hooks/useVendors";
@@ -109,11 +110,12 @@ const VendorManagement = () => {
               Add Vendor
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>Add New Vendor</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <ScrollArea className="max-h-[60vh] pr-4">
+              <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Business Name *</Label>
                 <Input
@@ -180,6 +182,9 @@ const VendorManagement = () => {
                   rows={3}
                 />
               </div>
+              </div>
+            </ScrollArea>
+            <div className="pt-4 border-t">
               <Button onClick={handleAddVendor} className="w-full">
                 Add Vendor
               </Button>
