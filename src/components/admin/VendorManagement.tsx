@@ -27,6 +27,8 @@ const VENDOR_CATEGORIES = [
 const VendorManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingVendor, setEditingVendor] = useState<any>(null);
   const { vendors, loading, refetch } = useVendors();
   const { toast } = useToast();
 
@@ -37,6 +39,17 @@ const VendorManagement = () => {
     phone: "",
     email: "",
     address: "",
+    password: "",
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    category: "",
+    contact_person: "",
+    phone: "",
+    email: "",
+    address: "",
+    password: "",
   });
 
   const filteredVendors = vendors.filter(vendor => {
@@ -83,6 +96,7 @@ const VendorManagement = () => {
         phone: "",
         email: "",
         address: "",
+        password: "",
       });
       refetch();
     } catch (error: any) {
@@ -92,6 +106,111 @@ const VendorManagement = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleEditVendor = async () => {
+    try {
+      if (!editFormData.name || !editFormData.category || !editFormData.contact_person || !editFormData.phone || !editFormData.address) {
+        toast({
+          title: "Validation Error",
+          description: "Business name, category, contact person, phone, and address are required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      let vendorUserId = editingVendor.user_id;
+
+      // If email and password are provided, create/update auth user
+      if (editFormData.email && editFormData.password) {
+        // Check if vendor already has a user_id
+        if (vendorUserId) {
+          // Update existing auth user's email if needed
+          const { error: updateError } = await supabase.auth.admin.updateUserById(
+            vendorUserId,
+            { email: editFormData.email, password: editFormData.password }
+          );
+          if (updateError) throw updateError;
+        } else {
+          // Create new auth user
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: editFormData.email,
+            password: editFormData.password,
+            options: {
+              emailRedirectTo: `${window.location.origin}/`,
+              data: {
+                name: editFormData.contact_person,
+                user_type: 'vendor'
+              }
+            }
+          });
+
+          if (authError) throw authError;
+          vendorUserId = authData.user?.id;
+
+          // Create profile for the vendor
+          if (vendorUserId) {
+            await supabase.from('profiles').insert({
+              id: vendorUserId,
+              email: editFormData.email,
+              user_type: 'vendor',
+              name: editFormData.contact_person
+            });
+
+            // Create user role
+            await supabase.from('user_roles').insert({
+              user_id: vendorUserId,
+              role: 'vendor'
+            });
+          }
+        }
+      }
+
+      // Update vendor record
+      const { error } = await supabase
+        .from("vendors")
+        .update({
+          name: editFormData.name,
+          category: editFormData.category,
+          contact_person: editFormData.contact_person,
+          phone: editFormData.phone,
+          email: editFormData.email,
+          address: editFormData.address,
+          user_id: vendorUserId,
+        })
+        .eq('id', editingVendor.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Vendor updated successfully",
+      });
+
+      setIsEditDialogOpen(false);
+      setEditingVendor(null);
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: "Error updating vendor",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openEditDialog = (vendor: any) => {
+    setEditingVendor(vendor);
+    setEditFormData({
+      name: vendor.name,
+      category: vendor.category,
+      contact_person: vendor.contact_person || "",
+      phone: vendor.phone || "",
+      email: vendor.email || "",
+      address: vendor.address || "",
+      password: "",
+    });
+    setIsEditDialogOpen(true);
   };
 
   if (loading) {
@@ -197,6 +316,100 @@ const VendorManagement = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Vendor Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle>Edit Vendor</DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="max-h-[60vh] pr-4">
+              <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Business Name *</Label>
+                <Input
+                  id="edit-name"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  placeholder="Your business name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-category">Business Category *</Label>
+                <Select
+                  value={editFormData.category}
+                  onValueChange={(value) => setEditFormData({ ...editFormData, category: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VENDOR_CATEGORIES.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-contact_person">Contact Person Name *</Label>
+                <Input
+                  id="edit-contact_person"
+                  value={editFormData.contact_person}
+                  onChange={(e) => setEditFormData({ ...editFormData, contact_person: e.target.value })}
+                  placeholder="Primary contact person"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-phone">Phone Number *</Label>
+                <Input
+                  id="edit-phone"
+                  type="tel"
+                  value={editFormData.phone}
+                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                  placeholder="Business phone number"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Login Email *</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                  placeholder="Email for vendor login"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-password">Login Password {editingVendor?.user_id ? "" : "*"}</Label>
+                <Input
+                  id="edit-password"
+                  type="password"
+                  value={editFormData.password}
+                  onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                  placeholder={editingVendor?.user_id ? "Leave blank to keep current password" : "Set login password"}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-address">Business Address *</Label>
+                <Textarea
+                  id="edit-address"
+                  value={editFormData.address}
+                  onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
+                  placeholder="Complete business address"
+                  rows={3}
+                />
+              </div>
+              </div>
+            </ScrollArea>
+            <div className="pt-4 border-t">
+              <Button onClick={handleEditVendor} className="w-full">
+                Update Vendor
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Search */}
@@ -264,7 +477,7 @@ const VendorManagement = () => {
                   </div>
                 )}
                 <div className="flex space-x-2 pt-2">
-                  <Button size="sm" variant="outline" className="flex-1">
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditDialog(vendor)}>
                     Edit
                   </Button>
                   <Button size="sm" variant="outline" className="flex-1">
