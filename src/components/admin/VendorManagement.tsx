@@ -121,48 +121,37 @@ const VendorManagement = () => {
 
       let vendorUserId = editingVendor.user_id;
 
-      // If email and password are provided, create/update auth user
-      if (editFormData.email && editFormData.password) {
-        // Check if vendor already has a user_id
-        if (vendorUserId) {
-          // Update existing auth user's email if needed
-          const { error: updateError } = await supabase.auth.admin.updateUserById(
-            vendorUserId,
-            { email: editFormData.email, password: editFormData.password }
-          );
-          if (updateError) throw updateError;
-        } else {
-          // Create new auth user
-          const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: editFormData.email,
-            password: editFormData.password,
-            options: {
-              emailRedirectTo: `${window.location.origin}/`,
-              data: {
-                name: editFormData.contact_person,
-                user_type: 'vendor'
-              }
+      // If email and password are provided and vendor doesn't have a user_id yet, create auth user
+      if (editFormData.email && editFormData.password && !vendorUserId) {
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: editFormData.email,
+          password: editFormData.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              name: editFormData.contact_person,
+              user_type: 'vendor'
             }
+          }
+        });
+
+        if (authError) throw authError;
+        vendorUserId = authData.user?.id;
+
+        // Create profile for the vendor
+        if (vendorUserId) {
+          await supabase.from('profiles').insert({
+            id: vendorUserId,
+            email: editFormData.email,
+            user_type: 'vendor',
+            name: editFormData.contact_person
           });
 
-          if (authError) throw authError;
-          vendorUserId = authData.user?.id;
-
-          // Create profile for the vendor
-          if (vendorUserId) {
-            await supabase.from('profiles').insert({
-              id: vendorUserId,
-              email: editFormData.email,
-              user_type: 'vendor',
-              name: editFormData.contact_person
-            });
-
-            // Create user role
-            await supabase.from('user_roles').insert({
-              user_id: vendorUserId,
-              role: 'vendor'
-            });
-          }
+          // Create user role
+          await supabase.from('user_roles').insert({
+            user_id: vendorUserId,
+            role: 'vendor'
+          });
         }
       }
 
