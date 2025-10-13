@@ -14,41 +14,107 @@ export type Database = {
   }
   public: {
     Tables: {
+      areas: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "areas_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "areas_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string
+          area_id: string | null
           created_at: string
           email: string | null
+          flat_plot_house_number: string | null
           id: string
           is_active: boolean
           name: string
           phone: string
           route: string | null
+          society_id: string | null
           updated_at: string
+          wing_number: string | null
         }
         Insert: {
           address: string
+          area_id?: string | null
           created_at?: string
           email?: string | null
+          flat_plot_house_number?: string | null
           id?: string
           is_active?: boolean
           name: string
           phone: string
           route?: string | null
+          society_id?: string | null
           updated_at?: string
+          wing_number?: string | null
         }
         Update: {
           address?: string
+          area_id?: string | null
           created_at?: string
           email?: string | null
+          flat_plot_house_number?: string | null
           id?: string
           is_active?: boolean
           name?: string
           phone?: string
           route?: string | null
+          society_id?: string | null
           updated_at?: string
+          wing_number?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customers_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       daily_deliveries: {
         Row: {
@@ -248,6 +314,55 @@ export type Database = {
           user_type?: string
         }
         Relationships: []
+      }
+      societies: {
+        Row: {
+          area_id: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          area_id: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          area_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "societies_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "societies_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "societies_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

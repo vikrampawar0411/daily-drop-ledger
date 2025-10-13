@@ -10,6 +10,10 @@ export interface Customer {
   address: string;
   route: string | null;
   is_active: boolean;
+  area_id?: string | null;
+  society_id?: string | null;
+  wing_number?: string | null;
+  flat_plot_house_number?: string | null;
 }
 
 export const useCustomers = () => {

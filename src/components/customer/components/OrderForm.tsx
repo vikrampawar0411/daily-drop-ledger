@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,6 +7,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import type { Vendor } from "../types/order";
+import { CustomerDetailsDialog } from "../CustomerDetailsDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface OrderFormProps {
   selectedDate: Date | undefined;
@@ -16,12 +19,55 @@ interface OrderFormProps {
 }
 
 const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormProps) => {
+  const { toast } = useToast();
   const [selectedVendor, setSelectedVendor] = useState("");
   const [selectedProduct, setSelectedProduct] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [selectedDates, setSelectedDates] = useState<Date[]>(selectedDate ? [selectedDate] : []);
+  const [showCustomerDialog, setShowCustomerDialog] = useState(false);
+  const [pendingOrderData, setPendingOrderData] = useState<any>(null);
+  const [guestCustomerId, setGuestCustomerId] = useState<string | null>(null);
 
   const selectedVendorData = vendors.find(v => v.name === selectedVendor);
+
+  // Get or create guest customer on mount
+  useEffect(() => {
+    const initGuestCustomer = async () => {
+      const storedCustomerId = localStorage.getItem('guestCustomerId');
+      
+      if (storedCustomerId) {
+        // Verify the customer still exists
+        const { data, error } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('id', storedCustomerId)
+          .single();
+        
+        if (data && !error) {
+          setGuestCustomerId(storedCustomerId);
+          return;
+        }
+      }
+      
+      // Create a new guest customer
+      const { data, error } = await supabase
+        .from('customers')
+        .insert([{
+          name: 'Guest',
+          phone: '',
+          address: 'Incomplete'
+        }])
+        .select()
+        .single();
+      
+      if (data && !error) {
+        setGuestCustomerId(data.id);
+        localStorage.setItem('guestCustomerId', data.id);
+      }
+    };
+    
+    initGuestCustomer();
+  }, []);
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
@@ -40,8 +86,46 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormP
     setSelectedDates(prev => prev.filter(d => d.toDateString() !== dateToRemove.toDateString()));
   };
 
-  const handlePlaceOrder = () => {
+  const checkCustomerDetailsComplete = async () => {
+    if (!guestCustomerId) return false;
+    
+    const { data, error } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', guestCustomerId)
+      .single();
+    
+    if (error || !data) return false;
+    
+    // Check if all required fields are complete
+    return !!(
+      data.name && 
+      data.name !== 'Guest' &&
+      data.phone && 
+      data.area_id && 
+      data.society_id && 
+      data.flat_plot_house_number
+    );
+  };
+
+  const handlePlaceOrder = async () => {
     if (selectedVendor && selectedProduct && quantity > 0 && selectedDates.length > 0) {
+      // Check if customer details are complete
+      const isComplete = await checkCustomerDetailsComplete();
+      
+      if (!isComplete) {
+        // Store the order data and show customer details dialog
+        setPendingOrderData({
+          vendor: selectedVendor,
+          product: selectedProduct,
+          quantity,
+          dates: selectedDates
+        });
+        setShowCustomerDialog(true);
+        return;
+      }
+      
+      // Proceed with order
       onPlaceOrder(selectedVendor, selectedProduct, quantity, selectedDates);
       setSelectedVendor("");
       setSelectedProduct("");
@@ -50,8 +134,53 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormP
     }
   };
 
+  const handleCustomerDetailsSubmit = async (customerData: any) => {
+    if (!guestCustomerId) return;
+    
+    try {
+      // Update customer with complete details
+      const { error } = await supabase
+        .from('customers')
+        .update(customerData)
+        .eq('id', guestCustomerId);
+      
+      if (error) throw error;
+      
+      setShowCustomerDialog(false);
+      
+      // Now place the pending order
+      if (pendingOrderData) {
+        onPlaceOrder(
+          pendingOrderData.vendor,
+          pendingOrderData.product,
+          pendingOrderData.quantity,
+          pendingOrderData.dates
+        );
+        setSelectedVendor("");
+        setSelectedProduct("");
+        setQuantity(1);
+        setSelectedDates([]);
+        setPendingOrderData(null);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save customer details",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
-    <Card>
+    <>
+      <CustomerDetailsDialog
+        open={showCustomerDialog}
+        onOpenChange={setShowCustomerDialog}
+        vendorId={selectedVendorData?.id || ""}
+        onSubmit={handleCustomerDetailsSubmit}
+      />
+      
+      <Card>
       <CardHeader>
         <CardTitle>
           Schedule Order for Multiple Days
@@ -173,6 +302,7 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormP
         </div>
       </CardContent>
     </Card>
+    </>
   );
 };
 

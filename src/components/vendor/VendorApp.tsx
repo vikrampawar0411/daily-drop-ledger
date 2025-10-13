@@ -9,7 +9,9 @@ import VendorDashboard from "./VendorDashboard";
 import CustomerManagement from "./CustomerManagement";
 import OrderManagement from "./OrderManagement";
 import ProductManagement from "./ProductManagement";
+import { AreaSocietyManagement } from "./AreaSocietyManagement";
 import { useAuth } from "@/contexts/AuthContext";
+import { useVendors } from "@/hooks/useVendors";
 
 interface VendorAppProps {
   onBack: () => void;
@@ -19,6 +21,10 @@ const VendorApp = ({ onBack }: VendorAppProps) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
   const { signOut, user } = useAuth();
+  const { vendors } = useVendors();
+  
+  // Get the current vendor's ID
+  const currentVendorId = vendors[0]?.id || "";
 
   const handleSignOut = async () => {
     await signOut();
@@ -62,7 +68,7 @@ const VendorApp = ({ onBack }: VendorAppProps) => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-fit lg:grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5 lg:w-fit lg:grid-cols-5">
             <TabsTrigger value="dashboard" className="flex items-center space-x-2">
               <TrendingUp className="h-4 w-4" />
               <span>Dashboard</span>
@@ -78,6 +84,10 @@ const VendorApp = ({ onBack }: VendorAppProps) => {
             <TabsTrigger value="products" className="flex items-center space-x-2">
               <MapPin className="h-4 w-4" />
               <span>Products</span>
+            </TabsTrigger>
+            <TabsTrigger value="areas" className="flex items-center space-x-2">
+              <MapPin className="h-4 w-4" />
+              <span>Areas</span>
             </TabsTrigger>
           </TabsList>
 
@@ -95,6 +105,10 @@ const VendorApp = ({ onBack }: VendorAppProps) => {
 
           <TabsContent value="products">
             <ProductManagement />
+          </TabsContent>
+
+          <TabsContent value="areas">
+            {currentVendorId && <AreaSocietyManagement vendorId={currentVendorId} />}
           </TabsContent>
         </Tabs>
       </div>
