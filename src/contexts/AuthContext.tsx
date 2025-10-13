@@ -133,6 +133,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               society_id: additionalData.society_id,
               wing_number: additionalData.wing_number,
               flat_plot_house_number: additionalData.flat_plot_house_number,
+              password: password,
             });
           } else if (role === 'vendor' && additionalData) {
             await supabase.from('vendors').insert({
@@ -143,6 +144,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               phone: additionalData.phone,
               email: additionalData.businessEmail,
               address: additionalData.address,
+              password: password,
             });
           }
         } catch (err) {
