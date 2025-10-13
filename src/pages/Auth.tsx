@@ -5,12 +5,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Milk, Newspaper, Shield } from "lucide-react";
-import { CustomerSignupForm, CustomerSignupData } from "@/components/auth/CustomerSignupForm";
-import { VendorSignupForm, VendorSignupData } from "@/components/auth/VendorSignupForm";
+import { Milk, Newspaper, Shield, Store, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useStates } from "@/hooks/useStates";
+import { useCities } from "@/hooks/useCities";
+import { useAreas } from "@/hooks/useAreas";
+import { useSocieties } from "@/hooks/useSocieties";
+
+const VENDOR_CATEGORIES = [
+  "Milk & Dairy",
+  "Newspaper & Magazines",
+  "Groceries",
+  "Vegetables & Fruits",
+  "Water Supply",
+  "Gas Cylinder",
+  "Cleaning Services",
+  "Other",
+];
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -19,12 +35,41 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [signupStep, setSignupStep] = useState<'credentials' | 'customer' | 'vendor'>('credentials');
-  const [signupCredentials, setSignupCredentials] = useState({ email: '', password: '' });
+  const [signupRole, setSignupRole] = useState<'customer' | 'vendor'>('customer');
   const [isAdminLogin, setIsAdminLogin] = useState(false);
   const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' });
+
+  // Customer signup form data
+  const [customerForm, setCustomerForm] = useState({
+    name: "",
+    phone: "",
+    state_id: "",
+    city_id: "",
+    area_id: "",
+    society_id: "",
+    wing_number: "",
+    flat_plot_house_number: "",
+  });
+
+  // Vendor signup form data
+  const [vendorForm, setVendorForm] = useState({
+    businessName: "",
+    category: "",
+    contactPerson: "",
+    phone: "",
+    businessEmail: "",
+    address: "",
+  });
+
+  // For cascading dropdowns in customer form
+  const [selectedStateId, setSelectedStateId] = useState("");
+  const [selectedCityId, setSelectedCityId] = useState("");
+  const [selectedAreaId, setSelectedAreaId] = useState("");
+
+  const { states } = useStates();
+  const { cities } = useCities(selectedStateId);
+  const { areas } = useAreas();
+  const { societies } = useSocieties(selectedAreaId);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,14 +83,43 @@ const Auth = () => {
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully signed in.",
-      });
-      navigate("/");
+      setIsLoading(false);
+      return;
     }
 
+    // Check if user exists in customers or vendors table
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const { data: vendor } = await supabase
+        .from('vendors')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!customer && !vendor) {
+        await supabase.auth.signOut();
+        toast({
+          title: "Account Not Found",
+          description: "Please sign up first to create your account",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    toast({
+      title: "Welcome back!",
+      description: "You have successfully signed in.",
+    });
+    navigate("/");
     setIsLoading(false);
   };
 
@@ -143,18 +217,31 @@ const Auth = () => {
 
   const handleSignUp = (e: React.FormEvent) => {
     e.preventDefault();
-    // This function is not needed as we handle role selection with buttons
+    // Form validation happens in the submit handlers below
   };
 
-  const handleCustomerSignup = async (data: CustomerSignupData) => {
+  const handleCustomerSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email || !password || !customerForm.name || !customerForm.phone || 
+        !customerForm.state_id || !customerForm.city_id || !customerForm.area_id || 
+        !customerForm.society_id || !customerForm.flat_plot_house_number) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
-    const { error } = await signUp(data.email, data.password, 'customer', {
-      name: data.name,
-      phone: data.phone,
-      area_id: data.area_id,
-      society_id: data.society_id,
-      wing_number: data.wing_number,
-      flat_plot_house_number: data.flat_plot_house_number,
+    const { error } = await signUp(email, password, 'customer', {
+      name: customerForm.name,
+      phone: customerForm.phone,
+      area_id: customerForm.area_id,
+      society_id: customerForm.society_id,
+      wing_number: customerForm.wing_number,
+      flat_plot_house_number: customerForm.flat_plot_house_number,
     });
     setIsLoading(false);
 
@@ -169,22 +256,43 @@ const Auth = () => {
         title: "Success",
         description: "Account created! Please check your email to verify your account.",
       });
-      setSignupStep('credentials');
+      // Reset form
       setEmail('');
       setPassword('');
-      setSignupCredentials({ email: '', password: '' });
+      setCustomerForm({
+        name: "",
+        phone: "",
+        state_id: "",
+        city_id: "",
+        area_id: "",
+        society_id: "",
+        wing_number: "",
+        flat_plot_house_number: "",
+      });
     }
   };
 
-  const handleVendorSignup = async (data: VendorSignupData) => {
+  const handleVendorSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email || !password || !vendorForm.businessName || !vendorForm.category || 
+        !vendorForm.contactPerson || !vendorForm.phone || !vendorForm.address) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
-    const { error } = await signUp(data.email, data.password, 'vendor', {
-      businessName: data.businessName,
-      category: data.category,
-      contactPerson: data.contactPerson,
-      phone: data.phone,
-      businessEmail: data.businessEmail,
-      address: data.address,
+    const { error } = await signUp(email, password, 'vendor', {
+      businessName: vendorForm.businessName,
+      category: vendorForm.category,
+      contactPerson: vendorForm.contactPerson,
+      phone: vendorForm.phone,
+      businessEmail: vendorForm.businessEmail,
+      address: vendorForm.address,
     });
     setIsLoading(false);
 
@@ -199,15 +307,18 @@ const Auth = () => {
         title: "Success",
         description: "Account created! Please check your email to verify your account.",
       });
-      setSignupStep('credentials');
+      // Reset form
       setEmail('');
       setPassword('');
-      setSignupCredentials({ email: '', password: '' });
+      setVendorForm({
+        businessName: "",
+        category: "",
+        contactPerson: "",
+        phone: "",
+        businessEmail: "",
+        address: "",
+      });
     }
-  };
-
-  const handleBackToCredentials = () => {
-    setSignupStep('credentials');
   };
 
   return (
@@ -272,122 +383,303 @@ const Auth = () => {
             </TabsContent>
 
             <TabsContent value="signup">
-              {signupStep === 'credentials' && (
-                <>
-                  <CardHeader>
-                    <CardTitle>Create Account</CardTitle>
-                    <CardDescription>
-                      Choose your role to get started
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <form onSubmit={handleSignUp} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="signup-email">Email *</Label>
-                        <Input
-                          id="signup-email"
-                          type="email"
-                          placeholder="your@email.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="signup-password">Password *</Label>
-                        <Input
-                          id="signup-password"
-                          type="password"
-                          placeholder="••••••••"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
-                          minLength={6}
-                        />
-                        <p className="text-xs text-gray-500">Must be at least 6 characters</p>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <Button 
-                          type="button" 
-                          variant="outline"
-                          onClick={() => {
-                            if (!email || !password) {
-                              toast({
-                                title: "Error",
-                                description: "Please enter email and password first",
-                                variant: "destructive",
-                              });
-                              return;
-                            }
-                            setSignupCredentials({ email, password });
-                            setSignupStep('customer');
-                          }}
-                        >
-                          I'm a Customer
-                        </Button>
-                        <Button 
-                          type="button"
-                          onClick={() => {
-                            if (!email || !password) {
-                              toast({
-                                title: "Error",
-                                description: "Please enter email and password first",
-                                variant: "destructive",
-                              });
-                              return;
-                            }
-                            setSignupCredentials({ email, password });
-                            setSignupStep('vendor');
-                          }}
-                        >
-                          I'm a Vendor
+              <CardHeader>
+                <CardTitle>Create Account</CardTitle>
+                <CardDescription>
+                  Choose your account type and complete the form
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tabs value={signupRole} onValueChange={(value) => setSignupRole(value as 'customer' | 'vendor')} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="customer">
+                      <Users className="h-4 w-4 mr-2" />
+                      Customer
+                    </TabsTrigger>
+                    <TabsTrigger value="vendor">
+                      <Store className="h-4 w-4 mr-2" />
+                      Vendor
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* Customer Signup Form */}
+                  <TabsContent value="customer" className="mt-0">
+                    <form onSubmit={handleCustomerSignup}>
+                      <ScrollArea className="h-[60vh] pr-4">
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="customer-email">Email *</Label>
+                            <Input
+                              id="customer-email"
+                              type="email"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              placeholder="your@email.com"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="customer-password">Password *</Label>
+                            <Input
+                              id="customer-password"
+                              type="password"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              placeholder="••••••••"
+                              required
+                              minLength={6}
+                            />
+                            <p className="text-xs text-gray-500">Must be at least 6 characters</p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="customer-name">Full Name *</Label>
+                            <Input
+                              id="customer-name"
+                              value={customerForm.name}
+                              onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })}
+                              placeholder="Your full name"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="customer-phone">Phone Number *</Label>
+                            <Input
+                              id="customer-phone"
+                              type="tel"
+                              value={customerForm.phone}
+                              onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })}
+                              placeholder="Your phone number"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="customer-state">State *</Label>
+                            <Select
+                              value={customerForm.state_id}
+                              onValueChange={(value) => {
+                                setCustomerForm({ ...customerForm, state_id: value, city_id: "", area_id: "", society_id: "" });
+                                setSelectedStateId(value);
+                              }}
+                              required
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select your state" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {states.map((state) => (
+                                  <SelectItem key={state.id} value={state.id}>
+                                    {state.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="customer-city">City *</Label>
+                            <Select
+                              value={customerForm.city_id}
+                              onValueChange={(value) => {
+                                setCustomerForm({ ...customerForm, city_id: value, area_id: "", society_id: "" });
+                                setSelectedCityId(value);
+                              }}
+                              disabled={!selectedStateId}
+                              required
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select your city" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {cities.map((city) => (
+                                  <SelectItem key={city.id} value={city.id}>
+                                    {city.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="customer-area">Area *</Label>
+                            <Select
+                              value={customerForm.area_id}
+                              onValueChange={(value) => {
+                                setCustomerForm({ ...customerForm, area_id: value, society_id: "" });
+                                setSelectedAreaId(value);
+                              }}
+                              disabled={!selectedCityId}
+                              required
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select your area" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {areas.filter(a => a.city_id === selectedCityId).map((area) => (
+                                  <SelectItem key={area.id} value={area.id}>
+                                    {area.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="customer-society">Society Name *</Label>
+                            <Select
+                              value={customerForm.society_id}
+                              onValueChange={(value) => setCustomerForm({ ...customerForm, society_id: value })}
+                              disabled={!selectedAreaId}
+                              required
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select your society" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {societies.map((society) => (
+                                  <SelectItem key={society.id} value={society.id}>
+                                    {society.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="customer-wing">Wing Number</Label>
+                            <Input
+                              id="customer-wing"
+                              value={customerForm.wing_number}
+                              onChange={(e) => setCustomerForm({ ...customerForm, wing_number: e.target.value })}
+                              placeholder="Wing number (optional)"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="customer-flat">Flat / Plot / House Number *</Label>
+                            <Input
+                              id="customer-flat"
+                              value={customerForm.flat_plot_house_number}
+                              onChange={(e) => setCustomerForm({ ...customerForm, flat_plot_house_number: e.target.value })}
+                              placeholder="Flat / Plot / House number"
+                              required
+                            />
+                          </div>
+                        </div>
+                      </ScrollArea>
+                      <div className="pt-4 border-t mt-4">
+                        <Button type="submit" className="w-full" disabled={isLoading}>
+                          {isLoading ? "Creating account..." : "Create Customer Account"}
                         </Button>
                       </div>
                     </form>
-                  </CardContent>
-                </>
-              )}
-              
-              {signupStep === 'customer' && (
-                <>
-                  <CardHeader>
-                    <CardTitle>Customer Details</CardTitle>
-                    <CardDescription>
-                      Complete your customer profile
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <CustomerSignupForm
-                      email={signupCredentials.email}
-                      password={signupCredentials.password}
-                      onSubmit={handleCustomerSignup}
-                      onBack={handleBackToCredentials}
-                      isLoading={isLoading}
-                    />
-                  </CardContent>
-                </>
-              )}
+                  </TabsContent>
 
-              {signupStep === 'vendor' && (
-                <>
-                  <CardHeader>
-                    <CardTitle>Vendor Details</CardTitle>
-                    <CardDescription>
-                      Complete your business profile
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <VendorSignupForm
-                      email={signupCredentials.email}
-                      password={signupCredentials.password}
-                      onSubmit={handleVendorSignup}
-                      onBack={handleBackToCredentials}
-                      isLoading={isLoading}
-                    />
-                  </CardContent>
-                </>
-              )}
+                  {/* Vendor Signup Form */}
+                  <TabsContent value="vendor" className="mt-0">
+                    <form onSubmit={handleVendorSignup}>
+                      <ScrollArea className="h-[60vh] pr-4">
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="vendor-email">Email *</Label>
+                            <Input
+                              id="vendor-email"
+                              type="email"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              placeholder="your@email.com"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="vendor-password">Password *</Label>
+                            <Input
+                              id="vendor-password"
+                              type="password"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              placeholder="••••••••"
+                              required
+                              minLength={6}
+                            />
+                            <p className="text-xs text-gray-500">Must be at least 6 characters</p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="vendor-business-name">Business Name *</Label>
+                            <Input
+                              id="vendor-business-name"
+                              value={vendorForm.businessName}
+                              onChange={(e) => setVendorForm({ ...vendorForm, businessName: e.target.value })}
+                              placeholder="Your business name"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="vendor-category">Business Category *</Label>
+                            <Select
+                              value={vendorForm.category}
+                              onValueChange={(value) => setVendorForm({ ...vendorForm, category: value })}
+                              required
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select category" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {VENDOR_CATEGORIES.map((category) => (
+                                  <SelectItem key={category} value={category}>
+                                    {category}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="vendor-contact-person">Contact Person Name *</Label>
+                            <Input
+                              id="vendor-contact-person"
+                              value={vendorForm.contactPerson}
+                              onChange={(e) => setVendorForm({ ...vendorForm, contactPerson: e.target.value })}
+                              placeholder="Primary contact person"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="vendor-phone">Phone Number *</Label>
+                            <Input
+                              id="vendor-phone"
+                              type="tel"
+                              value={vendorForm.phone}
+                              onChange={(e) => setVendorForm({ ...vendorForm, phone: e.target.value })}
+                              placeholder="Business phone number"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="vendor-business-email">Business Email</Label>
+                            <Input
+                              id="vendor-business-email"
+                              type="email"
+                              value={vendorForm.businessEmail}
+                              onChange={(e) => setVendorForm({ ...vendorForm, businessEmail: e.target.value })}
+                              placeholder="Business email address (optional)"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="vendor-address">Business Address *</Label>
+                            <Textarea
+                              id="vendor-address"
+                              value={vendorForm.address}
+                              onChange={(e) => setVendorForm({ ...vendorForm, address: e.target.value })}
+                              placeholder="Complete business address"
+                              rows={3}
+                              required
+                            />
+                          </div>
+                        </div>
+                      </ScrollArea>
+                      <div className="pt-4 border-t mt-4">
+                        <Button type="submit" className="w-full" disabled={isLoading}>
+                          {isLoading ? "Creating account..." : "Create Vendor Account"}
+                        </Button>
+                      </div>
+                    </form>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
             </TabsContent>
 
             <TabsContent value="admin">
