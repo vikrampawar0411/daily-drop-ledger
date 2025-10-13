@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, role: 'vendor' | 'customer', additionalData?: any) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, role: 'vendor' | 'customer' | 'admin', additionalData?: any) => Promise<{ error: any; user?: User | null }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   getUserRole: () => Promise<'admin' | 'staff' | 'vendor' | 'customer' | null>;
@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, role: 'vendor' | 'customer', additionalData?: any) => {
+  const signUp = async (email: string, password: string, role: 'vendor' | 'customer' | 'admin', additionalData?: any) => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { data, error } = await supabase.auth.signUp({
@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             role: role
           });
 
-          // Insert into customers or vendors table based on role
+          // Insert into customers or vendors table based on role (skip for admin)
           if (role === 'customer' && additionalData) {
             const selectedArea = await supabase
               .from('areas')
@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }, 0);
     }
 
-    return { error };
+    return { error, user: data.user };
   };
 
   const signIn = async (email: string, password: string) => {

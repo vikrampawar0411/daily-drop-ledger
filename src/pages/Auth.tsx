@@ -60,30 +60,47 @@ const Auth = () => {
     // Hardcoded admin credentials
     if (adminCredentials.username === 'Admin' && adminCredentials.password === 'Admin@123') {
       try {
-        // Find or create admin user
-        const { data: profiles, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('email', 'admin@dailydropled.com')
-          .maybeSingle();
+        // Check if admin exists
+        const { data: adminExists } = await supabase.rpc('admin_exists');
 
-        if (profileError || !profiles) {
+        if (!adminExists) {
+          // First time setup: create admin account
+          const { user: signUpUser, error: signUpError } = await signUp(
+            'admin@dailydropled.com',
+            'Admin@123',
+            'admin' as any
+          );
+
+          if (signUpError) {
+            toast({
+              title: "Admin Setup Failed",
+              description: signUpError.message,
+              variant: "destructive",
+            });
+            setIsLoading(false);
+            return;
+          }
+
+          if (signUpUser) {
+            // Bootstrap admin role
+            await supabase.rpc('bootstrap_admin', { admin_user_id: signUpUser.id });
+          }
+
           toast({
-            title: "Admin Setup Required",
-            description: "Please contact system administrator to set up admin account.",
-            variant: "destructive",
+            title: "Admin Account Created",
+            description: "Please check your email to verify the account, then sign in again.",
           });
           setIsLoading(false);
           return;
         }
 
-        // Sign in as admin
+        // Admin exists, sign in normally
         const { error: signInError } = await signIn('admin@dailydropled.com', 'Admin@123');
         
         if (signInError) {
           toast({
             title: "Error",
-            description: "Admin login failed. Please contact system administrator.",
+            description: signInError.message,
             variant: "destructive",
           });
         } else {
@@ -93,10 +110,10 @@ const Auth = () => {
           });
           navigate("/");
         }
-      } catch (error) {
+      } catch (error: any) {
         toast({
           title: "Error",
-          description: "An unexpected error occurred.",
+          description: error.message || "An unexpected error occurred.",
           variant: "destructive",
         });
       }

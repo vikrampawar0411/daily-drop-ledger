@@ -501,6 +501,14 @@ export type Database = {
       }
     }
     Functions: {
+      admin_exists: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      bootstrap_admin: {
+        Args: { admin_user_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
