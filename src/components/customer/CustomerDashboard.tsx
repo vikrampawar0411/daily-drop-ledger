@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, ShoppingCart, Calendar, Package, Plus, Bell } from "lucide-react";
+import { Users, ShoppingCart, Calendar, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VendorOrderTabs } from "./components/VendorOrderTabs";
 import { useOrders } from "@/hooks/useOrders";
 import { useVendors } from "@/hooks/useVendors";
@@ -13,6 +14,54 @@ interface CustomerDashboardProps {
 const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   const { orders, loading: ordersLoading } = useOrders();
   const { vendors, loading: vendorsLoading } = useVendors();
+  
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  const monthOptions = useMemo(() => {
+    const options = [];
+    const today = new Date();
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const label = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      options.push({ value, label });
+    }
+    return options;
+  }, []);
+
+  const monthlyStats = useMemo(() => {
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const firstDay = new Date(year, month - 1, 1);
+    const lastDay = new Date(year, month, 0);
+    
+    const monthOrders = orders.filter(o => {
+      const orderDate = new Date(o.order_date);
+      return orderDate >= firstDay && orderDate <= lastDay;
+    });
+    
+    const totalOrders = monthOrders.length;
+    const deliveredOrders = monthOrders.filter(o => o.status === 'delivered').length;
+    const scheduledOrders = monthOrders.filter(o => o.status === 'pending').length;
+    
+    const deliveredSpend = monthOrders
+      .filter(o => o.status === 'delivered')
+      .reduce((sum, o) => sum + Number(o.total_amount), 0);
+    
+    const forecastedBill = monthOrders
+      .filter(o => o.status === 'pending')
+      .reduce((sum, o) => sum + Number(o.total_amount), 0);
+    
+    return {
+      totalOrders,
+      deliveredOrders,
+      scheduledOrders,
+      deliveredSpend: Math.round(deliveredSpend),
+      forecastedBill: Math.round(forecastedBill)
+    };
+  }, [orders, selectedMonth]);
 
   const customerStats = useMemo(() => {
     const today = new Date();
@@ -162,6 +211,85 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               <Bell className="h-6 w-6" />
               <span>Manage Subscriptions</span>
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Monthly Statistics */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Monthly Statistics</CardTitle>
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select month" />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-blue-900">Total Orders</CardTitle>
+                <ShoppingCart className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-900">{monthlyStats.totalOrders}</div>
+                <p className="text-xs text-blue-700">orders this month</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-green-900">Orders Delivered</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-900">{monthlyStats.deliveredOrders}</div>
+                <p className="text-xs text-green-700">completed deliveries</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-amber-900">Orders Scheduled</CardTitle>
+                <Clock className="h-4 w-4 text-amber-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-900">{monthlyStats.scheduledOrders}</div>
+                <p className="text-xs text-amber-700">pending deliveries</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-purple-900">Monthly Spend</CardTitle>
+                <Package className="h-4 w-4 text-purple-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-900">₹{monthlyStats.deliveredSpend}</div>
+                <p className="text-xs text-purple-700">on delivered orders</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-rose-50 to-rose-100 border-rose-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-rose-900">Forecasted Bill</CardTitle>
+                <TrendingUp className="h-4 w-4 text-rose-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-rose-900">₹{monthlyStats.forecastedBill}</div>
+                <p className="text-xs text-rose-700">scheduled orders</p>
+              </CardContent>
+            </Card>
           </div>
         </CardContent>
       </Card>
