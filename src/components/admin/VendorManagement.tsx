@@ -130,29 +130,15 @@ const VendorManagement = () => {
             emailRedirectTo: `${window.location.origin}/`,
             data: {
               name: editFormData.contact_person,
-              user_type: 'vendor'
+              role: 'vendor'
             }
           }
         });
 
         if (authError) throw authError;
         vendorUserId = authData.user?.id;
-
-        // Create profile for the vendor
-        if (vendorUserId) {
-          await supabase.from('profiles').insert({
-            id: vendorUserId,
-            email: editFormData.email,
-            user_type: 'vendor',
-            name: editFormData.contact_person
-          });
-
-          // Create user role
-          await supabase.from('user_roles').insert({
-            user_id: vendorUserId,
-            role: 'vendor'
-          });
-        }
+        
+        // Note: Profile and user_roles are automatically created by database trigger
       }
 
       // Update vendor record
