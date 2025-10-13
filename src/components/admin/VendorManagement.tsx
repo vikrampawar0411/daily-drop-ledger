@@ -58,9 +58,15 @@ const VendorManagement = () => {
         return;
       }
 
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { error } = await supabase
         .from("vendors")
-        .insert([formData]);
+        .insert([{
+          ...formData,
+          created_by_user_id: user?.id,
+          created_by_role: 'admin',
+        }]);
 
       if (error) throw error;
 

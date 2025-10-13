@@ -74,6 +74,8 @@ const CustomerManagement = () => {
         states.find(s => s.id === formData.state_id)?.name
       ].filter(Boolean).join(", ");
 
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { error } = await supabase
         .from("customers")
         .insert([{
@@ -86,6 +88,8 @@ const CustomerManagement = () => {
           wing_number: formData.wing_number,
           flat_plot_house_number: formData.flat_plot_house_number,
           address: fullAddress,
+          created_by_user_id: user?.id,
+          created_by_role: 'vendor',
         }]);
 
       if (error) throw error;

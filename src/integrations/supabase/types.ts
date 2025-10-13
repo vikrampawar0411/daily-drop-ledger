@@ -95,6 +95,8 @@ export type Database = {
           address: string
           area_id: string | null
           created_at: string
+          created_by_role: string | null
+          created_by_user_id: string | null
           email: string | null
           flat_plot_house_number: string | null
           id: string
@@ -113,6 +115,8 @@ export type Database = {
           address: string
           area_id?: string | null
           created_at?: string
+          created_by_role?: string | null
+          created_by_user_id?: string | null
           email?: string | null
           flat_plot_house_number?: string | null
           id?: string
@@ -131,6 +135,8 @@ export type Database = {
           address?: string
           area_id?: string | null
           created_at?: string
+          created_by_role?: string | null
+          created_by_user_id?: string | null
           email?: string | null
           flat_plot_house_number?: string | null
           id?: string
@@ -220,6 +226,8 @@ export type Database = {
       orders: {
         Row: {
           created_at: string
+          created_by_role: string | null
+          created_by_user_id: string | null
           customer_id: string | null
           delivered_at: string | null
           id: string
@@ -237,6 +245,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by_role?: string | null
+          created_by_user_id?: string | null
           customer_id?: string | null
           delivered_at?: string | null
           id?: string
@@ -254,6 +264,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by_role?: string | null
+          created_by_user_id?: string | null
           customer_id?: string | null
           delivered_at?: string | null
           id?: string
@@ -305,6 +317,8 @@ export type Database = {
           availability: string
           category: string
           created_at: string
+          created_by_role: string | null
+          created_by_user_id: string | null
           description: string | null
           id: string
           is_active: boolean
@@ -318,6 +332,8 @@ export type Database = {
           availability?: string
           category: string
           created_at?: string
+          created_by_role?: string | null
+          created_by_user_id?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
@@ -331,6 +347,8 @@ export type Database = {
           availability?: string
           category?: string
           created_at?: string
+          created_by_role?: string | null
+          created_by_user_id?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
@@ -504,6 +522,8 @@ export type Database = {
           category: string
           contact_person: string | null
           created_at: string
+          created_by_role: string | null
+          created_by_user_id: string | null
           email: string | null
           id: string
           is_active: boolean
@@ -519,6 +539,8 @@ export type Database = {
           category: string
           contact_person?: string | null
           created_at?: string
+          created_by_role?: string | null
+          created_by_user_id?: string | null
           email?: string | null
           id?: string
           is_active?: boolean
@@ -534,6 +556,8 @@ export type Database = {
           category?: string
           contact_person?: string | null
           created_at?: string
+          created_by_role?: string | null
+          created_by_user_id?: string | null
           email?: string | null
           id?: string
           is_active?: boolean
@@ -595,6 +619,10 @@ export type Database = {
       }
       bootstrap_admin: {
         Args: { admin_user_id: string }
+        Returns: undefined
+      }
+      create_vendor_customer_connections_for_all: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
       has_role: {
