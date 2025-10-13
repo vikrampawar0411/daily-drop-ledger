@@ -12,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 interface CustomerDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  vendorId: string;
   initialData?: {
     name?: string;
     phone?: string;
@@ -27,14 +26,13 @@ interface CustomerDetailsDialogProps {
 export const CustomerDetailsDialog = ({
   open,
   onOpenChange,
-  vendorId,
   initialData,
   onSubmit,
 }: CustomerDetailsDialogProps) => {
   const { toast } = useToast();
-  const { areas } = useAreas(vendorId);
+  const { areas } = useAreas();
   const [selectedAreaId, setSelectedAreaId] = useState(initialData?.area_id || "");
-  const { societies } = useSocieties(selectedAreaId, vendorId);
+  const { societies } = useSocieties(selectedAreaId);
 
   const [formData, setFormData] = useState({
     name: initialData?.name || "",

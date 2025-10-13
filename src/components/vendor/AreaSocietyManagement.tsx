@@ -10,22 +10,18 @@ import { useSocieties } from "@/hooks/useSocieties";
 import { Plus, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
-interface AreaSocietyManagementProps {
-  vendorId: string;
-}
-
-export const AreaSocietyManagement = ({ vendorId }: AreaSocietyManagementProps) => {
-  const { areas, createArea, deleteArea } = useAreas(vendorId);
+export const AreaSocietyManagement = () => {
+  const { areas, createArea, deleteArea } = useAreas();
   const [newAreaName, setNewAreaName] = useState("");
   
   const [selectedAreaId, setSelectedAreaId] = useState("");
-  const { societies, createSociety, deleteSociety } = useSocieties(selectedAreaId, vendorId);
+  const { societies, createSociety, deleteSociety } = useSocieties(selectedAreaId);
   const [newSocietyName, setNewSocietyName] = useState("");
 
   const handleCreateArea = (e: React.FormEvent) => {
     e.preventDefault();
     if (newAreaName.trim()) {
-      createArea({ vendor_id: vendorId, name: newAreaName.trim() });
+      createArea({ name: newAreaName.trim() });
       setNewAreaName("");
     }
   };
@@ -34,7 +30,6 @@ export const AreaSocietyManagement = ({ vendorId }: AreaSocietyManagementProps) 
     e.preventDefault();
     if (newSocietyName.trim() && selectedAreaId) {
       createSociety({ 
-        vendor_id: vendorId, 
         area_id: selectedAreaId, 
         name: newSocietyName.trim() 
       });

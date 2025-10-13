@@ -23,16 +23,16 @@ const ProductManagement = () => {
   });
 
   const handleAddProduct = async () => {
-    if (newProduct.name && newProduct.category && newProduct.price && user) {
+    if (newProduct.name && newProduct.category && newProduct.price) {
       try {
         await addProduct({
-          vendor_id: user.id,
           name: newProduct.name,
           category: newProduct.category,
           price: parseFloat(newProduct.price),
           unit: newProduct.unit,
           availability: newProduct.availability,
           description: newProduct.description || null,
+          status: 'active'
         });
         setNewProduct({
           name: "",

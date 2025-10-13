@@ -176,7 +176,6 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormP
       <CustomerDetailsDialog
         open={showCustomerDialog}
         onOpenChange={setShowCustomerDialog}
-        vendorId={selectedVendorData?.id || ""}
         onSubmit={handleCustomerDetailsSubmit}
       />
       

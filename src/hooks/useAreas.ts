@@ -4,8 +4,9 @@ import { useToast } from "@/hooks/use-toast";
 
 export interface Area {
   id: string;
-  vendor_id: string;
   name: string;
+  description: string | null;
+  status: string;
   created_at: string;
   updated_at: string;
 }
@@ -15,15 +16,13 @@ export const useAreas = (vendorId?: string) => {
   const queryClient = useQueryClient();
 
   const { data: areas = [], isLoading } = useQuery({
-    queryKey: ["areas", vendorId],
+    queryKey: ["areas"],
     queryFn: async () => {
-      let query = supabase.from("areas").select("*").order("name");
-      
-      if (vendorId) {
-        query = query.eq("vendor_id", vendorId);
-      }
-
-      const { data, error } = await query;
+      const { data, error } = await supabase
+        .from("areas")
+        .select("*")
+        .eq("status", "active")
+        .order("name");
 
       if (error) throw error;
       return data as Area[];
@@ -31,10 +30,10 @@ export const useAreas = (vendorId?: string) => {
   });
 
   const createArea = useMutation({
-    mutationFn: async (newArea: { vendor_id: string; name: string }) => {
+    mutationFn: async (newArea: { name: string; description?: string; status?: string }) => {
       const { data, error } = await supabase
         .from("areas")
-        .insert([newArea])
+        .insert([{ ...newArea, status: newArea.status || 'active' }])
         .select()
         .single();
 

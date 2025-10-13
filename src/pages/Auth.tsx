@@ -19,6 +19,8 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [signupStep, setSignupStep] = useState<'credentials' | 'customer' | 'vendor'>('credentials');
   const [signupCredentials, setSignupCredentials] = useState({ email: '', password: '' });
   const [isAdminLogin, setIsAdminLogin] = useState(false);

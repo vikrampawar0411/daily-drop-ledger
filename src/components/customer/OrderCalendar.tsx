@@ -16,10 +16,10 @@ const OrderCalendar = () => {
   const { vendors, loading: vendorsLoading } = useVendors();
   const { products, loading: productsLoading } = useProducts();
 
-  // Group products by vendor for the order form
+  // Get all products from master table (no longer vendor-specific)
   const vendorsWithProducts = vendors.map(vendor => {
     const vendorProducts = products
-      .filter(p => p.vendor_id === vendor.id && p.is_active)
+      .filter(p => p.is_active)
       .map(p => ({ id: p.id, name: p.name }));
     
     return {

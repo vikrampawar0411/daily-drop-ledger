@@ -4,7 +4,6 @@ import { useToast } from "@/hooks/use-toast";
 
 export interface Product {
   id: string;
-  vendor_id: string;
   name: string;
   category: string;
   price: number;
@@ -12,6 +11,7 @@ export interface Product {
   availability: string;
   description: string | null;
   is_active: boolean;
+  status: string;
 }
 
 export const useProducts = () => {

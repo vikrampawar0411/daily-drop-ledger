@@ -17,41 +17,29 @@ export type Database = {
       areas: {
         Row: {
           created_at: string
+          description: string | null
           id: string
           name: string
+          status: string | null
           updated_at: string
-          vendor_id: string
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
           name: string
+          status?: string | null
           updated_at?: string
-          vendor_id: string
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
+          status?: string | null
           updated_at?: string
-          vendor_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "areas_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "areas_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors_public"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       customers: {
         Row: {
@@ -64,6 +52,7 @@ export type Database = {
           is_active: boolean
           name: string
           phone: string
+          product_id: string | null
           route: string | null
           society_id: string | null
           updated_at: string
@@ -80,6 +69,7 @@ export type Database = {
           is_active?: boolean
           name: string
           phone: string
+          product_id?: string | null
           route?: string | null
           society_id?: string | null
           updated_at?: string
@@ -96,6 +86,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           phone?: string
+          product_id?: string | null
           route?: string | null
           society_id?: string | null
           updated_at?: string
@@ -108,6 +99,13 @@ export type Database = {
             columns: ["area_id"]
             isOneToOne: false
             referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
           {
@@ -260,9 +258,9 @@ export type Database = {
           is_active: boolean
           name: string
           price: number
+          status: string | null
           unit: string
           updated_at: string
-          vendor_id: string
         }
         Insert: {
           availability?: string
@@ -273,9 +271,9 @@ export type Database = {
           is_active?: boolean
           name: string
           price: number
+          status?: string | null
           unit: string
           updated_at?: string
-          vendor_id: string
         }
         Update: {
           availability?: string
@@ -286,26 +284,11 @@ export type Database = {
           is_active?: boolean
           name?: string
           price?: number
+          status?: string | null
           unit?: string
           updated_at?: string
-          vendor_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "products_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "products_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors_public"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -338,26 +321,29 @@ export type Database = {
         Row: {
           area_id: string
           created_at: string
+          description: string | null
           id: string
           name: string
+          status: string | null
           updated_at: string
-          vendor_id: string
         }
         Insert: {
           area_id: string
           created_at?: string
+          description?: string | null
           id?: string
           name: string
+          status?: string | null
           updated_at?: string
-          vendor_id: string
         }
         Update: {
           area_id?: string
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
+          status?: string | null
           updated_at?: string
-          vendor_id?: string
         }
         Relationships: [
           {
@@ -365,20 +351,6 @@ export type Database = {
             columns: ["area_id"]
             isOneToOne: false
             referencedRelation: "areas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "societies_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "societies_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors_public"
             referencedColumns: ["id"]
           },
         ]
@@ -458,6 +430,7 @@ export type Database = {
           is_active: boolean
           name: string
           phone: string | null
+          product_id: string | null
           updated_at: string
           user_id: string | null
         }
@@ -471,6 +444,7 @@ export type Database = {
           is_active?: boolean
           name: string
           phone?: string | null
+          product_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -484,10 +458,18 @@ export type Database = {
           is_active?: boolean
           name?: string
           phone?: string | null
+          product_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "vendors_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vendors_user_id_fkey"
             columns: ["user_id"]

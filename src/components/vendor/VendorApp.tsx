@@ -108,7 +108,7 @@ const VendorApp = ({ onBack }: VendorAppProps) => {
           </TabsContent>
 
           <TabsContent value="areas">
-            {currentVendorId && <AreaSocietyManagement vendorId={currentVendorId} />}
+            {currentVendorId && <AreaSocietyManagement />}
           </TabsContent>
         </Tabs>
       </div>

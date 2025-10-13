@@ -17,7 +17,7 @@ const VendorDirectory = () => {
 
   const vendorsWithProducts = useMemo(() => {
     return vendors.map(vendor => {
-      const vendorProducts = products.filter(p => p.vendor_id === vendor.id && p.is_active);
+      const vendorProducts = products.filter(p => p.is_active);
       return {
         ...vendor,
         products: vendorProducts

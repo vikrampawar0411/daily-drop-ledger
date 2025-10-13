@@ -4,27 +4,29 @@ import { useToast } from "@/hooks/use-toast";
 
 export interface Society {
   id: string;
-  vendor_id: string;
   area_id: string;
   name: string;
+  description: string | null;
+  status: string;
   created_at: string;
   updated_at: string;
 }
 
-export const useSocieties = (areaId?: string, vendorId?: string) => {
+export const useSocieties = (areaId?: string) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: societies = [], isLoading } = useQuery({
-    queryKey: ["societies", areaId, vendorId],
+    queryKey: ["societies", areaId],
     queryFn: async () => {
-      let query = supabase.from("societies").select("*").order("name");
+      let query = supabase
+        .from("societies")
+        .select("*")
+        .eq("status", "active")
+        .order("name");
       
       if (areaId) {
         query = query.eq("area_id", areaId);
-      }
-      if (vendorId) {
-        query = query.eq("vendor_id", vendorId);
       }
 
       const { data, error } = await query;
@@ -32,14 +34,13 @@ export const useSocieties = (areaId?: string, vendorId?: string) => {
       if (error) throw error;
       return data as Society[];
     },
-    enabled: !!areaId || !!vendorId,
   });
 
   const createSociety = useMutation({
-    mutationFn: async (newSociety: { vendor_id: string; area_id: string; name: string }) => {
+    mutationFn: async (newSociety: { area_id: string; name: string; description?: string; status?: string }) => {
       const { data, error } = await supabase
         .from("societies")
-        .insert([newSociety])
+        .insert([{ ...newSociety, status: newSociety.status || 'active' }])
         .select()
         .single();
 
