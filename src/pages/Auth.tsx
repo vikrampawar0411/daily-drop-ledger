@@ -1,28 +1,28 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Milk, Newspaper } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useGuest } from '@/contexts/GuestContext';
-import { useToast } from '@/hooks/use-toast';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { CustomerSignupForm, CustomerSignupData } from '@/components/auth/CustomerSignupForm';
-import { VendorSignupForm, VendorSignupData } from '@/components/auth/VendorSignupForm';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { Milk, Newspaper, Shield } from "lucide-react";
+import { CustomerSignupForm, CustomerSignupData } from "@/components/auth/CustomerSignupForm";
+import { VendorSignupForm, VendorSignupData } from "@/components/auth/VendorSignupForm";
+import { supabase } from "@/integrations/supabase/client";
 
 const Auth = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'vendor' | 'customer'>('customer');
-  const [isLoading, setIsLoading] = useState(false);
-  const [signupStep, setSignupStep] = useState<'credentials' | 'details'>('credentials');
-  const { signIn, signUp, user } = useAuth();
-  const { enableGuestMode } = useGuest();
-  const { toast } = useToast();
   const navigate = useNavigate();
+  const { signIn, signUp, user } = useAuth();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [signupStep, setSignupStep] = useState<'credentials' | 'customer' | 'vendor'>('credentials');
+  const [signupCredentials, setSignupCredentials] = useState({ email: '', password: '' });
+  const [isAdminLogin, setIsAdminLogin] = useState(false);
+  const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' });
 
   useEffect(() => {
     if (user) {
@@ -32,56 +32,88 @@ const Auth = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in all fields',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setIsLoading(true);
+
     const { error } = await signIn(email, password);
-    setIsLoading(false);
 
     if (error) {
       toast({
-        title: 'Login Failed',
+        title: "Error",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     } else {
       toast({
-        title: 'Success',
-        description: 'Logged in successfully',
+        title: "Welcome back!",
+        description: "You have successfully signed in.",
       });
-      navigate('/');
+      navigate("/");
     }
+
+    setIsLoading(false);
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleAdminSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password || !role) {
+    setIsLoading(true);
+
+    // Hardcoded admin credentials
+    if (adminCredentials.username === 'Admin' && adminCredentials.password === 'Admin@123') {
+      try {
+        // Find or create admin user
+        const { data: profiles, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('email', 'admin@dailydropled.com')
+          .maybeSingle();
+
+        if (profileError || !profiles) {
+          toast({
+            title: "Admin Setup Required",
+            description: "Please contact system administrator to set up admin account.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Sign in as admin
+        const { error: signInError } = await signIn('admin@dailydropled.com', 'Admin@123');
+        
+        if (signInError) {
+          toast({
+            title: "Error",
+            description: "Admin login failed. Please contact system administrator.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Welcome Admin!",
+            description: "You have successfully signed in.",
+          });
+          navigate("/");
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred.",
+          variant: "destructive",
+        });
+      }
+    } else {
       toast({
-        title: 'Error',
-        description: 'Please fill in all fields',
-        variant: 'destructive',
+        title: "Invalid Credentials",
+        description: "Incorrect username or password.",
+        variant: "destructive",
       });
-      return;
     }
 
-    if (password.length < 6) {
-      toast({
-        title: 'Error',
-        description: 'Password must be at least 6 characters',
-        variant: 'destructive',
-      });
-      return;
-    }
+    setIsLoading(false);
+  };
 
-    // Move to details step
-    setSignupStep('details');
+  const handleSignUp = (e: React.FormEvent) => {
+    e.preventDefault();
+    // This function is not needed as we handle role selection with buttons
   };
 
   const handleCustomerSignup = async (data: CustomerSignupData) => {
@@ -98,18 +130,19 @@ const Auth = () => {
 
     if (error) {
       toast({
-        title: 'Sign Up Failed',
+        title: "Sign Up Failed",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     } else {
       toast({
-        title: 'Success',
-        description: 'Account created! Please check your email to verify your account.',
+        title: "Success",
+        description: "Account created! Please check your email to verify your account.",
       });
       setSignupStep('credentials');
       setEmail('');
       setPassword('');
+      setSignupCredentials({ email: '', password: '' });
     }
   };
 
@@ -127,28 +160,24 @@ const Auth = () => {
 
     if (error) {
       toast({
-        title: 'Sign Up Failed',
+        title: "Sign Up Failed",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     } else {
       toast({
-        title: 'Success',
-        description: 'Account created! Please check your email to verify your account.',
+        title: "Success",
+        description: "Account created! Please check your email to verify your account.",
       });
       setSignupStep('credentials');
       setEmail('');
       setPassword('');
+      setSignupCredentials({ email: '', password: '' });
     }
   };
 
   const handleBackToCredentials = () => {
     setSignupStep('credentials');
-  };
-
-  const handleGuestAccess = () => {
-    enableGuestMode();
-    navigate('/');
   };
 
   return (
@@ -164,25 +193,31 @@ const Auth = () => {
         </div>
 
         <Card className="max-h-[90vh] overflow-y-auto">
-          <CardHeader>
-            <CardTitle>Welcome</CardTitle>
-            <CardDescription>Sign in to your account or create a new one</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
+          <Tabs defaultValue="signin" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="signin">Sign In</TabsTrigger>
+              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsTrigger value="admin">
+                <Shield className="h-4 w-4 mr-1" />
+                Admin
+              </TabsTrigger>
+            </TabsList>
 
-              <TabsContent value="signin">
+            <TabsContent value="signin">
+              <CardHeader>
+                <CardTitle>Sign In</CardTitle>
+                <CardDescription>
+                  Enter your credentials to access your account
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="signin-email">Email</Label>
                     <Input
                       id="signin-email"
                       type="email"
-                      placeholder="name@example.com"
+                      placeholder="your@email.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -193,101 +228,179 @@ const Auth = () => {
                     <Input
                       id="signin-password"
                       type="password"
+                      placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
                     />
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Signing in...' : 'Sign In'}
+                    {isLoading ? "Signing in..." : "Sign In"}
                   </Button>
                 </form>
-              </TabsContent>
+              </CardContent>
+            </TabsContent>
 
-              <TabsContent value="signup">
-                {signupStep === 'credentials' ? (
-                  <form onSubmit={handleSignUp} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-email">Email</Label>
-                      <Input
-                        id="signup-email"
-                        type="email"
-                        placeholder="name@example.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-password">Password</Label>
-                      <Input
-                        id="signup-password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        minLength={6}
-                      />
-                      <p className="text-xs text-gray-500">Must be at least 6 characters</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>I am a</Label>
-                      <RadioGroup value={role} onValueChange={(value) => setRole(value as 'vendor' | 'customer')}>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="customer" id="customer" />
-                          <Label htmlFor="customer" className="font-normal cursor-pointer">
-                            Customer
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="vendor" id="vendor" />
-                          <Label htmlFor="vendor" className="font-normal cursor-pointer">
-                            Vendor
-                          </Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      Continue
-                    </Button>
-                  </form>
-                ) : (
-                  <>
-                    {role === 'customer' ? (
-                      <CustomerSignupForm
-                        email={email}
-                        password={password}
-                        onSubmit={handleCustomerSignup}
-                        onBack={handleBackToCredentials}
-                        isLoading={isLoading}
-                      />
-                    ) : (
-                      <VendorSignupForm
-                        email={email}
-                        password={password}
-                        onSubmit={handleVendorSignup}
-                        onBack={handleBackToCredentials}
-                        isLoading={isLoading}
-                      />
-                    )}
-                  </>
-                )}
-              </TabsContent>
-            </Tabs>
-            
-            <div className="mt-4 text-center">
-              <Button 
-                variant="outline" 
-                onClick={handleGuestAccess}
-                className="w-full"
-              >
-                Continue as Guest
-              </Button>
-              <p className="text-xs text-gray-500 mt-2">
-                Access the app without signing in
-              </p>
-            </div>
-          </CardContent>
+            <TabsContent value="signup">
+              {signupStep === 'credentials' && (
+                <>
+                  <CardHeader>
+                    <CardTitle>Create Account</CardTitle>
+                    <CardDescription>
+                      Choose your role to get started
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <form onSubmit={handleSignUp} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-email">Email *</Label>
+                        <Input
+                          id="signup-email"
+                          type="email"
+                          placeholder="your@email.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-password">Password *</Label>
+                        <Input
+                          id="signup-password"
+                          type="password"
+                          placeholder="••••••••"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          minLength={6}
+                        />
+                        <p className="text-xs text-gray-500">Must be at least 6 characters</p>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <Button 
+                          type="button" 
+                          variant="outline"
+                          onClick={() => {
+                            if (!email || !password) {
+                              toast({
+                                title: "Error",
+                                description: "Please enter email and password first",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            setSignupCredentials({ email, password });
+                            setSignupStep('customer');
+                          }}
+                        >
+                          I'm a Customer
+                        </Button>
+                        <Button 
+                          type="button"
+                          onClick={() => {
+                            if (!email || !password) {
+                              toast({
+                                title: "Error",
+                                description: "Please enter email and password first",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            setSignupCredentials({ email, password });
+                            setSignupStep('vendor');
+                          }}
+                        >
+                          I'm a Vendor
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </>
+              )}
+              
+              {signupStep === 'customer' && (
+                <>
+                  <CardHeader>
+                    <CardTitle>Customer Details</CardTitle>
+                    <CardDescription>
+                      Complete your customer profile
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <CustomerSignupForm
+                      email={signupCredentials.email}
+                      password={signupCredentials.password}
+                      onSubmit={handleCustomerSignup}
+                      onBack={handleBackToCredentials}
+                      isLoading={isLoading}
+                    />
+                  </CardContent>
+                </>
+              )}
+
+              {signupStep === 'vendor' && (
+                <>
+                  <CardHeader>
+                    <CardTitle>Vendor Details</CardTitle>
+                    <CardDescription>
+                      Complete your business profile
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <VendorSignupForm
+                      email={signupCredentials.email}
+                      password={signupCredentials.password}
+                      onSubmit={handleVendorSignup}
+                      onBack={handleBackToCredentials}
+                      isLoading={isLoading}
+                    />
+                  </CardContent>
+                </>
+              )}
+            </TabsContent>
+
+            <TabsContent value="admin">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Shield className="h-5 w-5 mr-2 text-red-600" />
+                  Admin Login
+                </CardTitle>
+                <CardDescription>
+                  Administrator access only
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleAdminSignIn} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-username">Username</Label>
+                    <Input
+                      id="admin-username"
+                      type="text"
+                      placeholder="Admin"
+                      value={adminCredentials.username}
+                      onChange={(e) => setAdminCredentials({ ...adminCredentials, username: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-password">Password</Label>
+                    <Input
+                      id="admin-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={adminCredentials.password}
+                      onChange={(e) => setAdminCredentials({ ...adminCredentials, password: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isLoading}>
+                    {isLoading ? "Signing in..." : "Sign In as Admin"}
+                  </Button>
+                </form>
+              </CardContent>
+            </TabsContent>
+          </Tabs>
         </Card>
       </div>
     </div>

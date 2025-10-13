@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useGuest } from '@/contexts/GuestContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -9,14 +8,13 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
-  const { isGuestMode } = useGuest();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && !user && !isGuestMode) {
+    if (!loading && !user) {
       navigate('/auth');
     }
-  }, [user, loading, isGuestMode, navigate]);
+  }, [user, loading, navigate]);
 
   if (loading) {
     return (
@@ -29,7 +27,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  if (!user && !isGuestMode) {
+  if (!user) {
     return null;
   }
 

@@ -107,6 +107,8 @@ export const useOrders = () => {
           total_amount: order.quantity * products.price,
           status: "pending",
           customer_id: guestCustomerId || null,
+          placed_by_user_id: (await supabase.auth.getUser()).data.user?.id || null,
+          placed_by_role: 'customer',
         }])
         .select(`
           *,

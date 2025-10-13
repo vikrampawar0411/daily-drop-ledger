@@ -164,6 +164,8 @@ export type Database = {
           delivered_at: string | null
           id: string
           order_date: string
+          placed_by_role: Database["public"]["Enums"]["app_role"] | null
+          placed_by_user_id: string | null
           price_per_unit: number
           product_id: string
           quantity: number
@@ -179,6 +181,8 @@ export type Database = {
           delivered_at?: string | null
           id?: string
           order_date: string
+          placed_by_role?: Database["public"]["Enums"]["app_role"] | null
+          placed_by_user_id?: string | null
           price_per_unit: number
           product_id: string
           quantity: number
@@ -194,6 +198,8 @@ export type Database = {
           delivered_at?: string | null
           id?: string
           order_date?: string
+          placed_by_role?: Database["public"]["Enums"]["app_role"] | null
+          placed_by_user_id?: string | null
           price_per_unit?: number
           product_id?: string
           quantity?: number
@@ -384,6 +390,49 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vendor_customer_connections: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          id: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          id?: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_customer_connections_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_customer_connections_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_customer_connections_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vendors: {
         Row: {
