@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface OrderWithDetails {
   id: string;
@@ -32,18 +33,55 @@ export const useOrders = () => {
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user, getUserRole } = useAuth();
 
   const fetchOrders = async () => {
     try {
-      const { data, error } = await supabase
+      if (!user) {
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get user role
+      const role = await getUserRole();
+      
+      let query = supabase
         .from("orders")
         .select(`
           *,
           customer:customers(id, name, address, phone),
           vendor:vendors(id, name, category),
           product:products(id, name, category, price)
-        `)
-        .order("order_date", { ascending: false });
+        `);
+
+      // Filter based on user role
+      if (role === 'vendor') {
+        // Get vendor ID from vendors table using user email
+        const { data: vendorData } = await supabase
+          .from('vendors')
+          .select('id')
+          .eq('email', user.email)
+          .single();
+        
+        if (vendorData) {
+          query = query.eq('vendor_id', vendorData.id);
+        }
+      } else if (role === 'customer') {
+        // Get customer ID from customers table using user email
+        const { data: customerData } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('email', user.email)
+          .single();
+        
+        if (customerData) {
+          query = query.eq('customer_id', customerData.id);
+        }
+      }
+      // Admin sees all orders - no filter needed
+
+      const { data, error } = await query.order("order_date", { ascending: false });
 
       if (error) throw error;
       
@@ -74,7 +112,7 @@ export const useOrders = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [user]);
 
   const updateOrderStatus = async (orderId: string, status: string) => {
     try {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface Customer {
   id: string;
@@ -20,13 +21,56 @@ export const useCustomers = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user, getUserRole } = useAuth();
 
   const fetchCustomers = async () => {
     try {
-      const { data, error } = await supabase
+      if (!user) {
+        setCustomers([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get user role
+      const role = await getUserRole();
+      
+      let query = supabase
         .from("customers")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("*");
+
+      // Filter based on user role
+      if (role === 'vendor') {
+        // Get vendor ID from vendors table
+        const { data: vendorData } = await supabase
+          .from('vendors')
+          .select('id')
+          .eq('email', user.email)
+          .single();
+        
+        if (vendorData) {
+          // Get connected customer IDs from vendor_customer_connections
+          const { data: connections } = await supabase
+            .from('vendor_customer_connections')
+            .select('customer_id')
+            .eq('vendor_id', vendorData.id);
+          
+          if (connections && connections.length > 0) {
+            const customerIds = connections.map(c => c.customer_id);
+            query = query.in('id', customerIds);
+          } else {
+            // No connections, return empty array
+            setCustomers([]);
+            setLoading(false);
+            return;
+          }
+        }
+      } else if (role === 'customer') {
+        // Customers should only see themselves
+        query = query.eq('email', user.email);
+      }
+      // Admin sees all customers - no filter needed
+
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
       setCustomers(data || []);
@@ -43,7 +87,7 @@ export const useCustomers = () => {
 
   useEffect(() => {
     fetchCustomers();
-  }, []);
+  }, [user]);
 
   const addCustomer = async (customer: Omit<Customer, "id" | "is_active">) => {
     try {

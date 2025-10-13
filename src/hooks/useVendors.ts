@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface Vendor {
   id: string;
@@ -17,13 +18,56 @@ export const useVendors = () => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user, getUserRole } = useAuth();
 
   const fetchVendors = async () => {
     try {
-      const { data, error } = await supabase
+      if (!user) {
+        setVendors([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get user role
+      const role = await getUserRole();
+      
+      let query = supabase
         .from("vendors")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("*");
+
+      // Filter based on user role
+      if (role === 'customer') {
+        // Get customer ID from customers table
+        const { data: customerData } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('email', user.email)
+          .single();
+        
+        if (customerData) {
+          // Get connected vendor IDs from vendor_customer_connections
+          const { data: connections } = await supabase
+            .from('vendor_customer_connections')
+            .select('vendor_id')
+            .eq('customer_id', customerData.id);
+          
+          if (connections && connections.length > 0) {
+            const vendorIds = connections.map(c => c.vendor_id);
+            query = query.in('id', vendorIds);
+          } else {
+            // No connections, return empty array
+            setVendors([]);
+            setLoading(false);
+            return;
+          }
+        }
+      } else if (role === 'vendor') {
+        // Vendors should only see themselves
+        query = query.eq('email', user.email);
+      }
+      // Admin sees all vendors - no filter needed
+
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
       setVendors(data || []);
@@ -40,7 +84,7 @@ export const useVendors = () => {
 
   useEffect(() => {
     fetchVendors();
-  }, []);
+  }, [user]);
 
   const addVendor = async (vendor: Omit<Vendor, "id" | "is_active">) => {
     try {

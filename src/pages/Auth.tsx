@@ -58,7 +58,7 @@ const Auth = () => {
     setIsLoading(true);
 
     // Hardcoded admin credentials
-    if (adminCredentials.username === 'Admin' && adminCredentials.password === 'Admin@123') {
+    if (adminCredentials.username === 'admin@dailydropledger.com' && adminCredentials.password === 'Admin@123') {
       try {
         // Check if admin exists
         const { data: adminExists } = await supabase.rpc('admin_exists');
@@ -66,7 +66,7 @@ const Auth = () => {
         if (!adminExists) {
           // First time setup: create admin account
           const { user: signUpUser, error: signUpError } = await signUp(
-            'admin@dailydropled.com',
+            'admin@dailydropledger.com',
             'Admin@123',
             'admin' as any
           );
@@ -88,14 +88,31 @@ const Auth = () => {
 
           toast({
             title: "Admin Account Created",
-            description: "Please check your email to verify the account, then sign in again.",
+            description: "Admin account is ready. Signing you in...",
           });
+          
+          // Sign in immediately after creation
+          const { error: signInError } = await signIn('admin@dailydropledger.com', 'Admin@123');
+          
+          if (signInError) {
+            toast({
+              title: "Error",
+              description: signInError.message,
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Welcome Admin!",
+              description: "You have successfully signed in.",
+            });
+            navigate("/");
+          }
           setIsLoading(false);
           return;
         }
 
         // Admin exists, sign in normally
-        const { error: signInError } = await signIn('admin@dailydropled.com', 'Admin@123');
+        const { error: signInError } = await signIn('admin@dailydropledger.com', 'Admin@123');
         
         if (signInError) {
           toast({
@@ -390,11 +407,11 @@ const Auth = () => {
               <CardContent>
                 <form onSubmit={handleAdminSignIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="admin-username">Username</Label>
+                    <Label htmlFor="admin-username">Email</Label>
                     <Input
                       id="admin-username"
-                      type="text"
-                      placeholder="Admin"
+                      type="email"
+                      placeholder="admin@dailydropledger.com"
                       value={adminCredentials.username}
                       onChange={(e) => setAdminCredentials({ ...adminCredentials, username: e.target.value })}
                       required
