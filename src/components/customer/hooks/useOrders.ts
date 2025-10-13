@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import type { DateOrders, Order } from "../types/order";
 
 export const useOrders = () => {
   const [orders, setOrders] = useState<DateOrders[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const fetchOrders = async () => {
     try {
@@ -75,21 +77,35 @@ export const useOrders = () => {
     const dateString = date.toISOString().split('T')[0];
     
     try {
-      // Get guest customer ID from localStorage
-      const guestCustomerId = localStorage.getItem('guestCustomerId');
+      // Get customer ID - either from logged-in user or guest
+      let customerId = null;
+      
+      if (user) {
+        // Fetch customer record for logged-in user
+        const { data: customerData } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        customerId = customerData?.id || null;
+      } else {
+        // Get guest customer ID from localStorage
+        customerId = localStorage.getItem('guestCustomerId');
+      }
 
       // First, get vendor and product IDs
       const { data: vendors } = await supabase
         .from("vendors")
         .select("id")
         .eq("name", order.vendor)
-        .single();
+        .maybeSingle();
 
       const { data: products } = await supabase
         .from("products")
         .select("id, price")
         .eq("name", order.product)
-        .single();
+        .maybeSingle();
 
       if (!vendors || !products) {
         throw new Error("Vendor or product not found");
@@ -106,8 +122,8 @@ export const useOrders = () => {
           price_per_unit: products.price,
           total_amount: order.quantity * products.price,
           status: "pending",
-          customer_id: guestCustomerId || null,
-          placed_by_user_id: (await supabase.auth.getUser()).data.user?.id || null,
+          customer_id: customerId,
+          placed_by_user_id: user?.id || null,
           placed_by_role: 'customer',
         }])
         .select(`

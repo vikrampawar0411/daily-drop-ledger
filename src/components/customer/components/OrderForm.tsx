@@ -10,6 +10,7 @@ import type { Vendor } from "../types/order";
 import { CustomerDetailsDialog } from "../CustomerDetailsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface OrderFormProps {
   selectedDate: Date | undefined;
@@ -20,19 +21,39 @@ interface OrderFormProps {
 
 const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [selectedVendor, setSelectedVendor] = useState("");
   const [selectedProduct, setSelectedProduct] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [selectedDates, setSelectedDates] = useState<Date[]>(selectedDate ? [selectedDate] : []);
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [pendingOrderData, setPendingOrderData] = useState<any>(null);
-  const [guestCustomerId, setGuestCustomerId] = useState<string | null>(null);
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [isLoadingCustomer, setIsLoadingCustomer] = useState(true);
 
   const selectedVendorData = vendors.find(v => v.name === selectedVendor);
 
-  // Get or create guest customer on mount
+  // Get customer ID based on auth state
   useEffect(() => {
-    const initGuestCustomer = async () => {
+    const initCustomer = async () => {
+      setIsLoadingCustomer(true);
+      
+      if (user) {
+        // User is logged in - fetch their customer record
+        const { data, error } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (data && !error) {
+          setCustomerId(data.id);
+          setIsLoadingCustomer(false);
+          return;
+        }
+      }
+      
+      // Guest user - check localStorage
       const storedCustomerId = localStorage.getItem('guestCustomerId');
       
       if (storedCustomerId) {
@@ -41,10 +62,11 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormP
           .from('customers')
           .select('*')
           .eq('id', storedCustomerId)
-          .single();
+          .maybeSingle();
         
         if (data && !error) {
-          setGuestCustomerId(storedCustomerId);
+          setCustomerId(storedCustomerId);
+          setIsLoadingCustomer(false);
           return;
         }
       }
@@ -61,13 +83,15 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormP
         .single();
       
       if (data && !error) {
-        setGuestCustomerId(data.id);
+        setCustomerId(data.id);
         localStorage.setItem('guestCustomerId', data.id);
       }
+      
+      setIsLoadingCustomer(false);
     };
     
-    initGuestCustomer();
-  }, []);
+    initCustomer();
+  }, [user]);
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
@@ -87,17 +111,20 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormP
   };
 
   const checkCustomerDetailsComplete = async () => {
-    if (!guestCustomerId) return false;
+    if (!customerId) return false;
     
     const { data, error } = await supabase
       .from('customers')
       .select('*')
-      .eq('id', guestCustomerId)
-      .single();
+      .eq('id', customerId)
+      .maybeSingle();
     
     if (error || !data) return false;
     
-    // Check if all required fields are complete
+    // If user is logged in, assume their details are complete
+    if (user) return true;
+    
+    // For guest users, check if all required fields are complete
     return !!(
       data.name && 
       data.name !== 'Guest' &&
@@ -135,14 +162,14 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormP
   };
 
   const handleCustomerDetailsSubmit = async (customerData: any) => {
-    if (!guestCustomerId) return;
+    if (!customerId) return;
     
     try {
       // Update customer with complete details
       const { error } = await supabase
         .from('customers')
         .update(customerData)
-        .eq('id', guestCustomerId);
+        .eq('id', customerId);
       
       if (error) throw error;
       
@@ -292,7 +319,7 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormP
             type="button"
             onClick={handlePlaceOrder} 
             className="bg-green-600 hover:bg-green-700"
-            disabled={selectedDates.length === 0 || !selectedVendor || !selectedProduct}
+            disabled={selectedDates.length === 0 || !selectedVendor || !selectedProduct || isLoadingCustomer}
           >
             Schedule Order for {selectedDates.length} {selectedDates.length === 1 ? 'Day' : 'Days'}
           </Button>
