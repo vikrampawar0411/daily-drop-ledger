@@ -10,6 +10,7 @@ import VendorManagement from "./VendorManagement";
 import OrderManagement from "@/components/vendor/OrderManagement";
 import ProductManagement from "@/components/vendor/ProductManagement";
 import { MasterTablesManagement } from "./MasterTablesManagement";
+import { ServiceAreaManagement } from "./ServiceAreaManagement";
 
 const AdminApp = () => {
   const navigate = useNavigate();
@@ -50,12 +51,13 @@ const AdminApp = () => {
       {/* Admin Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6 mb-8">
+          <TabsList className="grid w-full grid-cols-7 mb-8">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="customers">Customers</TabsTrigger>
             <TabsTrigger value="vendors">Vendors</TabsTrigger>
             <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="products">Products</TabsTrigger>
+            <TabsTrigger value="service-area">Service Area</TabsTrigger>
             <TabsTrigger value="master">Master Tables</TabsTrigger>
           </TabsList>
 
@@ -77,6 +79,10 @@ const AdminApp = () => {
 
           <TabsContent value="products">
             <ProductManagement />
+          </TabsContent>
+
+          <TabsContent value="service-area">
+            <ServiceAreaManagement />
           </TabsContent>
 
           <TabsContent value="master">

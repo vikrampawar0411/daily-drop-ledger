@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useStates } from "@/hooks/useStates";
+import { useCities } from "@/hooks/useCities";
 import { useAreas } from "@/hooks/useAreas";
 import { useSocieties } from "@/hooks/useSocieties";
 
@@ -19,6 +21,8 @@ export interface CustomerSignupData {
   password: string;
   name: string;
   phone: string;
+  state_id: string;
+  city_id: string;
   area_id: string;
   society_id: string;
   wing_number: string;
@@ -26,6 +30,10 @@ export interface CustomerSignupData {
 }
 
 export const CustomerSignupForm = ({ email, password, onSubmit, onBack, isLoading }: CustomerSignupFormProps) => {
+  const { states } = useStates();
+  const [selectedStateId, setSelectedStateId] = useState("");
+  const { cities } = useCities(selectedStateId);
+  const [selectedCityId, setSelectedCityId] = useState("");
   const { areas } = useAreas();
   const [selectedAreaId, setSelectedAreaId] = useState("");
   const { societies } = useSocieties(selectedAreaId);
@@ -33,6 +41,8 @@ export const CustomerSignupForm = ({ email, password, onSubmit, onBack, isLoadin
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
+    state_id: "",
+    city_id: "",
     area_id: "",
     society_id: "",
     wing_number: "",
@@ -74,6 +84,53 @@ export const CustomerSignupForm = ({ email, password, onSubmit, onBack, isLoadin
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="state">State *</Label>
+        <Select
+          value={formData.state_id}
+          onValueChange={(value) => {
+            setFormData({ ...formData, state_id: value, city_id: "", area_id: "", society_id: "" });
+            setSelectedStateId(value);
+          }}
+          required
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select your state" />
+          </SelectTrigger>
+          <SelectContent>
+            {states.map((state) => (
+              <SelectItem key={state.id} value={state.id}>
+                {state.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="city">City *</Label>
+        <Select
+          value={formData.city_id}
+          onValueChange={(value) => {
+            setFormData({ ...formData, city_id: value, area_id: "", society_id: "" });
+            setSelectedCityId(value);
+          }}
+          disabled={!selectedStateId}
+          required
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select your city" />
+          </SelectTrigger>
+          <SelectContent>
+            {cities.map((city) => (
+              <SelectItem key={city.id} value={city.id}>
+                {city.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="area">Area *</Label>
         <Select
           value={formData.area_id}
@@ -81,24 +138,20 @@ export const CustomerSignupForm = ({ email, password, onSubmit, onBack, isLoadin
             setFormData({ ...formData, area_id: value, society_id: "" });
             setSelectedAreaId(value);
           }}
+          disabled={!selectedCityId}
           required
         >
           <SelectTrigger>
             <SelectValue placeholder="Select your area" />
           </SelectTrigger>
           <SelectContent>
-            {areas.map((area) => (
+            {areas.filter(a => a.city_id === selectedCityId).map((area) => (
               <SelectItem key={area.id} value={area.id}>
                 {area.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        {areas.length === 0 && (
-          <p className="text-xs text-muted-foreground">
-            Please contact your vendor to add areas
-          </p>
-        )}
       </div>
 
       <div className="space-y-2">
@@ -150,7 +203,7 @@ export const CustomerSignupForm = ({ email, password, onSubmit, onBack, isLoadin
         <Button 
           type="submit" 
           className="flex-1" 
-          disabled={isLoading || !formData.name || !formData.phone || !formData.area_id || !formData.society_id || !formData.flat_plot_house_number}
+          disabled={isLoading || !formData.name || !formData.phone || !formData.state_id || !formData.city_id || !formData.area_id || !formData.society_id || !formData.flat_plot_house_number}
         >
           {isLoading ? "Creating account..." : "Complete Sign Up"}
         </Button>

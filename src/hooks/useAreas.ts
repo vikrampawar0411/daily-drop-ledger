@@ -7,6 +7,7 @@ export interface Area {
   name: string;
   description: string | null;
   status: string;
+  city_id: string | null;
   created_at: string;
   updated_at: string;
 }

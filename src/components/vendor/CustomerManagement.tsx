@@ -11,6 +11,8 @@ import { Search, MapPin, Users, Phone, Mail } from "lucide-react";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useStates } from "@/hooks/useStates";
+import { useCities } from "@/hooks/useCities";
 import { useAreas } from "@/hooks/useAreas";
 import { useSocieties } from "@/hooks/useSocieties";
 import { useProducts } from "@/hooks/useProducts";
@@ -18,9 +20,13 @@ import { useProducts } from "@/hooks/useProducts";
 const CustomerManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedStateId, setSelectedStateId] = useState("");
+  const [selectedCityId, setSelectedCityId] = useState("");
   const [selectedAreaId, setSelectedAreaId] = useState("");
   const { customers, loading, refetch } = useCustomers();
   const { toast } = useToast();
+  const { states } = useStates();
+  const { cities } = useCities(selectedStateId);
   const { areas } = useAreas();
   const { societies } = useSocieties(selectedAreaId);
   const { products } = useProducts();
@@ -30,6 +36,8 @@ const CustomerManagement = () => {
     phone: "",
     email: "",
     product_id: "",
+    state_id: "",
+    city_id: "",
     area_id: "",
     society_id: "",
     wing_number: "",
@@ -46,10 +54,10 @@ const CustomerManagement = () => {
 
   const handleAddCustomer = async () => {
     try {
-      if (!formData.name || !formData.phone || !formData.area_id || !formData.society_id || !formData.flat_plot_house_number) {
+      if (!formData.name || !formData.phone || !formData.state_id || !formData.city_id || !formData.area_id || !formData.society_id || !formData.flat_plot_house_number) {
         toast({
           title: "Validation Error",
-          description: "Name, phone, area, society, and flat/plot/house number are required",
+          description: "Name, phone, state, city, area, society, and flat/plot/house number are required",
           variant: "destructive",
         });
         return;
@@ -60,7 +68,9 @@ const CustomerManagement = () => {
         formData.flat_plot_house_number,
         formData.wing_number,
         societies.find(s => s.id === formData.society_id)?.name,
-        areas.find(a => a.id === formData.area_id)?.name
+        areas.find(a => a.id === formData.area_id)?.name,
+        cities.find(c => c.id === formData.city_id)?.name,
+        states.find(s => s.id === formData.state_id)?.name
       ].filter(Boolean).join(", ");
 
       const { error } = await supabase
@@ -83,12 +93,16 @@ const CustomerManagement = () => {
         phone: "",
         email: "",
         product_id: "",
+        state_id: "",
+        city_id: "",
         area_id: "",
         society_id: "",
         wing_number: "",
         flat_plot_house_number: "",
         address: "",
       });
+      setSelectedStateId("");
+      setSelectedCityId("");
       setSelectedAreaId("");
       refetch();
     } catch (error: any) {
@@ -175,6 +189,49 @@ const CustomerManagement = () => {
                 </Select>
               </div>
               <div className="space-y-2">
+                <Label htmlFor="state">State *</Label>
+                <Select
+                  value={formData.state_id}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, state_id: value, city_id: "", area_id: "", society_id: "" });
+                    setSelectedStateId(value);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select state" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {states.map((state) => (
+                      <SelectItem key={state.id} value={state.id}>
+                        {state.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="city">City *</Label>
+                <Select
+                  value={formData.city_id}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, city_id: value, area_id: "", society_id: "" });
+                    setSelectedCityId(value);
+                  }}
+                  disabled={!selectedStateId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select city" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cities.map((city) => (
+                      <SelectItem key={city.id} value={city.id}>
+                        {city.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="area">Area *</Label>
                 <Select
                   value={formData.area_id}
@@ -182,12 +239,13 @@ const CustomerManagement = () => {
                     setFormData({ ...formData, area_id: value, society_id: "" });
                     setSelectedAreaId(value);
                   }}
+                  disabled={!selectedCityId}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select area" />
                   </SelectTrigger>
                   <SelectContent>
-                    {areas.map((area) => (
+                    {areas.filter(a => a.city_id === selectedCityId).map((area) => (
                       <SelectItem key={area.id} value={area.id}>
                         {area.name}
                       </SelectItem>
