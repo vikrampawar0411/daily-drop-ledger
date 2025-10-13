@@ -6,23 +6,35 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, MapPin, Users, Phone, Mail } from "lucide-react";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAreas } from "@/hooks/useAreas";
+import { useSocieties } from "@/hooks/useSocieties";
+import { useProducts } from "@/hooks/useProducts";
 
 const CustomerManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedAreaId, setSelectedAreaId] = useState("");
   const { customers, loading, refetch } = useCustomers();
   const { toast } = useToast();
+  const { areas } = useAreas();
+  const { societies } = useSocieties(selectedAreaId);
+  const { products } = useProducts();
 
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
     email: "",
+    product_id: "",
+    area_id: "",
+    society_id: "",
+    wing_number: "",
+    flat_plot_house_number: "",
     address: "",
-    route: "",
   });
 
   const filteredCustomers = customers.filter(customer => {
@@ -34,18 +46,29 @@ const CustomerManagement = () => {
 
   const handleAddCustomer = async () => {
     try {
-      if (!formData.name || !formData.phone || !formData.address) {
+      if (!formData.name || !formData.phone || !formData.area_id || !formData.society_id || !formData.flat_plot_house_number) {
         toast({
           title: "Validation Error",
-          description: "Name, phone, and address are required",
+          description: "Name, phone, area, society, and flat/plot/house number are required",
           variant: "destructive",
         });
         return;
       }
 
+      // Build the full address from the components
+      const fullAddress = [
+        formData.flat_plot_house_number,
+        formData.wing_number,
+        societies.find(s => s.id === formData.society_id)?.name,
+        areas.find(a => a.id === formData.area_id)?.name
+      ].filter(Boolean).join(", ");
+
       const { error } = await supabase
         .from("customers")
-        .insert([formData]);
+        .insert([{
+          ...formData,
+          address: fullAddress,
+        }]);
 
       if (error) throw error;
 
@@ -59,9 +82,14 @@ const CustomerManagement = () => {
         name: "",
         phone: "",
         email: "",
+        product_id: "",
+        area_id: "",
+        society_id: "",
+        wing_number: "",
+        flat_plot_house_number: "",
         address: "",
-        route: "",
       });
+      setSelectedAreaId("");
       refetch();
     } catch (error: any) {
       toast({
@@ -100,18 +128,19 @@ const CustomerManagement = () => {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
+                <Label htmlFor="name">Full Name *</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Customer name"
+                  placeholder="Customer full name"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone *</Label>
+                <Label htmlFor="phone">Phone Number *</Label>
                 <Input
                   id="phone"
+                  type="tel"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="Phone number"
@@ -124,25 +153,83 @@ const CustomerManagement = () => {
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="Email address"
+                  placeholder="Email address (optional)"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="address">Address *</Label>
+                <Label htmlFor="product">Product</Label>
+                <Select
+                  value={formData.product_id}
+                  onValueChange={(value) => setFormData({ ...formData, product_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select product (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="area">Area *</Label>
+                <Select
+                  value={formData.area_id}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, area_id: value, society_id: "" });
+                    setSelectedAreaId(value);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select area" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {areas.map((area) => (
+                      <SelectItem key={area.id} value={area.id}>
+                        {area.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="society">Society Name *</Label>
+                <Select
+                  value={formData.society_id}
+                  onValueChange={(value) => setFormData({ ...formData, society_id: value })}
+                  disabled={!selectedAreaId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select society" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {societies.map((society) => (
+                      <SelectItem key={society.id} value={society.id}>
+                        {society.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="wing">Wing Number</Label>
                 <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="Full address"
+                  id="wing"
+                  value={formData.wing_number}
+                  onChange={(e) => setFormData({ ...formData, wing_number: e.target.value })}
+                  placeholder="Wing number (optional)"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="route">Route</Label>
+                <Label htmlFor="flat">Flat / Plot / House Number *</Label>
                 <Input
-                  id="route"
-                  value={formData.route}
-                  onChange={(e) => setFormData({ ...formData, route: e.target.value })}
-                  placeholder="Delivery route"
+                  id="flat"
+                  value={formData.flat_plot_house_number}
+                  onChange={(e) => setFormData({ ...formData, flat_plot_house_number: e.target.value })}
+                  placeholder="Flat / Plot / House number"
                 />
               </div>
               <Button onClick={handleAddCustomer} className="w-full">

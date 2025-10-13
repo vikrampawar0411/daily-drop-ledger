@@ -5,10 +5,23 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Search, Store, Phone, Mail, MapPin } from "lucide-react";
 import { useVendors } from "@/hooks/useVendors";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+
+const VENDOR_CATEGORIES = [
+  "Milk & Dairy",
+  "Newspaper & Magazines",
+  "Groceries",
+  "Vegetables & Fruits",
+  "Water Supply",
+  "Gas Cylinder",
+  "Cleaning Services",
+  "Other",
+];
 
 const VendorManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -35,10 +48,10 @@ const VendorManagement = () => {
 
   const handleAddVendor = async () => {
     try {
-      if (!formData.name || !formData.category) {
+      if (!formData.name || !formData.category || !formData.contact_person || !formData.phone || !formData.address) {
         toast({
           title: "Validation Error",
-          description: "Name and category are required",
+          description: "Business name, category, contact person, phone, and address are required",
           variant: "destructive",
         });
         return;
@@ -102,58 +115,69 @@ const VendorManagement = () => {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Vendor Name *</Label>
+                <Label htmlFor="name">Business Name *</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter vendor name"
+                  placeholder="Your business name"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="category">Category *</Label>
-                <Input
-                  id="category"
+                <Label htmlFor="category">Business Category *</Label>
+                <Select
                   value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  placeholder="e.g., Dairy, Grocery, etc."
-                />
+                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VENDOR_CATEGORIES.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="contact_person">Contact Person</Label>
+                <Label htmlFor="contact_person">Contact Person Name *</Label>
                 <Input
                   id="contact_person"
                   value={formData.contact_person}
                   onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
-                  placeholder="Contact person name"
+                  placeholder="Primary contact person"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone">Phone Number *</Label>
                 <Input
                   id="phone"
+                  type="tel"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="Phone number"
+                  placeholder="Business phone number"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Business Email</Label>
                 <Input
                   id="email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="Email address"
+                  placeholder="Business email address (optional)"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
+                <Label htmlFor="address">Business Address *</Label>
+                <Textarea
                   id="address"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="Full address"
+                  placeholder="Complete business address"
+                  rows={3}
                 />
               </div>
               <Button onClick={handleAddVendor} className="w-full">
