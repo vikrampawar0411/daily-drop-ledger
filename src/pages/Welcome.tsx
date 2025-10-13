@@ -47,8 +47,8 @@ const Welcome = () => {
         const { data: vendor } = await supabase
           .from('vendors')
           .select('id, name')
-          .eq('email', user.email)
-          .single();
+          .eq('user_id', user.id)
+          .maybeSingle();
         
         if (vendor) {
           if (!profile?.name) setUserName(vendor.name);
@@ -62,8 +62,8 @@ const Welcome = () => {
         const { data: customer } = await supabase
           .from('customers')
           .select('id, name')
-          .eq('email', user.email)
-          .single();
+          .eq('user_id', user.id)
+          .maybeSingle();
         
         if (customer) {
           if (!profile?.name) setUserName(customer.name);

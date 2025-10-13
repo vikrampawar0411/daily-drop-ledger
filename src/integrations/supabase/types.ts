@@ -67,6 +67,7 @@ export type Database = {
           route: string | null
           society_id: string | null
           updated_at: string
+          user_id: string | null
           wing_number: string | null
         }
         Insert: {
@@ -82,6 +83,7 @@ export type Database = {
           route?: string | null
           society_id?: string | null
           updated_at?: string
+          user_id?: string | null
           wing_number?: string | null
         }
         Update: {
@@ -97,6 +99,7 @@ export type Database = {
           route?: string | null
           society_id?: string | null
           updated_at?: string
+          user_id?: string | null
           wing_number?: string | null
         }
         Relationships: [
@@ -112,6 +115,13 @@ export type Database = {
             columns: ["society_id"]
             isOneToOne: false
             referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -449,6 +459,7 @@ export type Database = {
           name: string
           phone: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           address?: string | null
@@ -461,6 +472,7 @@ export type Database = {
           name: string
           phone?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           address?: string | null
@@ -473,8 +485,17 @@ export type Database = {
           name?: string
           phone?: string | null
           updated_at?: string
+          user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vendors_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

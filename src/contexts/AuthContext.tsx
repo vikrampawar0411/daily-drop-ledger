@@ -83,13 +83,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               .from('areas')
               .select('name')
               .eq('id', additionalData.area_id)
-              .single();
+              .maybeSingle();
             
             const selectedSociety = await supabase
               .from('societies')
               .select('name')
               .eq('id', additionalData.society_id)
-              .single();
+              .maybeSingle();
             
             const address = [
               additionalData.wing_number,
@@ -99,6 +99,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             ].filter(Boolean).join(", ");
 
             await supabase.from('customers').insert({
+              user_id: data.user!.id,
               name: additionalData.name,
               phone: additionalData.phone,
               email: email,
@@ -110,6 +111,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             });
           } else if (role === 'vendor' && additionalData) {
             await supabase.from('vendors').insert({
+              user_id: data.user!.id,
               name: additionalData.businessName,
               category: additionalData.category,
               contact_person: additionalData.contactPerson,

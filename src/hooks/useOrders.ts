@@ -57,26 +57,36 @@ export const useOrders = () => {
 
       // Filter based on user role
       if (role === 'vendor') {
-        // Get vendor ID from vendors table using user email
+        // Get vendor ID from vendors table using user_id
         const { data: vendorData } = await supabase
           .from('vendors')
           .select('id')
-          .eq('email', user.email)
-          .single();
+          .eq('user_id', user.id)
+          .maybeSingle();
         
         if (vendorData) {
           query = query.eq('vendor_id', vendorData.id);
+        } else {
+          // No vendor profile found, return empty
+          setOrders([]);
+          setLoading(false);
+          return;
         }
       } else if (role === 'customer') {
-        // Get customer ID from customers table using user email
+        // Get customer ID from customers table using user_id
         const { data: customerData } = await supabase
           .from('customers')
           .select('id')
-          .eq('email', user.email)
-          .single();
+          .eq('user_id', user.id)
+          .maybeSingle();
         
         if (customerData) {
           query = query.eq('customer_id', customerData.id);
+        } else {
+          // No customer profile found, return empty
+          setOrders([]);
+          setLoading(false);
+          return;
         }
       }
       // Admin sees all orders - no filter needed

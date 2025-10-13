@@ -37,12 +37,12 @@ export const useVendors = () => {
 
       // Filter based on user role
       if (role === 'customer') {
-        // Get customer ID from customers table
+        // Get customer ID from customers table using user_id
         const { data: customerData } = await supabase
           .from('customers')
           .select('id')
-          .eq('email', user.email)
-          .single();
+          .eq('user_id', user.id)
+          .maybeSingle();
         
         if (customerData) {
           // Get connected vendor IDs from vendor_customer_connections
@@ -60,10 +60,14 @@ export const useVendors = () => {
             setLoading(false);
             return;
           }
+        } else {
+          setVendors([]);
+          setLoading(false);
+          return;
         }
       } else if (role === 'vendor') {
-        // Vendors should only see themselves
-        query = query.eq('email', user.email);
+        // Vendors should only see themselves using user_id
+        query = query.eq('user_id', user.id);
       }
       // Admin sees all vendors - no filter needed
 
