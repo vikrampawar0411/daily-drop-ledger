@@ -151,7 +151,7 @@ const VendorDashboard = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-center text-gray-500 py-8">No orders today</p>
+              <p className="text-center text-gray-500 py-8">No orders yet. Your customers will place orders soon!</p>
             )}
           </CardContent>
         </Card>

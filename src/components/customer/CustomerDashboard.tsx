@@ -258,25 +258,29 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
             <CardTitle>Recent Orders</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {recentOrders.map((order) => (
-              <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <div className="font-medium">{order.product}</div>
-                  <div className="text-sm text-gray-600">{order.vendorName}</div>
-                  <div className="text-xs text-gray-500">{order.deliveryDate}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-medium">{order.quantity} {order.unit}</div>
-                  <div className={`text-xs px-2 py-1 rounded ${
-                    order.status === 'delivered' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {order.status}
+            {recentOrders.length > 0 ? (
+              recentOrders.map((order) => (
+                <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <div className="font-medium">{order.product}</div>
+                    <div className="text-sm text-gray-600">{order.vendorName}</div>
+                    <div className="text-xs text-gray-500">{order.deliveryDate}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-medium">{order.quantity} {order.unit}</div>
+                    <div className={`text-xs px-2 py-1 rounded ${
+                      order.status === 'delivered' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {order.status}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-center text-gray-500 py-8">No orders yet. Start by placing your first order!</p>
+            )}
           </CardContent>
         </Card>
 
@@ -286,19 +290,23 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
             <CardTitle>Connected Vendors</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {connectedVendors.map((vendor) => (
-              <div key={vendor.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <div className="font-medium">{vendor.name}</div>
-                <div className="text-sm text-gray-600">{vendor.category}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-gray-500">
-                  {vendor.activeOrders} active orders
+            {connectedVendors.length > 0 ? (
+              connectedVendors.map((vendor) => (
+                <div key={vendor.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <div className="font-medium">{vendor.name}</div>
+                  <div className="text-sm text-gray-600">{vendor.category}</div>
                 </div>
-              </div>
-              </div>
-            ))}
+                <div className="text-right">
+                  <div className="text-xs text-gray-500">
+                    {vendor.activeOrders} active orders
+                  </div>
+                </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-gray-500 py-8">No connected vendors yet. Browse vendors to get started!</p>
+            )}
           </CardContent>
         </Card>
       </div>

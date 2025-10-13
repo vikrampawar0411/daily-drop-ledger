@@ -59,10 +59,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Create profile and assign role
       setTimeout(async () => {
         try {
+          const userName = role === 'customer' 
+            ? additionalData?.name 
+            : role === 'vendor' 
+              ? additionalData?.contactPerson 
+              : 'Admin';
+
           await supabase.from('profiles').insert({
             id: data.user!.id,
             email: email,
-            user_type: role
+            user_type: role,
+            name: userName
           });
 
           await supabase.from('user_roles').insert({

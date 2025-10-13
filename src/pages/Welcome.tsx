@@ -25,9 +25,19 @@ const Welcome = () => {
       const role = await getUserRole();
       setUserRole(role);
 
-      // Get user name based on role
+      // First, try to get name from profiles table
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.name) {
+        setUserName(profile.name);
+      }
+
+      // Get connection count based on role
       if (role === 'admin') {
-        setUserName('Admin');
         // Admin sees all connections
         const { count } = await supabase
           .from('vendor_customer_connections')
@@ -36,50 +46,32 @@ const Welcome = () => {
       } else if (role === 'vendor') {
         const { data: vendor } = await supabase
           .from('vendors')
-          .select('name')
+          .select('id, name')
           .eq('email', user.email)
           .single();
         
         if (vendor) {
-          setUserName(vendor.name);
-          // Get vendor's customer connections
-          const { data: vendorData } = await supabase
-            .from('vendors')
-            .select('id')
-            .eq('email', user.email)
-            .single();
-          
-          if (vendorData) {
-            const { count } = await supabase
-              .from('vendor_customer_connections')
-              .select('*', { count: 'exact', head: true })
-              .eq('vendor_id', vendorData.id);
-            setConnectionCount(count || 0);
-          }
+          if (!profile?.name) setUserName(vendor.name);
+          const { count } = await supabase
+            .from('vendor_customer_connections')
+            .select('*', { count: 'exact', head: true })
+            .eq('vendor_id', vendor.id);
+          setConnectionCount(count || 0);
         }
       } else if (role === 'customer') {
         const { data: customer } = await supabase
           .from('customers')
-          .select('name')
+          .select('id, name')
           .eq('email', user.email)
           .single();
         
         if (customer) {
-          setUserName(customer.name);
-          // Get customer's vendor connections
-          const { data: customerData } = await supabase
-            .from('customers')
-            .select('id')
-            .eq('email', user.email)
-            .single();
-          
-          if (customerData) {
-            const { count } = await supabase
-              .from('vendor_customer_connections')
-              .select('*', { count: 'exact', head: true })
-              .eq('customer_id', customerData.id);
-            setConnectionCount(count || 0);
-          }
+          if (!profile?.name) setUserName(customer.name);
+          const { count } = await supabase
+            .from('vendor_customer_connections')
+            .select('*', { count: 'exact', head: true })
+            .eq('customer_id', customer.id);
+          setConnectionCount(count || 0);
         }
       }
     } catch (error) {
@@ -128,11 +120,15 @@ const Welcome = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold text-gray-900 mb-2">
-            Welcome {userName} — Role: <span className="capitalize inline-flex items-center">
-              {userRole === 'admin' && <Shield className="h-8 w-8 ml-2 mr-1 text-red-600" />}
-              {userRole}
-            </span>
+            Welcome {userName || 'User'}
           </h2>
+          <p className="text-2xl text-gray-600 flex items-center justify-center">
+            Your Role: 
+            <span className="ml-2 capitalize font-semibold flex items-center">
+              {userRole === 'admin' && <Shield className="h-6 w-6 mr-1 text-red-600" />}
+              {userRole || 'Loading...'}
+            </span>
+          </p>
         </div>
 
         {/* Stats Cards */}
