@@ -18,7 +18,7 @@ import { useSocieties } from "@/hooks/useSocieties";
 export const ServiceAreaManagement = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { states, refetch: refetchStates } = useStates();
+  const { states } = useStates();
   const { cities } = useCities();
   const { areas } = useAreas();
   const { societies } = useSocieties();
@@ -40,7 +40,6 @@ export const ServiceAreaManagement = () => {
 
       toast({ title: "Success", description: "State added successfully" });
       setStateForm({ name: "", description: "" });
-      refetchStates();
       queryClient.invalidateQueries({ queryKey: ["states"] });
     } catch (error: any) {
       toast({ title: "Error adding state", description: error.message, variant: "destructive" });
@@ -52,7 +51,6 @@ export const ServiceAreaManagement = () => {
       const { error } = await supabase.from("states").delete().eq("id", id);
       if (error) throw error;
       toast({ title: "Success", description: "State deleted successfully" });
-      refetchStates();
       queryClient.invalidateQueries({ queryKey: ["states"] });
     } catch (error: any) {
       toast({ title: "Error deleting state", description: error.message, variant: "destructive" });

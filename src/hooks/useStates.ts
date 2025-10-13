@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -12,38 +12,30 @@ export interface State {
 }
 
 export const useStates = () => {
-  const [states, setStates] = useState<State[]>([]);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchStates = async () => {
-    try {
-      setLoading(true);
+  const { data: states = [], isLoading: loading } = useQuery({
+    queryKey: ["states"],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("states")
         .select("*")
         .order("name");
 
-      if (error) throw error;
-      setStates(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error fetching states",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchStates();
-  }, []);
+      if (error) {
+        toast({
+          title: "Error fetching states",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+      return data as State[];
+    },
+  });
 
   return {
     states,
     loading,
-    refetch: fetchStates,
   };
 };
