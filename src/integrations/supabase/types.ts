@@ -604,6 +604,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      link_orphaned_records: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       make_user_admin: {
         Args: { target_user_id: string }
         Returns: undefined
