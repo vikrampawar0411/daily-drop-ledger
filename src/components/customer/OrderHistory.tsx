@@ -5,14 +5,36 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Download, Milk, Newspaper, Calendar, CheckCircle, Clock, XCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Search, Filter, Download, Milk, Newspaper, Calendar, CheckCircle, Clock, XCircle, AlertTriangle } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
+import { format } from "date-fns";
 
 const OrderHistory = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVendor, setSelectedVendor] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
-  const { orders, loading } = useOrders();
+  const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [disputeReason, setDisputeReason] = useState("");
+  const { orders, loading, raiseDispute } = useOrders();
+
+  const handleRaiseDispute = (orderId: string) => {
+    setSelectedOrderId(orderId);
+    setDisputeReason("");
+    setDisputeDialogOpen(true);
+  };
+
+  const submitDispute = () => {
+    if (selectedOrderId && disputeReason.trim()) {
+      raiseDispute(selectedOrderId, disputeReason);
+      setDisputeDialogOpen(false);
+      setSelectedOrderId(null);
+      setDisputeReason("");
+    }
+  };
 
   const vendors = useMemo(() => {
     return [...new Set(orders.map(o => o.vendor.name))];
@@ -227,6 +249,25 @@ const OrderHistory = () => {
                 </div>
               </div>
 
+              {order.delivered_at && (
+                <div className="bg-green-50 rounded-lg px-3 py-2 text-sm">
+                  <span className="font-medium text-green-800">Delivered at: </span>
+                  <span className="text-green-600">
+                    {format(new Date(order.delivered_at), "PPp")}
+                  </span>
+                </div>
+              )}
+
+              {order.dispute_raised && (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm">
+                  <span className="font-medium text-red-800">⚠️ Dispute: </span>
+                  <span className="text-red-600">{order.dispute_reason}</span>
+                  <div className="text-xs text-red-500 mt-1">
+                    Raised on: {order.dispute_raised_at && format(new Date(order.dispute_raised_at), "PPp")}
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between pt-2 border-t">
                 <div className="flex space-x-2">
                   <Button size="sm" variant="outline">
@@ -237,10 +278,21 @@ const OrderHistory = () => {
                       Reorder
                     </Button>
                   )}
-                  {order.status === "pending" && (
-                    <Button size="sm" variant="outline">
-                      Modify Order
-                    </Button>
+                  {order.status === "pending" && !order.dispute_raised && (
+                    <>
+                      <Button size="sm" variant="outline">
+                        Modify Order
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => handleRaiseDispute(order.id)}
+                      >
+                        <AlertTriangle className="h-4 w-4 mr-1" />
+                        Raise Dispute
+                      </Button>
+                    </>
                   )}
                 </div>
                 <div className="text-lg font-bold">
@@ -266,6 +318,39 @@ const OrderHistory = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Dispute Dialog */}
+      <Dialog open={disputeDialogOpen} onOpenChange={setDisputeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Raise a Dispute</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="dispute-reason">Reason for Dispute</Label>
+              <Textarea
+                id="dispute-reason"
+                placeholder="Please describe the issue with your order..."
+                value={disputeReason}
+                onChange={(e) => setDisputeReason(e.target.value)}
+                className="mt-2 min-h-[100px]"
+              />
+            </div>
+            <div className="flex space-x-2 justify-end">
+              <Button variant="outline" onClick={() => setDisputeDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={submitDispute} 
+                className="bg-red-600 hover:bg-red-700"
+                disabled={!disputeReason.trim()}
+              >
+                Submit Dispute
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

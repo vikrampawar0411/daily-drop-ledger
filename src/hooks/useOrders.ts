@@ -10,6 +10,10 @@ export interface OrderWithDetails {
   status: string;
   unit: string;
   total_amount: number;
+  delivered_at: string | null;
+  dispute_raised: boolean;
+  dispute_reason: string | null;
+  dispute_raised_at: string | null;
   customer: {
     id: string;
     name: string;
@@ -103,6 +107,10 @@ export const useOrders = () => {
         status: order.status,
         unit: order.unit,
         total_amount: order.total_amount,
+        delivered_at: order.delivered_at,
+        dispute_raised: order.dispute_raised || false,
+        dispute_reason: order.dispute_reason,
+        dispute_raised_at: order.dispute_raised_at,
         customer: Array.isArray(order.customer) ? order.customer[0] : order.customer,
         vendor: Array.isArray(order.vendor) ? order.vendor[0] : order.vendor,
         product: Array.isArray(order.product) ? order.product[0] : order.product,
@@ -124,18 +132,25 @@ export const useOrders = () => {
     fetchOrders();
   }, [user]);
 
-  const updateOrderStatus = async (orderId: string, status: string) => {
+  const updateOrderStatus = async (orderId: string, status: string, deliveredAt?: string) => {
     try {
+      const updateData: any = { status };
+      
+      // If marking as delivered, set the delivered_at timestamp
+      if (status === 'delivered') {
+        updateData.delivered_at = deliveredAt || new Date().toISOString();
+      }
+
       const { error } = await supabase
         .from("orders")
-        .update({ status })
+        .update(updateData)
         .eq("id", orderId);
 
       if (error) throw error;
 
       setOrders(prev =>
         prev.map(order =>
-          order.id === orderId ? { ...order, status } : order
+          order.id === orderId ? { ...order, ...updateData } : order
         )
       );
 
@@ -152,10 +167,50 @@ export const useOrders = () => {
     }
   };
 
+  const raiseDispute = async (orderId: string, reason: string) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ 
+          dispute_raised: true, 
+          dispute_reason: reason,
+          dispute_raised_at: new Date().toISOString()
+        })
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      setOrders(prev =>
+        prev.map(order =>
+          order.id === orderId 
+            ? { 
+                ...order, 
+                dispute_raised: true, 
+                dispute_reason: reason,
+                dispute_raised_at: new Date().toISOString()
+              } 
+            : order
+        )
+      );
+
+      toast({
+        title: "Success",
+        description: "Dispute raised successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error raising dispute",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   return {
     orders,
     loading,
     updateOrderStatus,
+    raiseDispute,
     refetch: fetchOrders,
   };
 };

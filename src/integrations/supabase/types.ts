@@ -230,6 +230,9 @@ export type Database = {
           created_by_user_id: string | null
           customer_id: string | null
           delivered_at: string | null
+          dispute_raised: boolean | null
+          dispute_raised_at: string | null
+          dispute_reason: string | null
           id: string
           order_date: string
           placed_by_role: Database["public"]["Enums"]["app_role"] | null
@@ -249,6 +252,9 @@ export type Database = {
           created_by_user_id?: string | null
           customer_id?: string | null
           delivered_at?: string | null
+          dispute_raised?: boolean | null
+          dispute_raised_at?: string | null
+          dispute_reason?: string | null
           id?: string
           order_date: string
           placed_by_role?: Database["public"]["Enums"]["app_role"] | null
@@ -268,6 +274,9 @@ export type Database = {
           created_by_user_id?: string | null
           customer_id?: string | null
           delivered_at?: string | null
+          dispute_raised?: boolean | null
+          dispute_raised_at?: string | null
+          dispute_reason?: string | null
           id?: string
           order_date?: string
           placed_by_role?: Database["public"]["Enums"]["app_role"] | null

@@ -5,14 +5,34 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Calendar, Clock, CheckCircle, AlertCircle, Package, Filter, Search } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
+import { format } from "date-fns";
 
 const OrderManagement = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [deliveryDateTime, setDeliveryDateTime] = useState("");
   const { orders, loading, updateOrderStatus } = useOrders();
+
+  const handleMarkDelivered = (orderId: string) => {
+    setSelectedOrderId(orderId);
+    setDeliveryDateTime(new Date().toISOString().slice(0, 16));
+    setDeliveryDialogOpen(true);
+  };
+
+  const confirmDelivery = () => {
+    if (selectedOrderId && deliveryDateTime) {
+      updateOrderStatus(selectedOrderId, "delivered", new Date(deliveryDateTime).toISOString());
+      setDeliveryDialogOpen(false);
+      setSelectedOrderId(null);
+    }
+  };
 
   // Filter orders by selected date
   const todayOrders = orders.filter(order => order.order_date === selectedDate);
@@ -181,13 +201,29 @@ const OrderManagement = () => {
                       </div>
                     </div>
 
+                    {order.delivered_at && (
+                      <div className="bg-green-50 rounded-lg px-3 py-2 text-sm">
+                        <span className="font-medium text-green-800">Delivered: </span>
+                        <span className="text-green-600">
+                          {format(new Date(order.delivered_at), "PPp")}
+                        </span>
+                      </div>
+                    )}
+
+                    {order.dispute_raised && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm">
+                        <span className="font-medium text-red-800">⚠️ Dispute Raised: </span>
+                        <span className="text-red-600">{order.dispute_reason}</span>
+                      </div>
+                    )}
+
                     <div className="flex space-x-2 pt-2">
                       {order.status === "pending" && (
                         <>
                           <Button 
                             size="sm" 
                             className="bg-green-600 hover:bg-green-700"
-                            onClick={() => updateOrderStatus(order.id, "delivered")}
+                            onClick={() => handleMarkDelivered(order.id)}
                           >
                             Mark Delivered
                           </Button>
@@ -202,7 +238,7 @@ const OrderManagement = () => {
                       )}
                       {order.status === "delivered" && (
                         <Button size="sm" variant="outline" disabled>
-                          Completed
+                          ✓ Completed
                         </Button>
                       )}
                     </div>
@@ -220,6 +256,38 @@ const OrderManagement = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Delivery Time Dialog */}
+      <Dialog open={deliveryDialogOpen} onOpenChange={setDeliveryDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark Order as Delivered</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="delivery-time">Delivery Date & Time</Label>
+              <Input
+                id="delivery-time"
+                type="datetime-local"
+                value={deliveryDateTime}
+                onChange={(e) => setDeliveryDateTime(e.target.value)}
+                className="mt-2"
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                Defaults to current time. Modify if needed.
+              </p>
+            </div>
+            <div className="flex space-x-2 justify-end">
+              <Button variant="outline" onClick={() => setDeliveryDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={confirmDelivery} className="bg-green-600 hover:bg-green-700">
+                Confirm Delivery
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
