@@ -640,6 +640,10 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: undefined
       }
+      vendor_can_view_customer: {
+        Args: { _customer_id: string; _vendor_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "staff" | "customer" | "vendor"
