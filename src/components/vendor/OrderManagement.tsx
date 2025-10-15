@@ -1,24 +1,68 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Calendar, Clock, CheckCircle, AlertCircle, Package, Filter, Search } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Calendar, Clock, CheckCircle, AlertCircle, ChevronDown, ChevronRight, Filter, MapPin } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
-import { format } from "date-fns";
+import { useAreas } from "@/hooks/useAreas";
+import { useSocieties } from "@/hooks/useSocieties";
+import { format, startOfWeek, startOfMonth, startOfYear, endOfDay } from "date-fns";
 
 const OrderManagement = () => {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [dateRange, setDateRange] = useState<"today" | "week" | "month" | "year">("today");
+  const [selectedArea, setSelectedArea] = useState("all");
+  const [selectedSociety, setSelectedSociety] = useState("all");
+  const [selectedWing, setSelectedWing] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState("pending");
   const [searchTerm, setSearchTerm] = useState("");
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [deliveryDateTime, setDeliveryDateTime] = useState("");
   const { orders, loading, updateOrderStatus } = useOrders();
+  const { areas } = useAreas();
+  const { societies } = useSocieties();
+
+  const getDateRange = () => {
+    const now = new Date();
+    switch (dateRange) {
+      case "week":
+        return { start: startOfWeek(now), end: endOfDay(now) };
+      case "month":
+        return { start: startOfMonth(now), end: endOfDay(now) };
+      case "year":
+        return { start: startOfYear(now), end: endOfDay(now) };
+      default: // today
+        return { start: new Date(now.setHours(0, 0, 0, 0)), end: endOfDay(now) };
+    }
+  };
+
+  const filteredOrders = useMemo(() => {
+    const { start, end } = getDateRange();
+    
+    return orders.filter(order => {
+      const orderDate = new Date(order.order_date);
+      const matchesDate = orderDate >= start && orderDate <= end;
+      const matchesStatus = selectedStatus === "all" || order.status === selectedStatus;
+      const matchesArea = selectedArea === "all" || order.customer?.area_id === selectedArea;
+      const matchesSociety = selectedSociety === "all" || order.customer?.society_id === selectedSociety;
+      const matchesWing = selectedWing === "all" || order.customer?.wing_number === selectedWing;
+      const matchesSearch = searchTerm === "" || 
+        order.customer?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.product.name.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      return matchesDate && matchesStatus && matchesArea && matchesSociety && matchesWing && matchesSearch;
+    });
+  }, [orders, dateRange, selectedStatus, selectedArea, selectedSociety, selectedWing, searchTerm]);
+
+  const wings = useMemo(() => {
+    return [...new Set(orders.map(o => o.customer?.wing_number).filter(Boolean))];
+  }, [orders]);
 
   const handleMarkDelivered = (orderId: string) => {
     setSelectedOrderId(orderId);
@@ -34,48 +78,28 @@ const OrderManagement = () => {
     }
   };
 
-  // Filter orders by selected date
-  const todayOrders = orders.filter(order => order.order_date === selectedDate);
-
-  const filterOrders = () => {
-    return todayOrders.filter(order => {
-      const matchesStatus = selectedStatus === "all" || order.status === selectedStatus;
-      const matchesSearch = searchTerm === "" || 
-        order.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.vendor.name.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      return matchesStatus && matchesSearch;
-    });
+  const getStatusBadge = (status: string) => {
+    const configs = {
+      pending: { className: "bg-orange-100 text-orange-800", icon: <Clock className="h-3 w-3" /> },
+      delivered: { className: "bg-green-100 text-green-800", icon: <CheckCircle className="h-3 w-3" /> },
+      cancelled: { className: "bg-red-100 text-red-800", icon: <AlertCircle className="h-3 w-3" /> },
+    };
+    const config = configs[status as keyof typeof configs] || configs.pending;
+    return (
+      <Badge className={config.className}>
+        {config.icon}
+        <span className="ml-1 capitalize">{status}</span>
+      </Badge>
+    );
   };
 
-  const filteredOrders = filterOrders();
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "delivered":
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case "pending":
-        return <Clock className="h-4 w-4 text-orange-600" />;
-      case "cancelled":
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-600" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "delivered":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-orange-100 text-orange-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  const stats = useMemo(() => {
+    const pending = filteredOrders.filter(o => o.status === "pending").length;
+    const delivered = filteredOrders.filter(o => o.status === "delivered").length;
+    const revenue = filteredOrders.filter(o => o.status === "delivered")
+      .reduce((sum, o) => sum + Number(o.total_amount), 0);
+    return { total: filteredOrders.length, pending, delivered, revenue };
+  }, [filteredOrders]);
 
   if (loading) {
     return (
@@ -94,15 +118,42 @@ const OrderManagement = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Order Management</h2>
-        <div className="flex items-center space-x-2">
-          <Calendar className="h-4 w-4 text-gray-600" />
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="border rounded-md px-3 py-1"
-          />
-        </div>
+      </div>
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+              <div className="text-sm text-gray-600">Total Orders</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-orange-600">{stats.pending}</div>
+              <div className="text-sm text-gray-600">Pending</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{stats.delivered}</div>
+              <div className="text-sm text-gray-600">Delivered</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">₹{stats.revenue.toFixed(2)}</div>
+              <div className="text-sm text-gray-600">Revenue</div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
@@ -110,26 +161,30 @@ const OrderManagement = () => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Filter className="h-5 w-5" />
-            <span>Filters & Search</span>
+            <span>Filters</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Date Range */}
             <div>
-              <label className="block text-sm font-medium mb-1">Search</label>
-              <div className="relative">
-                <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <Input
-                  placeholder="Customer, product, vendor..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
+              <Label>Time Period</Label>
+              <Select value={dateRange} onValueChange={(v: any) => setDateRange(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="week">This Week</SelectItem>
+                  <SelectItem value="month">This Month</SelectItem>
+                  <SelectItem value="year">This Year</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
+            {/* Status */}
             <div>
-              <label className="block text-sm font-medium mb-1">Status</label>
+              <Label>Status</Label>
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                 <SelectTrigger>
                   <SelectValue />
@@ -143,119 +198,189 @@ const OrderManagement = () => {
               </Select>
             </div>
 
-            <div className="flex items-end">
-              <Badge variant="outline" className="h-10 px-4">
-                {filteredOrders.length} orders found
-              </Badge>
+            {/* Area */}
+            <div>
+              <Label>Area</Label>
+              <Select value={selectedArea} onValueChange={(v) => {
+                setSelectedArea(v);
+                setSelectedSociety("all");
+              }}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Areas</SelectItem>
+                  {areas.map(area => (
+                    <SelectItem key={area.id} value={area.id}>{area.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Society */}
+            <div>
+              <Label>Society</Label>
+              <Select value={selectedSociety} onValueChange={setSelectedSociety}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Societies</SelectItem>
+                  {societies
+                    .filter(s => selectedArea === "all" || s.area_id === selectedArea)
+                    .map(society => (
+                      <SelectItem key={society.id} value={society.id}>{society.name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Wing */}
+            <div>
+              <Label>Wing</Label>
+              <Select value={selectedWing} onValueChange={setSelectedWing}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Wings</SelectItem>
+                  {wings.map(wing => (
+                    <SelectItem key={wing} value={wing as string}>{wing}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Search */}
+            <div className="md:col-span-3">
+              <Label>Search Customer/Product</Label>
+              <Input
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="list" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="list">All Orders</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="list" className="space-y-4">
-          {filteredOrders.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4">
-              {filteredOrders.map((order) => (
-                <Card key={order.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{order.customer.name}</CardTitle>
-                      <div className="flex items-center space-x-2">
-                        <Badge className={getStatusColor(order.status)}>
-                          {getStatusIcon(order.status)}
-                          <span className="ml-1 capitalize">{order.status}</span>
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <span className="font-medium">Customer:</span>
-                        <div className="text-gray-600">{order.customer.name}</div>
-                        <div className="text-gray-600">{order.customer.address}</div>
-                        <div className="text-gray-600">{order.customer.phone}</div>
-                      </div>
-                      <div>
-                        <span className="font-medium">Vendor:</span>
-                        <div className="text-gray-600">{order.vendor.name}</div>
-                        <div className="text-gray-600 text-xs">{order.vendor.category}</div>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <span className="font-medium text-sm">Product:</span>
-                      <div className="flex items-center space-x-2 bg-gray-50 rounded-lg px-3 py-2 mt-2">
-                        <Package className="h-4 w-4 text-blue-600" />
-                        <div>
-                          <div className="text-sm font-medium">{order.product.name}</div>
-                          <div className="text-xs text-gray-600">
-                            {order.quantity} {order.unit} × ₹{order.product.price} = ₹{order.total_amount}
-                          </div>
+      {/* Orders Table */}
+      <Card>
+        <CardContent className="pt-6">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12"></TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Product</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredOrders.length > 0 ? (
+                filteredOrders.map((order) => (
+                  <>
+                    <TableRow key={order.id} className="cursor-pointer hover:bg-gray-50">
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setExpandedRow(expandedRow === order.id ? null : order.id)}
+                        >
+                          {expandedRow === order.id ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TableCell>
+                      <TableCell>{format(new Date(order.order_date), "MMM dd")}</TableCell>
+                      <TableCell className="font-medium">{order.customer?.name || 'N/A'}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center text-sm text-gray-600">
+                          <MapPin className="h-3 w-3 mr-1" />
+                          {order.customer?.wing_number && `Wing ${order.customer.wing_number}`}
                         </div>
-                      </div>
-                    </div>
-
-                    {order.delivered_at && (
-                      <div className="bg-green-50 rounded-lg px-3 py-2 text-sm">
-                        <span className="font-medium text-green-800">Delivered: </span>
-                        <span className="text-green-600">
-                          {format(new Date(order.delivered_at), "PPp")}
-                        </span>
-                      </div>
-                    )}
-
-                    {order.dispute_raised && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm">
-                        <span className="font-medium text-red-800">⚠️ Dispute Raised: </span>
-                        <span className="text-red-600">{order.dispute_reason}</span>
-                      </div>
-                    )}
-
-                    <div className="flex space-x-2 pt-2">
-                      {order.status === "pending" && (
-                        <>
-                          <Button 
-                            size="sm" 
+                      </TableCell>
+                      <TableCell>{order.product.name}</TableCell>
+                      <TableCell className="text-right">{order.quantity} {order.unit}</TableCell>
+                      <TableCell className="text-right font-medium">₹{order.total_amount}</TableCell>
+                      <TableCell>{getStatusBadge(order.status)}</TableCell>
+                      <TableCell>
+                        {order.status === "pending" && (
+                          <Button
+                            size="sm"
                             className="bg-green-600 hover:bg-green-700"
                             onClick={() => handleMarkDelivered(order.id)}
                           >
-                            Mark Delivered
+                            Deliver
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => updateOrderStatus(order.id, "cancelled")}
-                          >
-                            Cancel Order
-                          </Button>
-                        </>
-                      )}
-                      {order.status === "delivered" && (
-                        <Button size="sm" variant="outline" disabled>
-                          ✓ Completed
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <p className="text-gray-600">No orders found for {selectedDate}</p>
-                <p className="text-sm text-gray-500 mt-2">Try selecting a different date or adjusting filters</p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                    {expandedRow === order.id && (
+                      <TableRow>
+                        <TableCell colSpan={9} className="bg-gray-50">
+                          <div className="p-4 space-y-3">
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="font-medium">Phone:</span> {order.customer?.phone || 'N/A'}
+                              </div>
+                              <div>
+                                <span className="font-medium">Address:</span> {order.customer?.address || 'N/A'}
+                              </div>
+                              <div>
+                                <span className="font-medium">Price per unit:</span> ₹{order.product.price}
+                              </div>
+                              <div>
+                                <span className="font-medium">Category:</span> {order.product.category}
+                              </div>
+                            </div>
+                            {order.delivered_at && (
+                              <div className="bg-green-50 rounded px-3 py-2 text-sm">
+                                <span className="font-medium text-green-800">Delivered:</span>{" "}
+                                <span className="text-green-600">{format(new Date(order.delivered_at), "PPp")}</span>
+                              </div>
+                            )}
+                            {order.dispute_raised && (
+                              <div className="bg-red-50 border border-red-200 rounded px-3 py-2 text-sm">
+                                <span className="font-medium text-red-800">⚠️ Dispute:</span>{" "}
+                                <span className="text-red-600">{order.dispute_reason}</span>
+                              </div>
+                            )}
+                            {order.status === "pending" && (
+                              <div className="flex space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => updateOrderStatus(order.id, "cancelled")}
+                                >
+                                  Cancel Order
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                    No orders found for the selected filters
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {/* Delivery Time Dialog */}
       <Dialog open={deliveryDialogOpen} onOpenChange={setDeliveryDialogOpen}>

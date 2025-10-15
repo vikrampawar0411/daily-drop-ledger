@@ -1,50 +1,69 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Milk, Newspaper, Users, DollarSign, TrendingUp, MapPin, Receipt } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
 import { Skeleton } from "@/components/ui/skeleton";
+import { startOfWeek, startOfMonth, startOfYear, endOfDay } from "date-fns";
 
 const VendorDashboard = () => {
   const { orders, loading } = useOrders();
+  const [timeRange, setTimeRange] = useState<"today" | "week" | "month" | "year">("today");
+
+  const getDateRange = () => {
+    const now = new Date();
+    switch (timeRange) {
+      case "week":
+        return { start: startOfWeek(now), end: endOfDay(now) };
+      case "month":
+        return { start: startOfMonth(now), end: endOfDay(now) };
+      case "year":
+        return { start: startOfYear(now), end: endOfDay(now) };
+      default: // today
+        return { start: new Date(now.setHours(0, 0, 0, 0)), end: endOfDay(now) };
+    }
+  };
 
   const todayStats = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const todayOrders = orders.filter(order => 
-      order.order_date.startsWith(today)
-    );
+    const { start, end } = getDateRange();
+    const filteredOrders = orders.filter(order => {
+      const orderDate = new Date(order.order_date);
+      return orderDate >= start && orderDate <= end;
+    });
 
-    const totalRevenue = todayOrders.reduce((sum, order) => sum + Number(order.total_amount), 0);
+    const totalRevenue = filteredOrders.reduce((sum, order) => sum + Number(order.total_amount), 0);
     
     // Count unique customers (areas)
-    const uniqueCustomers = new Set(todayOrders.map(order => order.customer?.address).filter(Boolean));
+    const uniqueCustomers = new Set(filteredOrders.map(order => order.customer?.address).filter(Boolean));
     
     // Group by product category
-    const milkOrders = todayOrders.filter(order => 
+    const milkOrders = filteredOrders.filter(order => 
       order.product?.category?.toLowerCase() === 'milk'
     ).length;
-    const newspaperOrders = todayOrders.filter(order => 
+    const newspaperOrders = filteredOrders.filter(order => 
       order.product?.category?.toLowerCase() === 'newspaper'
     ).length;
 
     return {
-      totalOrders: todayOrders.length,
+      totalOrders: filteredOrders.length,
       milkOrders,
       newspaperOrders,
       totalRevenue: totalRevenue.toFixed(2),
       areasServed: uniqueCustomers.size,
       societiesServed: uniqueCustomers.size // Using customer count as society count
     };
-  }, [orders]);
+  }, [orders, timeRange]);
 
   const areaStats = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const todayOrders = orders.filter(order => 
-      order.order_date.startsWith(today)
-    );
+    const { start, end } = getDateRange();
+    const filteredOrders = orders.filter(order => {
+      const orderDate = new Date(order.order_date);
+      return orderDate >= start && orderDate <= end;
+    });
 
     const areaMap = new Map();
     
-    todayOrders.forEach(order => {
+    filteredOrders.forEach(order => {
       const area = order.customer?.address || 'Unknown Area';
       if (!areaMap.has(area)) {
         areaMap.set(area, {
@@ -60,7 +79,7 @@ const VendorDashboard = () => {
     });
 
     return Array.from(areaMap.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
-  }, [orders]);
+  }, [orders, timeRange]);
 
   if (loading) {
     return (
@@ -76,9 +95,29 @@ const VendorDashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Time Range Selector */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">Overview</h2>
+        <Select value={timeRange} onValueChange={(v: any) => setTimeRange(v)}>
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="week">This Week</SelectItem>
+            <SelectItem value="month">This Month</SelectItem>
+            <SelectItem value="year">This Year</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Today's Summary */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Today's Overview</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          {timeRange === "today" ? "Today's Overview" : 
+           timeRange === "week" ? "This Week's Overview" :
+           timeRange === "month" ? "This Month's Overview" : "This Year's Overview"}
+        </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

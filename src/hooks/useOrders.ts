@@ -19,6 +19,9 @@ export interface OrderWithDetails {
     name: string;
     address: string;
     phone: string;
+    area_id: string | null;
+    society_id: string | null;
+    wing_number: string | null;
   };
   vendor: {
     id: string;
@@ -54,7 +57,7 @@ export const useOrders = () => {
         .from("orders")
         .select(`
           *,
-          customer:customers(id, name, address, phone),
+          customer:customers(id, name, address, phone, area_id, society_id, wing_number),
           vendor:vendors(id, name, category),
           product:products(id, name, category, price)
         `);
