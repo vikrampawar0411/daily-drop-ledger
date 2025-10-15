@@ -35,6 +35,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [signinRole, setSigninRole] = useState<'customer' | 'vendor'>('customer');
   const [signupRole, setSignupRole] = useState<'customer' | 'vendor'>('customer');
   const [isAdminLogin, setIsAdminLogin] = useState(false);
   const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' });
@@ -87,31 +88,50 @@ const Auth = () => {
       return;
     }
 
-    // Check if user exists in customers or vendors table
+    // Check if user exists in customers or vendors table based on selected role
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
-      const { data: customer } = await supabase
-        .from('customers')
-        .select('id')
+      // First check by user_id
+      const tableToCheck = signinRole === 'customer' ? 'customers' : 'vendors';
+      const { data: recordByUserId } = await supabase
+        .from(tableToCheck)
+        .select('id, user_id')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      const { data: vendor } = await supabase
-        .from('vendors')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // If no record found by user_id, check by email and link it
+      if (!recordByUserId) {
+        const { data: recordByEmail } = await supabase
+          .from(tableToCheck)
+          .select('id, user_id, email')
+          .eq('email', user.email)
+          .maybeSingle();
 
-      if (!customer && !vendor) {
-        await supabase.auth.signOut();
-        toast({
-          title: "Account Not Found",
-          description: "Please sign up first to create your account",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
+        if (recordByEmail && !recordByEmail.user_id) {
+          // Link the record to the user
+          await supabase
+            .from(tableToCheck)
+            .update({ user_id: user.id })
+            .eq('id', recordByEmail.id);
+
+          toast({
+            title: "Welcome back!",
+            description: "Your account has been linked successfully.",
+          });
+          navigate("/");
+          setIsLoading(false);
+          return;
+        } else if (!recordByEmail) {
+          await supabase.auth.signOut();
+          toast({
+            title: "Account Not Found",
+            description: `No ${signinRole} account found with this email. Please sign up or select the correct role.`,
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
       }
     }
 
@@ -353,6 +373,28 @@ const Auth = () => {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSignIn} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signin-role">I am a</Label>
+                    <Select value={signinRole} onValueChange={(value) => setSigninRole(value as 'customer' | 'vendor')}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="customer">
+                          <div className="flex items-center">
+                            <Users className="h-4 w-4 mr-2" />
+                            Customer
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="vendor">
+                          <div className="flex items-center">
+                            <Store className="h-4 w-4 mr-2" />
+                            Vendor
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="signin-email">Email</Label>
                     <Input
