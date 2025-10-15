@@ -1,29 +1,83 @@
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, MapPin, Phone, Plus, Check } from "lucide-react";
-import { useVendors } from "@/hooks/useVendors";
+import { Search, Filter, MapPin, Phone, Plus, Check, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/hooks/useProducts";
+import { useVendorConnections } from "@/hooks/useVendorConnections";
+import { useVendorProducts } from "@/hooks/useVendorProducts";
+
+interface Vendor {
+  id: string;
+  name: string;
+  category: string;
+  contact_person: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  is_active: boolean;
+}
 
 const VendorDirectory = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const { vendors, loading: vendorsLoading } = useVendors();
-  const { products, loading: productsLoading } = useProducts();
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [vendorsLoading, setVendorsLoading] = useState(true);
+  const { products: allProducts, loading: productsLoading } = useProducts();
+  const { vendorProducts, loading: vendorProductsLoading } = useVendorProducts();
+  const { 
+    isConnected, 
+    connectToVendor, 
+    disconnectFromVendor, 
+    loading: connectionsLoading 
+  } = useVendorConnections();
+
+  // Fetch all active vendors for browsing
+  useEffect(() => {
+    const fetchAllVendors = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("vendors")
+          .select("*")
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setVendors(data || []);
+      } catch (error) {
+        console.error("Error fetching vendors:", error);
+      } finally {
+        setVendorsLoading(false);
+      }
+    };
+
+    fetchAllVendors();
+  }, []);
 
   const vendorsWithProducts = useMemo(() => {
     return vendors.map(vendor => {
-      const vendorProducts = products.filter(p => p.is_active);
+      // Get vendor-specific products
+      const vendorSpecificProducts = vendorProducts
+        .filter(vp => vp.vendor_id === vendor.id && vp.is_active)
+        .map(vp => {
+          const product = allProducts.find(p => p.id === vp.product_id);
+          return product ? {
+            ...product,
+            price: vp.price_override || product.price
+          } : null;
+        })
+        .filter(p => p !== null);
+      
       return {
         ...vendor,
-        products: vendorProducts
+        products: vendorSpecificProducts
       };
     });
-  }, [vendors, products]);
+  }, [vendors, allProducts, vendorProducts]);
 
   const categories = useMemo(() => {
     return [...new Set(vendors.map(v => v.category))];
@@ -37,7 +91,7 @@ const VendorDirectory = () => {
     return matchesSearch && matchesCategory && vendor.is_active;
   });
 
-  if (vendorsLoading || productsLoading) {
+  if (vendorsLoading || productsLoading || vendorProductsLoading || connectionsLoading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-center p-12">
@@ -46,6 +100,14 @@ const VendorDirectory = () => {
       </div>
     );
   }
+
+  const handleVendorConnection = async (vendorId: string) => {
+    if (isConnected(vendorId)) {
+      await disconnectFromVendor(vendorId);
+    } else {
+      await connectToVendor(vendorId);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -103,7 +165,15 @@ const VendorDirectory = () => {
           <Card key={vendor.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xl">{vendor.name}</CardTitle>
+                <div>
+                  <CardTitle className="text-xl">{vendor.name}</CardTitle>
+                  {isConnected(vendor.id) && (
+                    <Badge className="mt-1" variant="default">
+                      <Check className="h-3 w-3 mr-1" />
+                      Connected
+                    </Badge>
+                  )}
+                </div>
                 <Badge variant="secondary">{vendor.category}</Badge>
               </div>
             </CardHeader>
@@ -143,12 +213,29 @@ const VendorDirectory = () => {
               )}
 
               <div className="flex space-x-2 pt-2">
-                <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700">
-                  Place Order
+                <Button 
+                  size="sm" 
+                  className="flex-1"
+                  variant={isConnected(vendor.id) ? "destructive" : "default"}
+                  onClick={() => handleVendorConnection(vendor.id)}
+                >
+                  {isConnected(vendor.id) ? (
+                    <>
+                      <X className="h-4 w-4 mr-2" />
+                      Disconnect
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Connect
+                    </>
+                  )}
                 </Button>
-                <Button size="sm" variant="outline" className="flex-1">
-                  View Details
-                </Button>
+                {isConnected(vendor.id) && (
+                  <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700">
+                    Place Order
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
