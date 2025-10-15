@@ -321,6 +321,75 @@ export type Database = {
           },
         ]
       }
+      product_requests: {
+        Row: {
+          admin_notes: string | null
+          availability: string
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          price: number
+          requested_by_user_id: string
+          reviewed_at: string | null
+          reviewed_by_user_id: string | null
+          status: string
+          unit: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          availability?: string
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          price: number
+          requested_by_user_id: string
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          status?: string
+          unit: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          availability?: string
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          price?: number
+          requested_by_user_id?: string
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          status?: string
+          unit?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           availability: string
@@ -518,6 +587,58 @@ export type Database = {
           },
           {
             foreignKeyName: "vendor_customer_connections_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_products: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          price_override: number | null
+          product_id: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          price_override?: number | null
+          product_id: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          price_override?: number | null
+          product_id?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_products_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_products_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors_public"
