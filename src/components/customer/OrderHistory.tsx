@@ -70,6 +70,30 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
     }).sort((a, b) => new Date(a.order_date).getTime() - new Date(b.order_date).getTime());
   }, [orders, searchTerm, selectedVendor, selectedStatus]);
 
+  const getDayName = (dateString: string) => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const date = new Date(dateString);
+    return days[date.getDay()];
+  };
+
+  const isSunday = (dateString: string) => {
+    return new Date(dateString).getDay() === 0;
+  };
+
+  const orderSummary = useMemo(() => {
+    const totalQuantity = filteredOrders.reduce((sum, order) => sum + Number(order.quantity), 0);
+    const totalSpending = filteredOrders.reduce((sum, order) => sum + Number(order.total_amount), 0);
+    const deliveredSpending = filteredOrders
+      .filter(order => order.status === 'delivered')
+      .reduce((sum, order) => sum + Number(order.total_amount), 0);
+    
+    return {
+      totalQuantity: totalQuantity.toFixed(2),
+      totalSpending: Math.round(totalSpending),
+      deliveredSpending: Math.round(deliveredSpending)
+    };
+  }, [filteredOrders]);
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "delivered":
@@ -286,6 +310,26 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
         </CardContent>
       </Card>
 
+      {/* Order Summary */}
+      <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className="text-sm text-muted-foreground">Total Quantity</div>
+              <div className="text-2xl font-bold text-blue-900">{orderSummary.totalQuantity}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm text-muted-foreground">Total Spending</div>
+              <div className="text-2xl font-bold text-purple-900">₹{orderSummary.totalSpending}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm text-muted-foreground">Delivered Orders Spending</div>
+              <div className="text-2xl font-bold text-green-900">₹{orderSummary.deliveredSpending}</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Orders Table */}
       <Card>
         <CardContent className="pt-6">
@@ -293,10 +337,10 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Order ID</TableHead>
+                  <TableHead>Day</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>Product</TableHead>
+                  <TableHead className="bg-blue-50 font-bold">Vendor</TableHead>
+                  <TableHead className="bg-green-50 font-bold">Product</TableHead>
                   <TableHead>Quantity</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Status</TableHead>
@@ -307,13 +351,15 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                 {filteredOrders.map((order) => (
                   <TableRow 
                     key={order.id} 
-                    className="cursor-pointer hover:bg-muted/50"
+                    className={`cursor-pointer hover:bg-muted/50 ${isSunday(order.order_date) ? 'bg-red-50 hover:bg-red-100' : ''}`}
                     onClick={() => handleModifyOrder(order)}
                   >
-                    <TableCell className="font-medium">#{order.id.slice(0, 8)}</TableCell>
+                    <TableCell className={`font-semibold ${isSunday(order.order_date) ? 'text-red-700' : ''}`}>
+                      {getDayName(order.order_date)}
+                    </TableCell>
                     <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
-                    <TableCell>{order.vendor.name}</TableCell>
-                    <TableCell>{order.product.name}</TableCell>
+                    <TableCell className="bg-blue-50/50 font-medium">{order.vendor.name}</TableCell>
+                    <TableCell className="bg-green-50/50 font-medium">{order.product.name}</TableCell>
                     <TableCell>{order.quantity} {order.unit}</TableCell>
                     <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
                     <TableCell>

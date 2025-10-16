@@ -361,17 +361,45 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
             </Card>
           </div>
 
+          {/* Order Summary for Selected Period */}
+          <div className="mt-6 mb-4">
+            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <div className="text-sm text-muted-foreground">Total Quantity</div>
+                    <div className="text-2xl font-bold text-blue-900">
+                      {monthlyStats.orders.reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-sm text-muted-foreground">Total Spending</div>
+                    <div className="text-2xl font-bold text-purple-900">
+                      ₹{Math.round(monthlyStats.orders.reduce((sum, o) => sum + Number(o.total_amount), 0))}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-sm text-muted-foreground">Delivered Orders Spending</div>
+                    <div className="text-2xl font-bold text-green-900">
+                      ₹{Math.round(monthlyStats.orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + Number(o.total_amount), 0))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Orders Table for Selected Period */}
-          <div className="mt-6">
+          <div>
             <h3 className="text-lg font-semibold mb-4">Orders for Selected Period</h3>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Order ID</TableHead>
+                    <TableHead>Day</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>Vendor</TableHead>
-                    <TableHead>Product</TableHead>
+                    <TableHead className="bg-blue-50 font-bold">Vendor</TableHead>
+                    <TableHead className="bg-green-50 font-bold">Product</TableHead>
                     <TableHead>Quantity</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
@@ -379,34 +407,43 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                 </TableHeader>
                 <TableBody>
                   {monthlyStats.orders.length > 0 ? (
-                    monthlyStats.orders.map((order) => (
-                      <TableRow 
-                        key={order.id} 
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => onNavigate?.('history')}
-                      >
-                        <TableCell className="font-medium">#{order.id.slice(0, 8)}</TableCell>
-                        <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
-                        <TableCell>{order.vendor.name}</TableCell>
-                        <TableCell>{order.product.name}</TableCell>
-                        <TableCell>{order.quantity} {order.unit}</TableCell>
-                        <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
-                        <TableCell>
-                          <Badge className={
-                            order.status === 'delivered' 
-                              ? 'bg-green-100 text-green-800' 
-                              : order.status === 'cancelled'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-blue-100 text-blue-800'
-                          }>
-                            {order.status === 'delivered' && <CheckCircle className="h-4 w-4 mr-1" />}
-                            {order.status === 'cancelled' && <XCircle className="h-4 w-4 mr-1" />}
-                            {order.status === 'pending' && <Clock className="h-4 w-4 mr-1" />}
-                            <span className="capitalize">{order.status}</span>
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    monthlyStats.orders.map((order) => {
+                      const orderDate = new Date(order.order_date);
+                      const isSunday = orderDate.getDay() === 0;
+                      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                      const dayName = days[orderDate.getDay()];
+                      
+                      return (
+                        <TableRow 
+                          key={order.id} 
+                          className={`cursor-pointer hover:bg-muted/50 ${isSunday ? 'bg-red-50 hover:bg-red-100' : ''}`}
+                          onClick={() => onNavigate?.('history')}
+                        >
+                          <TableCell className={`font-semibold ${isSunday ? 'text-red-700' : ''}`}>
+                            {dayName}
+                          </TableCell>
+                          <TableCell>{orderDate.toLocaleDateString()}</TableCell>
+                          <TableCell className="bg-blue-50/50 font-medium">{order.vendor.name}</TableCell>
+                          <TableCell className="bg-green-50/50 font-medium">{order.product.name}</TableCell>
+                          <TableCell>{order.quantity} {order.unit}</TableCell>
+                          <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
+                          <TableCell>
+                            <Badge className={
+                              order.status === 'delivered' 
+                                ? 'bg-green-100 text-green-800' 
+                                : order.status === 'cancelled'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }>
+                              {order.status === 'delivered' && <CheckCircle className="h-4 w-4 mr-1" />}
+                              {order.status === 'cancelled' && <XCircle className="h-4 w-4 mr-1" />}
+                              {order.status === 'pending' && <Clock className="h-4 w-4 mr-1" />}
+                              <span className="capitalize">{order.status}</span>
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   ) : (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-gray-500">
@@ -421,42 +458,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
         </CardContent>
       </Card>
 
-      {/* Vendor Order Details */}
-      <VendorOrderTabs onNavigateToHistory={(vendorName, status) => {
-        // Store filter in sessionStorage to persist across navigation
-        sessionStorage.setItem('orderHistoryVendor', vendorName);
-        if (status) sessionStorage.setItem('orderHistoryStatus', status);
-        onNavigate?.('history');
-      }} />
-
-      {/* Connected Vendors */}
-      <Card 
-        className="cursor-pointer hover:shadow-lg transition-shadow"
-        onClick={() => onNavigate?.('vendors')}
-      >
-        <CardHeader>
-          <CardTitle>Connected Vendors</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {connectedVendors.length > 0 ? (
-            connectedVendors.map((vendor) => (
-              <div key={vendor.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <div className="font-medium">{vendor.name}</div>
-                <div className="text-sm text-gray-600">{vendor.category}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-gray-500">
-                  {vendor.activeOrders} active orders
-                </div>
-              </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-center text-gray-500 py-8">No connected vendors yet. Browse vendors to get started!</p>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 };
