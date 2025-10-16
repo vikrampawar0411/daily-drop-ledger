@@ -398,8 +398,8 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                   <TableRow>
                     <TableHead>Day</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead className="bg-blue-50 font-bold">Vendor</TableHead>
-                    <TableHead className="bg-green-50 font-bold">Product</TableHead>
+                    <TableHead className="font-bold">Vendor</TableHead>
+                    <TableHead className="font-bold">Product</TableHead>
                     <TableHead>Quantity</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
@@ -423,8 +423,8 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                             {dayName}
                           </TableCell>
                           <TableCell>{orderDate.toLocaleDateString()}</TableCell>
-                          <TableCell className="bg-blue-50/50 font-medium">{order.vendor.name}</TableCell>
-                          <TableCell className="bg-green-50/50 font-medium">{order.product.name}</TableCell>
+                          <TableCell className="font-medium text-blue-700">{order.vendor.name}</TableCell>
+                          <TableCell className="font-medium text-green-700">{order.product.name}</TableCell>
                           <TableCell>{order.quantity} {order.unit}</TableCell>
                           <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
                           <TableCell>

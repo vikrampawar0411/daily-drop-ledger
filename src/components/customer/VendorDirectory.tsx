@@ -22,7 +22,11 @@ interface Vendor {
   is_active: boolean;
 }
 
-const VendorDirectory = () => {
+interface VendorDirectoryProps {
+  onNavigate?: (tab: string) => void;
+}
+
+const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -232,7 +236,11 @@ const VendorDirectory = () => {
                   )}
                 </Button>
                 {isConnected(vendor.id) && (
-                  <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700">
+                  <Button 
+                    size="sm" 
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    onClick={() => onNavigate?.('calendar')}
+                  >
                     Place Order
                   </Button>
                 )}

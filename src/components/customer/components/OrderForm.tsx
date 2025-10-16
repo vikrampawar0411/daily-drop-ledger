@@ -152,19 +152,24 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
   // Get orders for selected product on calendar
   const hasOrdersOnDate = (date: Date) => {
     if (!selectedVendor || !selectedProduct) return false;
+    // Create a date string in YYYY-MM-DD format for consistent comparison
+    const dateStr = date.toISOString().split('T')[0];
     const orders = allOrders(date);
-    return orders.some(order => 
-      order.vendor === selectedVendor && order.product === selectedProduct
-    );
+    return orders.some(order => {
+      const orderDateStr = new Date(order.order_date).toISOString().split('T')[0];
+      return orderDateStr === dateStr && order.vendor === selectedVendor && order.product === selectedProduct;
+    });
   };
 
   // Get orders for a specific date
   const getOrdersForDate = (date: Date) => {
     if (!selectedVendor || !selectedProduct) return [];
+    const dateStr = date.toISOString().split('T')[0];
     const orders = allOrders(date);
-    return orders.filter(order => 
-      order.vendor === selectedVendor && order.product === selectedProduct
-    );
+    return orders.filter(order => {
+      const orderDateStr = new Date(order.order_date).toISOString().split('T')[0];
+      return orderDateStr === dateStr && order.vendor === selectedVendor && order.product === selectedProduct;
+    });
   };
 
   const checkCustomerDetailsComplete = async () => {

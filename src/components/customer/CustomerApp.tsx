@@ -78,7 +78,7 @@ const CustomerApp = () => {
           </TabsContent>
 
           <TabsContent value="vendors">
-            <VendorDirectory />
+            <VendorDirectory onNavigate={setActiveTab} />
           </TabsContent>
 
           <TabsContent value="calendar">
