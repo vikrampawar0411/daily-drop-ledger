@@ -12,6 +12,27 @@ export const useOrders = () => {
 
   const fetchOrders = async () => {
     try {
+      // Get customer ID - either from logged-in user or guest
+      let customerId = null;
+      
+      if (user) {
+        const { data: customerData } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        customerId = customerData?.id || null;
+      } else {
+        customerId = localStorage.getItem('guestCustomerId');
+      }
+
+      if (!customerId) {
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("orders")
         .select(`
@@ -19,6 +40,7 @@ export const useOrders = () => {
           vendor:vendors(name),
           product:products(name)
         `)
+        .eq('customer_id', customerId)
         .order("order_date", { ascending: false });
 
       if (error) throw error;
@@ -61,7 +83,7 @@ export const useOrders = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [user]);
 
   const getOrdersForDate = (date: Date): Order[] => {
     const dateString = date.toISOString().split('T')[0];

@@ -93,17 +93,45 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormP
     initCustomer();
   }, [user]);
 
-  const handleDateSelect = (date: Date | undefined) => {
+  const handleDateSelect = (date: Date | undefined, modifiers?: any, e?: any) => {
     if (!date) return;
     
-    setSelectedDates(prev => {
-      const dateExists = prev.some(d => d.toDateString() === date.toDateString());
-      if (dateExists) {
-        return prev.filter(d => d.toDateString() !== date.toDateString());
-      } else {
-        return [...prev, date];
+    // Check if shift key is pressed for range selection
+    if (e?.shiftKey && selectedDates.length > 0) {
+      const lastDate = selectedDates[selectedDates.length - 1];
+      const startDate = lastDate < date ? lastDate : date;
+      const endDate = lastDate < date ? date : lastDate;
+      
+      // Generate all dates in the range
+      const datesInRange: Date[] = [];
+      const currentDate = new Date(startDate);
+      
+      while (currentDate <= endDate) {
+        datesInRange.push(new Date(currentDate));
+        currentDate.setDate(currentDate.getDate() + 1);
       }
-    });
+      
+      // Add dates that aren't already selected
+      setSelectedDates(prev => {
+        const newDates = [...prev];
+        datesInRange.forEach(d => {
+          if (!newDates.some(existing => existing.toDateString() === d.toDateString())) {
+            newDates.push(d);
+          }
+        });
+        return newDates.sort((a, b) => a.getTime() - b.getTime());
+      });
+    } else {
+      // Normal single date toggle
+      setSelectedDates(prev => {
+        const dateExists = prev.some(d => d.toDateString() === date.toDateString());
+        if (dateExists) {
+          return prev.filter(d => d.toDateString() !== date.toDateString());
+        } else {
+          return [...prev, date].sort((a, b) => a.getTime() - b.getTime());
+        }
+      });
+    }
   };
 
   const removeDate = (dateToRemove: Date) => {
@@ -295,7 +323,7 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormP
             <Calendar
               mode="single"
               selected={undefined}
-              onSelect={handleDateSelect}
+              onDayClick={handleDateSelect}
               className="rounded-md border pointer-events-auto"
               modifiers={{
                 selected: (date) => selectedDates.some(d => d.toDateString() === date.toDateString())
@@ -309,7 +337,7 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormP
               }}
             />
             <p className="text-sm text-gray-600 mt-2">
-              Click on dates to select/deselect them for the order
+              Click dates to select/deselect • Hold Shift + Click to select range
             </p>
           </div>
         </div>

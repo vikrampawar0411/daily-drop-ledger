@@ -12,7 +12,7 @@ import OrderForm from "./components/OrderForm";
 const OrderCalendar = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [showOrderForm, setShowOrderForm] = useState(false);
-  const { getOrdersForDate, hasOrdersOnDate, addOrder, deleteOrder } = useOrders();
+  const { getOrdersForDate, hasOrdersOnDate, addOrder, deleteOrder, refetch } = useOrders();
   const { vendors, loading: vendorsLoading } = useVendors();
   const { products, loading: productsLoading } = useProducts();
 
@@ -29,21 +29,24 @@ const OrderCalendar = () => {
     };
   });
 
-  const handlePlaceOrder = (vendorName: string, productName: string, quantity: number, dates: Date[]) => {
+  const handlePlaceOrder = async (vendorName: string, productName: string, quantity: number, dates: Date[]) => {
     const selectedProduct = products.find(p => p.name === productName);
     const unit = selectedProduct?.unit || 'unit';
     
     // Add order for each selected date
-    dates.forEach(date => {
-      addOrder(date, { vendor: vendorName, product: productName, quantity, unit });
-    });
+    for (const date of dates) {
+      await addOrder(date, { vendor: vendorName, product: productName, quantity, unit });
+    }
     
+    // Refetch orders to update calendar
+    await refetch();
     setShowOrderForm(false);
   };
 
-  const handleDeleteOrder = (orderId: string) => {
+  const handleDeleteOrder = async (orderId: string) => {
     if (selectedDate) {
-      deleteOrder(selectedDate, orderId);
+      await deleteOrder(selectedDate, orderId);
+      await refetch();
     }
   };
 
