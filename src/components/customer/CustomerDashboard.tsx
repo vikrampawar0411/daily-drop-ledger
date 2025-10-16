@@ -101,12 +101,18 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
 
   const customerStats = useMemo(() => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     
     const uniqueVendors = new Set(orders.map(o => o.vendor.id));
-    const upcomingOrders = orders.filter(o => 
-      new Date(o.order_date) >= today && o.status === 'pending'
-    );
+    
+    // Filter pending orders only till today (not future)
+    const upcomingOrders = orders.filter(o => {
+      const orderDate = new Date(o.order_date);
+      orderDate.setHours(0, 0, 0, 0);
+      return orderDate <= today && o.status === 'pending';
+    });
+    
     const monthlyOrders = orders.filter(o => 
       new Date(o.order_date) >= firstDayOfMonth
     );
@@ -312,7 +318,12 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       </Card>
 
       {/* Vendor Order Details */}
-      <VendorOrderTabs />
+      <VendorOrderTabs onNavigateToHistory={(vendorName, status) => {
+        // Store filter in sessionStorage to persist across navigation
+        sessionStorage.setItem('orderHistoryVendor', vendorName);
+        if (status) sessionStorage.setItem('orderHistoryStatus', status);
+        onNavigate?.('history');
+      }} />
 
       {/* Recent Orders */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

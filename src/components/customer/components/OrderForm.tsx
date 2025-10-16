@@ -35,6 +35,15 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
 
   const selectedVendorData = vendors.find(v => v.name === selectedVendor);
 
+  // Preselect last ordered vendor and product
+  useEffect(() => {
+    const lastOrder = allOrders(new Date())[0];
+    if (lastOrder && !selectedVendor && !selectedProduct) {
+      setSelectedVendor(lastOrder.vendor);
+      setSelectedProduct(lastOrder.product);
+    }
+  }, [allOrders, selectedVendor, selectedProduct]);
+
   // Get customer ID based on auth state
   useEffect(() => {
     const initCustomer = async () => {
@@ -347,18 +356,20 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
               className="rounded-md border pointer-events-auto"
               modifiers={{
                 selected: (date) => selectedDates.some(d => d.toDateString() === date.toDateString()),
-                hasOrders: (date) => hasOrdersOnDate(date)
+                hasOrders: (date) => hasOrdersOnDate(date) && !selectedDates.some(d => d.toDateString() === date.toDateString())
               }}
               modifiersStyles={{
                 selected: {
-                  backgroundColor: '#dbeafe',
-                  color: '#1e40af',
-                  fontWeight: 'bold'
+                  backgroundColor: '#3b82f6',
+                  color: '#ffffff',
+                  fontWeight: 'bold',
+                  borderRadius: '4px'
                 },
                 hasOrders: {
-                  backgroundColor: '#dcfce7',
-                  color: '#166534',
-                  fontWeight: 'bold'
+                  backgroundColor: '#22c55e',
+                  color: '#ffffff',
+                  fontWeight: 'bold',
+                  borderRadius: '4px'
                 }
               }}
             />
@@ -368,12 +379,12 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
               </p>
               <div className="flex flex-col gap-1 text-xs text-gray-600">
                 <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-blue-100 border border-blue-300 rounded"></div>
+                  <div className="w-4 h-4 bg-blue-500 rounded"></div>
                   <span>Selected dates</span>
                 </div>
                 {selectedVendor && selectedProduct && (
                   <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-green-100 border border-green-600 rounded"></div>
+                    <div className="w-4 h-4 bg-green-500 rounded"></div>
                     <span>Dates with existing orders</span>
                   </div>
                 )}
@@ -386,38 +397,56 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
           {selectedVendor && selectedProduct && selectedDates.length > 0 && (
             <div>
               <label className="block text-sm font-medium mb-2">Orders on Selected Dates</label>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {selectedDates.map((date, index) => {
-                  const ordersOnDate = getOrdersForDate(date);
-                  return (
-                    <div key={index}>
-                      <div className="text-sm font-medium text-gray-700">
-                        {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                      </div>
-                      {ordersOnDate.length > 0 ? (
-                        <div className="ml-4 space-y-1">
-                          {ordersOnDate.map((order) => (
-                            <div key={order.id} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded">
-                              <span className="text-gray-600">
-                                {order.quantity} {order.unit}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => onDeleteOrder(order.id)}
-                                className="h-6 w-6 p-0 hover:bg-red-100"
-                              >
-                                <Trash2 className="h-3 w-3 text-red-600" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="ml-4 text-sm text-gray-500">No existing orders</div>
-                      )}
-                    </div>
-                  );
-                })}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2 px-3">Date</th>
+                      <th className="text-left py-2 px-3">Quantity</th>
+                      <th className="text-right py-2 px-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedDates.map((date, index) => {
+                      const ordersOnDate = getOrdersForDate(date);
+                      return (
+                        <tr key={index} className="border-b">
+                          <td className="py-2 px-3 font-medium">
+                            {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                          </td>
+                          <td className="py-2 px-3">
+                            {ordersOnDate.length > 0 ? (
+                              ordersOnDate.map((order, idx) => (
+                                <span key={idx} className="mr-2">
+                                  {order.quantity} {order.unit}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-gray-500">No orders</span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-right">
+                            {ordersOnDate.length > 0 && (
+                              <div className="flex justify-end space-x-1">
+                                {ordersOnDate.map((order) => (
+                                  <Button
+                                    key={order.id}
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => onDeleteOrder(order.id)}
+                                    className="h-7 w-7 p-0 hover:bg-red-100"
+                                  >
+                                    <Trash2 className="h-3 w-3 text-red-600" />
+                                  </Button>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

@@ -4,6 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Package } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
 
+interface VendorOrderTabsProps {
+  onNavigateToHistory?: (vendorName: string, status?: string) => void;
+}
+
 interface VendorOrder {
   date: string;
   product: string;
@@ -30,7 +34,7 @@ interface VendorStats {
   monthlyProducts: MonthlyProductStats[];
 }
 
-export const VendorOrderTabs = () => {
+export const VendorOrderTabs = ({ onNavigateToHistory }: VendorOrderTabsProps) => {
   const { orders, loading } = useOrders();
 
   const vendorStats: VendorStats[] = useMemo(() => {
@@ -157,7 +161,10 @@ export const VendorOrderTabs = () => {
             <TabsContent key={vendor.name} value={vendor.name} className="space-y-4">
               {/* Monthly Summary */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
+                <Card 
+                  className="cursor-pointer hover:shadow-lg transition-all hover:scale-105"
+                  onClick={() => onNavigateToHistory?.(vendor.name, 'all')}
+                >
                   <CardContent className="pt-6">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-primary">₹{vendor.monthlyTotal}</div>
@@ -165,7 +172,10 @@ export const VendorOrderTabs = () => {
                     </div>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card 
+                  className="cursor-pointer hover:shadow-lg transition-all hover:scale-105"
+                  onClick={() => onNavigateToHistory?.(vendor.name, 'all')}
+                >
                   <CardContent className="pt-6">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-primary">{vendor.monthlyOrders}</div>
@@ -173,7 +183,10 @@ export const VendorOrderTabs = () => {
                     </div>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card 
+                  className="cursor-pointer hover:shadow-lg transition-all hover:scale-105"
+                  onClick={() => onNavigateToHistory?.(vendor.name, 'delivered')}
+                >
                   <CardContent className="pt-6">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-primary">₹{vendor.avgDailySpend}</div>

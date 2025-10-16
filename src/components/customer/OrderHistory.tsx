@@ -1,25 +1,41 @@
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Search, Filter, Download, Milk, Newspaper, Calendar, CheckCircle, Clock, XCircle, AlertTriangle } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Search, Filter, Download, Calendar, CheckCircle, Clock, XCircle, AlertTriangle, FileDown, Edit } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
 import { format } from "date-fns";
+import * as XLSX from 'xlsx';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-const OrderHistory = () => {
+interface OrderHistoryProps {
+  initialVendorFilter?: string;
+  initialStatusFilter?: string;
+}
+
+const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistoryProps) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedVendor, setSelectedVendor] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedVendor, setSelectedVendor] = useState(initialVendorFilter || "all");
+  const [selectedStatus, setSelectedStatus] = useState(initialStatusFilter || "all");
   const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [disputeReason, setDisputeReason] = useState("");
+  const [modifyOrderDialogOpen, setModifyOrderDialogOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const { orders, loading, raiseDispute } = useOrders();
+
+  // Apply initial filters
+  useEffect(() => {
+    if (initialVendorFilter) setSelectedVendor(initialVendorFilter);
+    if (initialStatusFilter) setSelectedStatus(initialStatusFilter);
+  }, [initialVendorFilter, initialStatusFilter]);
 
   const handleRaiseDispute = (orderId: string) => {
     setSelectedOrderId(orderId);
@@ -96,6 +112,56 @@ const OrderHistory = () => {
 
   const stats = getOrderStats();
 
+  const exportToCSV = () => {
+    const csvData = filteredOrders.map(order => ({
+      'Order ID': order.id.slice(0, 8),
+      'Date': new Date(order.order_date).toLocaleDateString(),
+      'Vendor': order.vendor.name,
+      'Product': order.product.name,
+      'Quantity': `${order.quantity} ${order.unit}`,
+      'Price/Unit': order.product.price,
+      'Total': order.total_amount,
+      'Status': order.status,
+      'Delivered At': order.delivered_at ? format(new Date(order.delivered_at), "PPp") : '-',
+    }));
+    
+    const csv = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `order-history-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+  };
+
+  const exportToExcel = () => {
+    const excelData = filteredOrders.map(order => ({
+      'Order ID': order.id.slice(0, 8),
+      'Date': new Date(order.order_date).toLocaleDateString(),
+      'Vendor': order.vendor.name,
+      'Product': order.product.name,
+      'Quantity': `${order.quantity} ${order.unit}`,
+      'Price/Unit': order.product.price,
+      'Total': order.total_amount,
+      'Status': order.status,
+      'Delivered At': order.delivered_at ? format(new Date(order.delivered_at), "PPp") : '-',
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Order History');
+    XLSX.writeFile(wb, `order-history-${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const handleModifyOrder = (order: any) => {
+    setSelectedOrder(order);
+    setModifyOrderDialogOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -110,10 +176,24 @@ const OrderHistory = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Order History</h2>
-        <Button variant="outline">
-          <Download className="h-4 w-4 mr-2" />
-          Export History
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Export History
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={exportToCSV}>
+              <FileDown className="h-4 w-4 mr-2" />
+              Export as CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={exportToExcel}>
+              <FileDown className="h-4 w-4 mr-2" />
+              Export as Excel
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Stats Overview */}
@@ -206,103 +286,78 @@ const OrderHistory = () => {
         </CardContent>
       </Card>
 
-      {/* Orders List */}
-      <div className="space-y-4">
-        {filteredOrders.map((order) => (
-          <Card key={order.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">Order #{order.id.slice(0, 8)}</CardTitle>
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="h-4 w-4" />
-                      <span>{new Date(order.order_date).toLocaleDateString()}</span>
-                    </div>
-                    <span>•</span>
-                    <span>{order.vendor.name}</span>
-                  </div>
-                </div>
-                <Badge className={getStatusColor(order.status)}>
-                  {getStatusIcon(order.status)}
-                  <span className="ml-1 capitalize">{order.status}</span>
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <span className="font-medium text-sm">Product:</span>
-                <div className="grid grid-cols-1 gap-2 mt-2">
-                  <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                    <div className="flex items-center space-x-3">
-                      {order.product.category.toLowerCase().includes('dairy') ? (
-                        <Milk className="h-4 w-4 text-blue-600" />
-                      ) : (
-                        <Newspaper className="h-4 w-4 text-orange-600" />
-                      )}
-                      <span className="text-sm">
-                        {order.quantity} {order.unit} {order.product.name}
-                      </span>
-                    </div>
-                    <span className="text-sm font-medium">₹{order.product.price}</span>
-                  </div>
-                </div>
-              </div>
-
-              {order.delivered_at && (
-                <div className="bg-green-50 rounded-lg px-3 py-2 text-sm">
-                  <span className="font-medium text-green-800">Delivered at: </span>
-                  <span className="text-green-600">
-                    {format(new Date(order.delivered_at), "PPp")}
-                  </span>
-                </div>
-              )}
-
-              {order.dispute_raised && (
-                <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm">
-                  <span className="font-medium text-red-800">⚠️ Dispute: </span>
-                  <span className="text-red-600">{order.dispute_reason}</span>
-                  <div className="text-xs text-red-500 mt-1">
-                    Raised on: {order.dispute_raised_at && format(new Date(order.dispute_raised_at), "PPp")}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between pt-2 border-t">
-                <div className="flex space-x-2">
-                  <Button size="sm" variant="outline">
-                    View Details
-                  </Button>
-                  {order.status === "delivered" && (
-                    <Button size="sm" variant="outline">
-                      Reorder
-                    </Button>
-                  )}
-                  {order.status === "pending" && !order.dispute_raised && (
-                    <>
-                      <Button size="sm" variant="outline">
-                        Modify Order
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="text-red-600 hover:text-red-700"
-                        onClick={() => handleRaiseDispute(order.id)}
-                      >
-                        <AlertTriangle className="h-4 w-4 mr-1" />
-                        Raise Dispute
-                      </Button>
-                    </>
-                  )}
-                </div>
-                <div className="text-lg font-bold">
-                  Total: ₹{order.total_amount}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Orders Table */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Order ID</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Vendor</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredOrders.map((order) => (
+                  <TableRow 
+                    key={order.id} 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleModifyOrder(order)}
+                  >
+                    <TableCell className="font-medium">#{order.id.slice(0, 8)}</TableCell>
+                    <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
+                    <TableCell>{order.vendor.name}</TableCell>
+                    <TableCell>{order.product.name}</TableCell>
+                    <TableCell>{order.quantity} {order.unit}</TableCell>
+                    <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(order.status)}>
+                        {getStatusIcon(order.status)}
+                        <span className="ml-1 capitalize">{order.status}</span>
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        {order.status === "pending" && !order.dispute_raised && (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleModifyOrder(order);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRaiseDispute(order.id);
+                              }}
+                            >
+                              <AlertTriangle className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       {filteredOrders.length === 0 && (
         <Card>
@@ -349,6 +404,69 @@ const OrderHistory = () => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modify Order Dialog */}
+      <Dialog open={modifyOrderDialogOpen} onOpenChange={setModifyOrderDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Order Details</DialogTitle>
+          </DialogHeader>
+          {selectedOrder && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm text-muted-foreground">Order ID</Label>
+                  <div className="font-medium">#{selectedOrder.id.slice(0, 8)}</div>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Date</Label>
+                  <div className="font-medium">{new Date(selectedOrder.order_date).toLocaleDateString()}</div>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Vendor</Label>
+                  <div className="font-medium">{selectedOrder.vendor.name}</div>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Product</Label>
+                  <div className="font-medium">{selectedOrder.product.name}</div>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Quantity</Label>
+                  <div className="font-medium">{selectedOrder.quantity} {selectedOrder.unit}</div>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Total Amount</Label>
+                  <div className="font-medium">₹{selectedOrder.total_amount}</div>
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-sm text-muted-foreground">Status</Label>
+                  <Badge className={getStatusColor(selectedOrder.status)}>
+                    {getStatusIcon(selectedOrder.status)}
+                    <span className="ml-1 capitalize">{selectedOrder.status}</span>
+                  </Badge>
+                </div>
+              </div>
+              {selectedOrder.delivered_at && (
+                <div className="bg-green-50 rounded-lg p-3">
+                  <Label className="text-sm text-green-800">Delivered at:</Label>
+                  <div className="text-green-600">{format(new Date(selectedOrder.delivered_at), "PPp")}</div>
+                </div>
+              )}
+              {selectedOrder.dispute_raised && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <Label className="text-sm text-red-800">Dispute Raised:</Label>
+                  <div className="text-red-600">{selectedOrder.dispute_reason}</div>
+                </div>
+              )}
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setModifyOrderDialogOpen(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -1,28 +1,59 @@
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useOrders } from "./hooks/useOrders";
 import { useVendors } from "@/hooks/useVendors";
 import { useProducts } from "@/hooks/useProducts";
 import OrderForm from "./components/OrderForm";
+import { supabase } from "@/integrations/supabase/client";
 
 const OrderCalendar = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const { getOrdersForDate, addOrder, deleteOrder, refetch } = useOrders();
   const { vendors, loading: vendorsLoading } = useVendors();
   const { products, loading: productsLoading } = useProducts();
+  const [vendorProductsMap, setVendorProductsMap] = useState<Record<string, any[]>>({});
 
-  // Get all products from master table (no longer vendor-specific)
-  const vendorsWithProducts = vendors.map(vendor => {
-    const vendorProducts = products
-      .filter(p => p.is_active)
-      .map(p => ({ id: p.id, name: p.name }));
-    
-    return {
+  // Fetch vendor-specific products
+  useEffect(() => {
+    const fetchAllVendorProducts = async () => {
+      const productsMap: Record<string, any[]> = {};
+      
+      for (const vendor of vendors) {
+        const { data } = await supabase
+          .from('vendor_products')
+          .select('product_id, products(*)')
+          .eq('vendor_id', vendor.id)
+          .eq('is_active', true);
+        
+        if (data && data.length > 0) {
+          productsMap[vendor.id] = data.map(vp => ({
+            id: vp.products.id,
+            name: vp.products.name
+          }));
+        } else {
+          // Fallback to all active products if vendor has no specific products
+          productsMap[vendor.id] = products
+            .filter(p => p.is_active)
+            .map(p => ({ id: p.id, name: p.name }));
+        }
+      }
+      
+      setVendorProductsMap(productsMap);
+    };
+
+    if (vendors.length > 0 && products.length > 0) {
+      fetchAllVendorProducts();
+    }
+  }, [vendors, products]);
+
+  // Create vendors with products structure
+  const vendorsWithProducts = useMemo(() => {
+    return vendors.map(vendor => ({
       id: vendor.id,
       name: vendor.name,
-      products: vendorProducts
-    };
-  });
+      products: vendorProductsMap[vendor.id] || []
+    }));
+  }, [vendors, vendorProductsMap]);
 
   const handlePlaceOrder = async (vendorName: string, productName: string, quantity: number, dates: Date[]) => {
     const selectedProduct = products.find(p => p.name === productName);
