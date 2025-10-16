@@ -156,7 +156,10 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
     const dateStr = date.toISOString().split('T')[0];
     const orders = allOrders(date);
     return orders.some(order => {
-      const orderDateStr = new Date(order.order_date).toISOString().split('T')[0];
+      if (!order.order_date) return false;
+      const orderDate = new Date(order.order_date);
+      if (isNaN(orderDate.getTime())) return false; // Check if date is valid
+      const orderDateStr = orderDate.toISOString().split('T')[0];
       return orderDateStr === dateStr && order.vendor === selectedVendor && order.product === selectedProduct;
     });
   };
@@ -167,7 +170,10 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
     const dateStr = date.toISOString().split('T')[0];
     const orders = allOrders(date);
     return orders.filter(order => {
-      const orderDateStr = new Date(order.order_date).toISOString().split('T')[0];
+      if (!order.order_date) return false;
+      const orderDate = new Date(order.order_date);
+      if (isNaN(orderDate.getTime())) return false; // Check if date is valid
+      const orderDateStr = orderDate.toISOString().split('T')[0];
       return orderDateStr === dateStr && order.vendor === selectedVendor && order.product === selectedProduct;
     });
   };
