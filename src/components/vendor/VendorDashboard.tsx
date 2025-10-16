@@ -6,7 +6,11 @@ import { useOrders } from "@/hooks/useOrders";
 import { Skeleton } from "@/components/ui/skeleton";
 import { startOfWeek, startOfMonth, startOfYear, endOfDay } from "date-fns";
 
-const VendorDashboard = () => {
+interface VendorDashboardProps {
+  onNavigate?: (tab: string) => void;
+}
+
+const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
   const { orders, loading } = useOrders();
   const [timeRange, setTimeRange] = useState<"today" | "week" | "month" | "year">("today");
 
@@ -119,7 +123,10 @@ const VendorDashboard = () => {
            timeRange === "month" ? "This Month's Overview" : "This Year's Overview"}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
+          <Card 
+            className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => onNavigate?.('orders')}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium opacity-90">Total Orders</CardTitle>
               <Receipt className="h-4 w-4 opacity-90" />
@@ -130,7 +137,10 @@ const VendorDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0">
+          <Card 
+            className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => onNavigate?.('areas')}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium opacity-90">Areas Served</CardTitle>
               <MapPin className="h-4 w-4 opacity-90" />
@@ -141,7 +151,10 @@ const VendorDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0">
+          <Card 
+            className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => onNavigate?.('customers')}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium opacity-90">Societies</CardTitle>
               <Users className="h-4 w-4 opacity-90" />
@@ -152,7 +165,10 @@ const VendorDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0">
+          <Card 
+            className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => onNavigate?.('orders')}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium opacity-90">Revenue</CardTitle>
               <DollarSign className="h-4 w-4 opacity-90" />

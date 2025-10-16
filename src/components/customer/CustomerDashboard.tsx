@@ -190,7 +190,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+            <Card 
+              className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => onNavigate?.('history')}
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-blue-900">Total Orders</CardTitle>
                 <ShoppingCart className="h-4 w-4 text-blue-600" />
@@ -201,7 +204,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <Card 
+              className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => onNavigate?.('history')}
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-green-900">Orders Delivered</CardTitle>
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -212,7 +218,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
+            <Card 
+              className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => onNavigate?.('history')}
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-amber-900">Orders Scheduled</CardTitle>
                 <Clock className="h-4 w-4 text-amber-600" />
@@ -223,7 +232,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+            <Card 
+              className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => onNavigate?.('history')}
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-purple-900">Monthly Spend</CardTitle>
                 <Package className="h-4 w-4 text-purple-600" />
@@ -234,7 +246,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-rose-50 to-rose-100 border-rose-200">
+            <Card 
+              className="bg-gradient-to-br from-rose-50 to-rose-100 border-rose-200 cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => onNavigate?.('history')}
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-rose-900">Forecasted Bill</CardTitle>
                 <TrendingUp className="h-4 w-4 text-rose-600" />
@@ -253,7 +268,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
 
       {/* Recent Orders */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card 
+          className="cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={() => onNavigate?.('history')}
+        >
           <CardHeader>
             <CardTitle>Recent Orders</CardTitle>
           </CardHeader>
@@ -285,7 +303,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
         </Card>
 
         {/* Connected Vendors */}
-        <Card>
+        <Card 
+          className="cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={() => onNavigate?.('vendors')}
+        >
           <CardHeader>
             <CardTitle>Connected Vendors</CardTitle>
           </CardHeader>

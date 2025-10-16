@@ -92,7 +92,7 @@ const VendorApp = ({ onBack }: VendorAppProps) => {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <VendorDashboard />
+            <VendorDashboard onNavigate={setActiveTab} />
           </TabsContent>
 
           <TabsContent value="customers">
