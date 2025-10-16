@@ -67,7 +67,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
       const matchesStatus = selectedStatus === "all" || order.status === selectedStatus;
       
       return matchesSearch && matchesVendor && matchesStatus;
-    });
+    }).sort((a, b) => new Date(a.order_date).getTime() - new Date(b.order_date).getTime());
   }, [orders, searchTerm, selectedVendor, selectedStatus]);
 
   const getStatusIcon = (status: string) => {
@@ -324,30 +324,18 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
-                        {order.status === "pending" && !order.dispute_raised && (
-                          <>
-                            <Button 
-                              size="sm" 
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleModifyOrder(order);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="ghost"
-                              className="text-red-600 hover:text-red-700"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRaiseDispute(order.id);
-                              }}
-                            >
-                              <AlertTriangle className="h-4 w-4" />
-                            </Button>
-                          </>
+                        {order.status === "delivered" && !order.dispute_raised && (
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRaiseDispute(order.id);
+                            }}
+                          >
+                            <AlertTriangle className="h-4 w-4" />
+                          </Button>
                         )}
                       </div>
                     </TableCell>

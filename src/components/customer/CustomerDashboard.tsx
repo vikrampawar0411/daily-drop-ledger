@@ -9,6 +9,11 @@ import { useVendors } from "@/hooks/useVendors";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CheckCircle, XCircle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 interface CustomerDashboardProps {
   onNavigate?: (tab: string) => void;
@@ -26,6 +31,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   });
+  const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
 
   useEffect(() => {
     const loadCustomerData = async () => {
@@ -75,7 +81,9 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     
     const monthOrders = orders.filter(o => {
       const orderDate = new Date(o.order_date);
-      return orderDate >= firstDay && orderDate <= lastDay;
+      const matchesDate = orderDate >= firstDay && orderDate <= lastDay;
+      const matchesVendor = selectedVendors.length === 0 || selectedVendors.includes(o.vendor.id);
+      return matchesDate && matchesVendor;
     });
     
     const totalOrders = monthOrders.length;
@@ -95,9 +103,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       deliveredOrders,
       scheduledOrders,
       deliveredSpend: Math.round(deliveredSpend),
-      forecastedBill: Math.round(forecastedBill)
+      forecastedBill: Math.round(forecastedBill),
+      orders: monthOrders.sort((a, b) => new Date(a.order_date).getTime() - new Date(b.order_date).getTime())
     };
-  }, [orders, selectedMonth]);
+  }, [orders, selectedMonth, selectedVendors]);
 
   const customerStats = useMemo(() => {
     const today = new Date();
@@ -226,24 +235,61 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       {/* Monthly Statistics */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Monthly Statistics</CardTitle>
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Select month" />
-              </SelectTrigger>
-              <SelectContent>
-                {monthOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center justify-between">
+              <CardTitle>Monthly Statistics</CardTitle>
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Select month" />
+                </SelectTrigger>
+                <SelectContent>
+                  {monthOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Filter by Vendor (Multi-select)</Label>
+              <div className="flex flex-wrap gap-2">
+                {vendors.map((vendor) => (
+                  <div key={vendor.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={vendor.id}
+                      checked={selectedVendors.includes(vendor.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedVendors([...selectedVendors, vendor.id]);
+                        } else {
+                          setSelectedVendors(selectedVendors.filter(id => id !== vendor.id));
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={vendor.id}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {vendor.name}
+                    </label>
+                  </div>
                 ))}
-              </SelectContent>
-            </Select>
+              </div>
+              {selectedVendors.length > 0 && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setSelectedVendors([])}
+                >
+                  Clear Vendor Filter
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             <Card 
               className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 cursor-pointer hover:shadow-lg transition-shadow"
               onClick={() => onNavigate?.('history')}
@@ -314,6 +360,64 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               </CardContent>
             </Card>
           </div>
+
+          {/* Orders Table for Selected Period */}
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold mb-4">Orders for Selected Period</h3>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Order ID</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {monthlyStats.orders.length > 0 ? (
+                    monthlyStats.orders.map((order) => (
+                      <TableRow 
+                        key={order.id} 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => onNavigate?.('history')}
+                      >
+                        <TableCell className="font-medium">#{order.id.slice(0, 8)}</TableCell>
+                        <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
+                        <TableCell>{order.vendor.name}</TableCell>
+                        <TableCell>{order.product.name}</TableCell>
+                        <TableCell>{order.quantity} {order.unit}</TableCell>
+                        <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
+                        <TableCell>
+                          <Badge className={
+                            order.status === 'delivered' 
+                              ? 'bg-green-100 text-green-800' 
+                              : order.status === 'cancelled'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }>
+                            {order.status === 'delivered' && <CheckCircle className="h-4 w-4 mr-1" />}
+                            {order.status === 'cancelled' && <XCircle className="h-4 w-4 mr-1" />}
+                            {order.status === 'pending' && <Clock className="h-4 w-4 mr-1" />}
+                            <span className="capitalize">{order.status}</span>
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                        No orders found for the selected period
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -325,71 +429,34 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
         onNavigate?.('history');
       }} />
 
-      {/* Recent Orders */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card 
-          className="cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => onNavigate?.('history')}
-        >
-          <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {recentOrders.length > 0 ? (
-              recentOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <div className="font-medium">{order.product}</div>
-                    <div className="text-sm text-gray-600">{order.vendorName}</div>
-                    <div className="text-xs text-gray-500">{order.deliveryDate}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium">{order.quantity} {order.unit}</div>
-                    <div className={`text-xs px-2 py-1 rounded ${
-                      order.status === 'delivered' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {order.status}
-                    </div>
-                  </div>
+      {/* Connected Vendors */}
+      <Card 
+        className="cursor-pointer hover:shadow-lg transition-shadow"
+        onClick={() => onNavigate?.('vendors')}
+      >
+        <CardHeader>
+          <CardTitle>Connected Vendors</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {connectedVendors.length > 0 ? (
+            connectedVendors.map((vendor) => (
+              <div key={vendor.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div>
+                <div className="font-medium">{vendor.name}</div>
+                <div className="text-sm text-gray-600">{vendor.category}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-gray-500">
+                  {vendor.activeOrders} active orders
                 </div>
-              ))
-            ) : (
-              <p className="text-center text-gray-500 py-8">No orders yet. Start by placing your first order!</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Connected Vendors */}
-        <Card 
-          className="cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => onNavigate?.('vendors')}
-        >
-          <CardHeader>
-            <CardTitle>Connected Vendors</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {connectedVendors.length > 0 ? (
-              connectedVendors.map((vendor) => (
-                <div key={vendor.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <div className="font-medium">{vendor.name}</div>
-                  <div className="text-sm text-gray-600">{vendor.category}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs text-gray-500">
-                    {vendor.activeOrders} active orders
-                  </div>
-                </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-center text-gray-500 py-8">No connected vendors yet. Browse vendors to get started!</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-center text-gray-500 py-8">No connected vendors yet. Browse vendors to get started!</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

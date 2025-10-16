@@ -57,7 +57,7 @@ const OrderManagement = () => {
         order.product.name.toLowerCase().includes(searchTerm.toLowerCase());
       
       return matchesDate && matchesStatus && matchesArea && matchesSociety && matchesWing && matchesSearch;
-    });
+    }).sort((a, b) => new Date(a.order_date).getTime() - new Date(b.order_date).getTime());
   }, [orders, dateRange, selectedStatus, selectedArea, selectedSociety, selectedWing, searchTerm]);
 
   const wings = useMemo(() => {
