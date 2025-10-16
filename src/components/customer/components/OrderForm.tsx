@@ -369,11 +369,11 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
               modifiers={{
                 selected: (date) => selectedDates.some(d => d.toDateString() === date.toDateString()),
                 hasOrders: (date) => {
-                  // Show green for dates with existing orders (for selected vendor/product if selected)
-                  if (!selectedVendor || !selectedProduct) {
-                    return hasAnyOrdersOnDate ? hasAnyOrdersOnDate(date) : false;
-                  }
-                  return hasOrdersOnDate(date) && !selectedDates.some(d => d.toDateString() === date.toDateString());
+                  // Always show green for ANY dates with existing orders
+                  const anyOrders = hasAnyOrdersOnDate ? hasAnyOrdersOnDate(date) : false;
+                  // Don't show green if date is already selected (blue takes priority)
+                  const isSelected = selectedDates.some(d => d.toDateString() === date.toDateString());
+                  return anyOrders && !isSelected;
                 }
               }}
               modifiersStyles={{
@@ -400,12 +400,10 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
                   <div className="w-4 h-4 bg-blue-500 rounded"></div>
                   <span>Selected dates</span>
                 </div>
-                {selectedVendor && selectedProduct && (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-green-500 rounded"></div>
-                    <span>Dates with existing orders</span>
-                  </div>
-                )}
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-green-500 rounded"></div>
+                  <span>Dates with existing orders</span>
+                </div>
               </div>
             </div>
           </div>

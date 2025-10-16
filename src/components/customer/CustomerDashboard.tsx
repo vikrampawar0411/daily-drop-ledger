@@ -33,6 +33,20 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   });
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
 
+  // Hash function to generate consistent colors for vendor-product combinations
+  const getVendorProductColor = (vendorName: string, productName: string) => {
+    const combined = `${vendorName}-${productName}`;
+    let hash = 0;
+    for (let i = 0; i < combined.length; i++) {
+      hash = combined.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    // Generate distinct hue values
+    const hue = Math.abs(hash % 360);
+    // Use high saturation and medium lightness for vibrant, readable colors
+    return `hsl(${hue}, 70%, 45%)`;
+  };
+
   useEffect(() => {
     const loadCustomerData = async () => {
       if (!user) return;
@@ -397,8 +411,18 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                               {dayName}
                             </TableCell>
                             <TableCell>{orderDate.toLocaleDateString()}</TableCell>
-                            <TableCell className="font-medium text-blue-700">{order.vendor.name}</TableCell>
-                            <TableCell className="font-medium text-green-700">{order.product.name}</TableCell>
+                            <TableCell 
+                              className="font-bold"
+                              style={{ color: getVendorProductColor(order.vendor.name, order.product.name) }}
+                            >
+                              {order.vendor.name}
+                            </TableCell>
+                            <TableCell 
+                              className="font-bold"
+                              style={{ color: getVendorProductColor(order.vendor.name, order.product.name) }}
+                            >
+                              {order.product.name}
+                            </TableCell>
                             <TableCell>{order.quantity} {order.unit}</TableCell>
                             <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
                             <TableCell>

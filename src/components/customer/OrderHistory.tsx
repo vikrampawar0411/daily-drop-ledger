@@ -9,11 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Filter, Download, Calendar, CheckCircle, Clock, XCircle, AlertTriangle, FileDown, Edit } from "lucide-react";
+import { Search, Filter, Download, Calendar as CalendarIcon, CheckCircle, Clock, XCircle, AlertTriangle, FileDown, Edit } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
 import { format } from "date-fns";
 import * as XLSX from 'xlsx';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 interface OrderHistoryProps {
   initialVendorFilter?: string;
@@ -24,12 +26,28 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVendor, setSelectedVendor] = useState(initialVendorFilter || "all");
   const [selectedStatus, setSelectedStatus] = useState(initialStatusFilter || "all");
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [disputeReason, setDisputeReason] = useState("");
   const [modifyOrderDialogOpen, setModifyOrderDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const { orders, loading, raiseDispute } = useOrders();
+
+  // Hash function to generate consistent colors for vendor-product combinations
+  const getVendorProductColor = (vendorName: string, productName: string) => {
+    const combined = `${vendorName}-${productName}`;
+    let hash = 0;
+    for (let i = 0; i < combined.length; i++) {
+      hash = combined.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    // Generate distinct hue values
+    const hue = Math.abs(hash % 360);
+    // Use high saturation and medium lightness for vibrant, readable colors
+    return `hsl(${hue}, 70%, 45%)`;
+  };
 
   // Apply initial filters
   useEffect(() => {
@@ -66,9 +84,14 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
       const matchesVendor = selectedVendor === "all" || order.vendor.name === selectedVendor;
       const matchesStatus = selectedStatus === "all" || order.status === selectedStatus;
       
-      return matchesSearch && matchesVendor && matchesStatus;
+      // Date range filter
+      const orderDate = new Date(order.order_date);
+      const matchesStartDate = !startDate || orderDate >= startDate;
+      const matchesEndDate = !endDate || orderDate <= endDate;
+      
+      return matchesSearch && matchesVendor && matchesStatus && matchesStartDate && matchesEndDate;
     }).sort((a, b) => new Date(a.order_date).getTime() - new Date(b.order_date).getTime());
-  }, [orders, searchTerm, selectedVendor, selectedStatus]);
+  }, [orders, searchTerm, selectedVendor, selectedStatus, startDate, endDate]);
 
   const getDayName = (dateString: string) => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -265,7 +288,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
@@ -299,12 +322,48 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                 ))}
               </SelectContent>
             </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="justify-start text-left font-normal">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, "PPP") : "Start Date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={setStartDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="justify-start text-left font-normal">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDate ? format(endDate, "PPP") : "End Date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={endDate}
+                  onSelect={setEndDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="mt-4">
             <Button variant="outline" onClick={() => {
               setSearchTerm("");
               setSelectedVendor("all");
               setSelectedStatus("all");
+              setStartDate(undefined);
+              setEndDate(undefined);
             }}>
-              Clear Filters
+              Clear All Filters
             </Button>
           </div>
         </CardContent>
@@ -339,8 +398,18 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                       {getDayName(order.order_date)}
                     </TableCell>
                     <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
-                    <TableCell className="font-medium text-blue-700">{order.vendor.name}</TableCell>
-                    <TableCell className="font-medium text-green-700">{order.product.name}</TableCell>
+                    <TableCell 
+                      className="font-bold"
+                      style={{ color: getVendorProductColor(order.vendor.name, order.product.name) }}
+                    >
+                      {order.vendor.name}
+                    </TableCell>
+                    <TableCell 
+                      className="font-bold"
+                      style={{ color: getVendorProductColor(order.vendor.name, order.product.name) }}
+                    >
+                      {order.product.name}
+                    </TableCell>
                     <TableCell>{order.quantity} {order.unit}</TableCell>
                     <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
                     <TableCell>
