@@ -1,18 +1,13 @@
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { CalendarPlus } from "lucide-react";
 import { useOrders } from "./hooks/useOrders";
 import { useVendors } from "@/hooks/useVendors";
 import { useProducts } from "@/hooks/useProducts";
-import OrderCalendarView from "./components/OrderCalendarView";
-import OrderDetailsView from "./components/OrderDetailsView";
 import OrderForm from "./components/OrderForm";
 
 const OrderCalendar = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [showOrderForm, setShowOrderForm] = useState(false);
-  const { getOrdersForDate, hasOrdersOnDate, addOrder, deleteOrder, refetch } = useOrders();
+  const { getOrdersForDate, addOrder, deleteOrder, refetch } = useOrders();
   const { vendors, loading: vendorsLoading } = useVendors();
   const { products, loading: productsLoading } = useProducts();
 
@@ -40,7 +35,6 @@ const OrderCalendar = () => {
     
     // Refetch orders to update calendar
     await refetch();
-    setShowOrderForm(false);
   };
 
   const handleDeleteOrder = async (orderId: string) => {
@@ -64,39 +58,16 @@ const OrderCalendar = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Order Calendar</h2>
-        <Button 
-          onClick={() => setShowOrderForm(!showOrderForm)}
-          className="bg-green-600 hover:bg-green-700"
-          disabled={vendorsWithProducts.length === 0}
-        >
-          <CalendarPlus className="h-4 w-4 mr-2" />
-          Schedule Order
-        </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <OrderCalendarView
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          hasOrdersOnDate={hasOrdersOnDate}
-        />
-
-        <OrderDetailsView
-          selectedDate={selectedDate}
-          orders={selectedDate ? getOrdersForDate(selectedDate) : []}
-          onDeleteOrder={handleDeleteOrder}
-          onShowOrderForm={() => setShowOrderForm(true)}
-        />
-      </div>
-
-      {showOrderForm && (
-        <OrderForm
-          selectedDate={selectedDate}
-          vendors={vendorsWithProducts}
-          onPlaceOrder={handlePlaceOrder}
-          onCancel={() => setShowOrderForm(false)}
-        />
-      )}
+      <OrderForm
+        selectedDate={selectedDate}
+        vendors={vendorsWithProducts}
+        onPlaceOrder={handlePlaceOrder}
+        onCancel={() => {}}
+        allOrders={getOrdersForDate}
+        onDeleteOrder={handleDeleteOrder}
+      />
     </div>
   );
 };

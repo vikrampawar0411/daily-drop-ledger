@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, Trash2 } from "lucide-react";
 import type { Vendor } from "../types/order";
 import { CustomerDetailsDialog } from "../CustomerDetailsDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,9 +17,11 @@ interface OrderFormProps {
   vendors: Vendor[];
   onPlaceOrder: (vendor: string, product: string, quantity: number, dates: Date[]) => void;
   onCancel: () => void;
+  allOrders: (date: Date) => any[];
+  onDeleteOrder: (orderId: string) => void;
 }
 
-const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormProps) => {
+const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, onDeleteOrder }: OrderFormProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [selectedVendor, setSelectedVendor] = useState("");
@@ -136,6 +138,24 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormP
 
   const removeDate = (dateToRemove: Date) => {
     setSelectedDates(prev => prev.filter(d => d.toDateString() !== dateToRemove.toDateString()));
+  };
+
+  // Get orders for selected product on calendar
+  const hasOrdersOnDate = (date: Date) => {
+    if (!selectedVendor || !selectedProduct) return false;
+    const orders = allOrders(date);
+    return orders.some(order => 
+      order.vendor === selectedVendor && order.product === selectedProduct
+    );
+  };
+
+  // Get orders for a specific date
+  const getOrdersForDate = (date: Date) => {
+    if (!selectedVendor || !selectedProduct) return [];
+    const orders = allOrders(date);
+    return orders.filter(order => 
+      order.vendor === selectedVendor && order.product === selectedProduct
+    );
   };
 
   const checkCustomerDetailsComplete = async () => {
@@ -326,34 +346,92 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel }: OrderFormP
               onDayClick={handleDateSelect}
               className="rounded-md border pointer-events-auto"
               modifiers={{
-                selected: (date) => selectedDates.some(d => d.toDateString() === date.toDateString())
+                selected: (date) => selectedDates.some(d => d.toDateString() === date.toDateString()),
+                hasOrders: (date) => hasOrdersOnDate(date)
               }}
               modifiersStyles={{
                 selected: {
                   backgroundColor: '#dbeafe',
                   color: '#1e40af',
                   fontWeight: 'bold'
+                },
+                hasOrders: {
+                  backgroundColor: '#dcfce7',
+                  color: '#166534',
+                  fontWeight: 'bold'
                 }
               }}
             />
-            <p className="text-sm text-gray-600 mt-2">
-              Click dates to select/deselect • Hold Shift + Click to select range
-            </p>
+            <div className="mt-2 space-y-2">
+              <p className="text-sm text-gray-600">
+                Click dates to select/deselect • Hold Shift + Click to select range
+              </p>
+              <div className="flex flex-col gap-1 text-xs text-gray-600">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-blue-100 border border-blue-300 rounded"></div>
+                  <span>Selected dates</span>
+                </div>
+                {selectedVendor && selectedProduct && (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-green-100 border border-green-600 rounded"></div>
+                    <span>Dates with existing orders</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex space-x-2">
-          <Button 
-            type="button"
-            onClick={handlePlaceOrder} 
-            className="bg-green-600 hover:bg-green-700"
-            disabled={selectedDates.length === 0 || !selectedVendor || !selectedProduct || isLoadingCustomer}
-          >
-            Schedule Order for {selectedDates.length} {selectedDates.length === 1 ? 'Day' : 'Days'}
-          </Button>
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
+        <div className="space-y-4">
+          {selectedVendor && selectedProduct && selectedDates.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium mb-2">Orders on Selected Dates</label>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {selectedDates.map((date, index) => {
+                  const ordersOnDate = getOrdersForDate(date);
+                  return (
+                    <div key={index}>
+                      <div className="text-sm font-medium text-gray-700">
+                        {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      </div>
+                      {ordersOnDate.length > 0 ? (
+                        <div className="ml-4 space-y-1">
+                          {ordersOnDate.map((order) => (
+                            <div key={order.id} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded">
+                              <span className="text-gray-600">
+                                {order.quantity} {order.unit}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onDeleteOrder(order.id)}
+                                className="h-6 w-6 p-0 hover:bg-red-100"
+                              >
+                                <Trash2 className="h-3 w-3 text-red-600" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="ml-4 text-sm text-gray-500">No existing orders</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          
+          <div className="flex space-x-2">
+            <Button 
+              type="button"
+              onClick={handlePlaceOrder} 
+              className="bg-green-600 hover:bg-green-700"
+              disabled={selectedDates.length === 0 || !selectedVendor || !selectedProduct || isLoadingCustomer}
+            >
+              Schedule Order for {selectedDates.length} {selectedDates.length === 1 ? 'Day' : 'Days'}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
