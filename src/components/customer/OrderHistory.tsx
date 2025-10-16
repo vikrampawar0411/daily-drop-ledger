@@ -310,25 +310,6 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
         </CardContent>
       </Card>
 
-      {/* Order Summary */}
-      <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-sm text-muted-foreground">Total Quantity</div>
-              <div className="text-2xl font-bold text-blue-900">{orderSummary.totalQuantity}</div>
-            </div>
-            <div className="text-center">
-              <div className="text-sm text-muted-foreground">Total Spending</div>
-              <div className="text-2xl font-bold text-purple-900">₹{orderSummary.totalSpending}</div>
-            </div>
-            <div className="text-center">
-              <div className="text-sm text-muted-foreground">Delivered Orders Spending</div>
-              <div className="text-2xl font-bold text-green-900">₹{orderSummary.deliveredSpending}</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Orders Table */}
       <Card>
@@ -351,7 +332,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                 {filteredOrders.map((order) => (
                   <TableRow 
                     key={order.id} 
-                    className={`cursor-pointer hover:bg-muted/50 ${isSunday(order.order_date) ? 'bg-red-50 hover:bg-red-100' : ''}`}
+                    className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleModifyOrder(order)}
                   >
                     <TableCell className={`font-semibold ${isSunday(order.order_date) ? 'text-red-700' : ''}`}>
@@ -387,6 +368,37 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                     </TableCell>
                   </TableRow>
                 ))}
+                {/* Summary Row */}
+                {filteredOrders.length > 0 && (
+                  <>
+                    <TableRow className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                      <TableCell colSpan={4} className="text-right">TOTAL (All Orders):</TableCell>
+                      <TableCell>{orderSummary.totalQuantity}</TableCell>
+                      <TableCell>₹{orderSummary.totalSpending}</TableCell>
+                      <TableCell colSpan={2}></TableCell>
+                    </TableRow>
+                    <TableRow className="bg-green-50 font-semibold">
+                      <TableCell colSpan={4} className="text-right">Delivered Orders:</TableCell>
+                      <TableCell>{filteredOrders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}</TableCell>
+                      <TableCell>₹{orderSummary.deliveredSpending}</TableCell>
+                      <TableCell colSpan={2}></TableCell>
+                    </TableRow>
+                    <TableRow className="bg-blue-50 font-semibold">
+                      <TableCell colSpan={4} className="text-right">Pending Orders:</TableCell>
+                      <TableCell>{filteredOrders.filter(o => o.status === 'pending').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}</TableCell>
+                      <TableCell>₹{Math.round(filteredOrders.filter(o => o.status === 'pending').reduce((sum, o) => sum + Number(o.total_amount), 0))}</TableCell>
+                      <TableCell colSpan={2}></TableCell>
+                    </TableRow>
+                    {filteredOrders.some(o => o.status === 'cancelled') && (
+                      <TableRow className="bg-red-50 font-semibold">
+                        <TableCell colSpan={4} className="text-right">Cancelled Orders:</TableCell>
+                        <TableCell>{filteredOrders.filter(o => o.status === 'cancelled').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}</TableCell>
+                        <TableCell>₹{Math.round(filteredOrders.filter(o => o.status === 'cancelled').reduce((sum, o) => sum + Number(o.total_amount), 0))}</TableCell>
+                        <TableCell colSpan={2}></TableCell>
+                      </TableRow>
+                    )}
+                  </>
+                )}
               </TableBody>
             </Table>
           </div>

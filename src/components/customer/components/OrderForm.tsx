@@ -19,9 +19,10 @@ interface OrderFormProps {
   onCancel: () => void;
   allOrders: (date: Date) => any[];
   onDeleteOrder: (orderId: string) => void;
+  hasAnyOrdersOnDate?: (date: Date) => boolean;
 }
 
-const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, onDeleteOrder }: OrderFormProps) => {
+const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, onDeleteOrder, hasAnyOrdersOnDate }: OrderFormProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [selectedVendor, setSelectedVendor] = useState("");
@@ -367,7 +368,13 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
               className="rounded-md border pointer-events-auto"
               modifiers={{
                 selected: (date) => selectedDates.some(d => d.toDateString() === date.toDateString()),
-                hasOrders: (date) => hasOrdersOnDate(date) && !selectedDates.some(d => d.toDateString() === date.toDateString())
+                hasOrders: (date) => {
+                  // Show green for dates with existing orders (for selected vendor/product if selected)
+                  if (!selectedVendor || !selectedProduct) {
+                    return hasAnyOrdersOnDate ? hasAnyOrdersOnDate(date) : false;
+                  }
+                  return hasOrdersOnDate(date) && !selectedDates.some(d => d.toDateString() === date.toDateString());
+                }
               }}
               modifiersStyles={{
                 selected: {

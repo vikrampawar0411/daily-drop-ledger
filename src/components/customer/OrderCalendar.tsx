@@ -98,6 +98,11 @@ const OrderCalendar = () => {
         onCancel={() => {}}
         allOrders={getOrdersForDate}
         onDeleteOrder={handleDeleteOrder}
+        hasAnyOrdersOnDate={(date) => {
+          const dateStr = date.toISOString().split('T')[0];
+          const orders = getOrdersForDate(date);
+          return orders.length > 0;
+        }}
       />
     </div>
   );

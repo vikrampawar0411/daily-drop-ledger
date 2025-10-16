@@ -361,33 +361,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
             </Card>
           </div>
 
-          {/* Order Summary for Selected Period */}
-          <div className="mt-6 mb-4">
-            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center">
-                    <div className="text-sm text-muted-foreground">Total Quantity</div>
-                    <div className="text-2xl font-bold text-blue-900">
-                      {monthlyStats.orders.reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-sm text-muted-foreground">Total Spending</div>
-                    <div className="text-2xl font-bold text-purple-900">
-                      ₹{Math.round(monthlyStats.orders.reduce((sum, o) => sum + Number(o.total_amount), 0))}
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-sm text-muted-foreground">Delivered Orders Spending</div>
-                    <div className="text-2xl font-bold text-green-900">
-                      ₹{Math.round(monthlyStats.orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + Number(o.total_amount), 0))}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
 
           {/* Orders Table for Selected Period */}
           <div>
@@ -407,43 +380,72 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                 </TableHeader>
                 <TableBody>
                   {monthlyStats.orders.length > 0 ? (
-                    monthlyStats.orders.map((order) => {
-                      const orderDate = new Date(order.order_date);
-                      const isSunday = orderDate.getDay() === 0;
-                      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                      const dayName = days[orderDate.getDay()];
-                      
-                      return (
-                        <TableRow 
-                          key={order.id} 
-                          className={`cursor-pointer hover:bg-muted/50 ${isSunday ? 'bg-red-50 hover:bg-red-100' : ''}`}
-                          onClick={() => onNavigate?.('history')}
-                        >
-                          <TableCell className={`font-semibold ${isSunday ? 'text-red-700' : ''}`}>
-                            {dayName}
-                          </TableCell>
-                          <TableCell>{orderDate.toLocaleDateString()}</TableCell>
-                          <TableCell className="font-medium text-blue-700">{order.vendor.name}</TableCell>
-                          <TableCell className="font-medium text-green-700">{order.product.name}</TableCell>
-                          <TableCell>{order.quantity} {order.unit}</TableCell>
-                          <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
-                          <TableCell>
-                            <Badge className={
-                              order.status === 'delivered' 
-                                ? 'bg-green-100 text-green-800' 
-                                : order.status === 'cancelled'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-blue-100 text-blue-800'
-                            }>
-                              {order.status === 'delivered' && <CheckCircle className="h-4 w-4 mr-1" />}
-                              {order.status === 'cancelled' && <XCircle className="h-4 w-4 mr-1" />}
-                              {order.status === 'pending' && <Clock className="h-4 w-4 mr-1" />}
-                              <span className="capitalize">{order.status}</span>
-                            </Badge>
-                          </TableCell>
+                    <>
+                      {monthlyStats.orders.map((order) => {
+                        const orderDate = new Date(order.order_date);
+                        const isSunday = orderDate.getDay() === 0;
+                        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                        const dayName = days[orderDate.getDay()];
+                        
+                        return (
+                          <TableRow 
+                            key={order.id} 
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => onNavigate?.('history')}
+                          >
+                            <TableCell className={`font-semibold ${isSunday ? 'text-red-700' : ''}`}>
+                              {dayName}
+                            </TableCell>
+                            <TableCell>{orderDate.toLocaleDateString()}</TableCell>
+                            <TableCell className="font-medium text-blue-700">{order.vendor.name}</TableCell>
+                            <TableCell className="font-medium text-green-700">{order.product.name}</TableCell>
+                            <TableCell>{order.quantity} {order.unit}</TableCell>
+                            <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
+                            <TableCell>
+                              <Badge className={
+                                order.status === 'delivered' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : order.status === 'cancelled'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-blue-100 text-blue-800'
+                              }>
+                                {order.status === 'delivered' && <CheckCircle className="h-4 w-4 mr-1" />}
+                                {order.status === 'cancelled' && <XCircle className="h-4 w-4 mr-1" />}
+                                {order.status === 'pending' && <Clock className="h-4 w-4 mr-1" />}
+                                <span className="capitalize">{order.status}</span>
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {/* Summary Rows */}
+                      <TableRow className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                        <TableCell colSpan={4} className="text-right">TOTAL (All Orders):</TableCell>
+                        <TableCell>{monthlyStats.orders.reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}</TableCell>
+                        <TableCell>₹{Math.round(monthlyStats.orders.reduce((sum, o) => sum + Number(o.total_amount), 0))}</TableCell>
+                        <TableCell></TableCell>
+                      </TableRow>
+                      <TableRow className="bg-green-50 font-semibold">
+                        <TableCell colSpan={4} className="text-right">Delivered Orders:</TableCell>
+                        <TableCell>{monthlyStats.orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}</TableCell>
+                        <TableCell>₹{monthlyStats.deliveredSpend}</TableCell>
+                        <TableCell></TableCell>
+                      </TableRow>
+                      <TableRow className="bg-blue-50 font-semibold">
+                        <TableCell colSpan={4} className="text-right">Pending Orders:</TableCell>
+                        <TableCell>{monthlyStats.orders.filter(o => o.status === 'pending').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}</TableCell>
+                        <TableCell>₹{monthlyStats.forecastedBill}</TableCell>
+                        <TableCell></TableCell>
+                      </TableRow>
+                      {monthlyStats.orders.some(o => o.status === 'cancelled') && (
+                        <TableRow className="bg-red-50 font-semibold">
+                          <TableCell colSpan={4} className="text-right">Cancelled Orders:</TableCell>
+                          <TableCell>{monthlyStats.orders.filter(o => o.status === 'cancelled').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}</TableCell>
+                          <TableCell>₹{Math.round(monthlyStats.orders.filter(o => o.status === 'cancelled').reduce((sum, o) => sum + Number(o.total_amount), 0))}</TableCell>
+                          <TableCell></TableCell>
                         </TableRow>
-                      );
-                    })
+                      )}
+                    </>
                   ) : (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-gray-500">
