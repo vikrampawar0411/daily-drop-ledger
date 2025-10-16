@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { LogOut, Shield } from "lucide-react";
+import { LogOut, Shield, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import Dashboard from "@/components/Dashboard";
+import { supabase } from "@/integrations/supabase/client";
 import CustomerManagement from "@/components/vendor/CustomerManagement";
 import VendorManagement from "./VendorManagement";
 import OrderManagement from "@/components/vendor/OrderManagement";
@@ -15,8 +16,37 @@ import { ServiceAreaManagement } from "./ServiceAreaManagement";
 
 const AdminApp = () => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [adminName, setAdminName] = useState("");
+  const [connectionCount, setConnectionCount] = useState(0);
+
+  useEffect(() => {
+    const loadAdminData = async () => {
+      if (!user) return;
+      
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile?.name) {
+          setAdminName(profile.name);
+        }
+
+        const { count } = await supabase
+          .from('vendor_customer_connections')
+          .select('*', { count: 'exact', head: true });
+        setConnectionCount(count || 0);
+      } catch (error) {
+        console.error('Error loading admin data:', error);
+      }
+    };
+
+    loadAdminData();
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -35,11 +65,18 @@ const AdminApp = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
-                <p className="text-sm text-gray-600">Full System Access</p>
+                <p className="text-sm text-gray-600">Welcome back, {adminName || 'Administrator'}</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600 font-semibold">Administrator</span>
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <Users className="h-4 w-4" />
+                <span>{connectionCount} connections</span>
+              </div>
+              <span className="text-sm text-gray-600 font-semibold flex items-center space-x-1">
+                <Shield className="h-4 w-4" />
+                <span>Administrator</span>
+              </span>
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out

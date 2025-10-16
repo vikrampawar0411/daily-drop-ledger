@@ -13,11 +13,7 @@ import { AreaSocietyManagement } from "./AreaSocietyManagement";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVendors } from "@/hooks/useVendors";
 
-interface VendorAppProps {
-  onBack: () => void;
-}
-
-const VendorApp = ({ onBack }: VendorAppProps) => {
+const VendorApp = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
   const { signOut, user } = useAuth();
@@ -38,9 +34,6 @@ const VendorApp = ({ onBack }: VendorAppProps) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
-              <Button variant="ghost" size="sm" onClick={onBack} className="mr-2">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
               <div className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-green-600 text-white px-3 py-2 rounded-lg">
                 <Milk className="h-6 w-6" />
                 <Newspaper className="h-6 w-6" />

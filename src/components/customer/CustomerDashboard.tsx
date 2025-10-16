@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, ShoppingCart, Calendar, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock } from "lucide-react";
@@ -6,19 +6,55 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { VendorOrderTabs } from "./components/VendorOrderTabs";
 import { useOrders } from "@/hooks/useOrders";
 import { useVendors } from "@/hooks/useVendors";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CustomerDashboardProps {
   onNavigate?: (tab: string) => void;
 }
 
 const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
+  const { user } = useAuth();
   const { orders, loading: ordersLoading } = useOrders();
   const { vendors, loading: vendorsLoading } = useVendors();
+  const [customerName, setCustomerName] = useState("");
+  const [connectionCount, setConnectionCount] = useState(0);
+  const [loadingWelcome, setLoadingWelcome] = useState(true);
   
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   });
+
+  useEffect(() => {
+    const loadCustomerData = async () => {
+      if (!user) return;
+      
+      try {
+        const { data: customer } = await supabase
+          .from('customers')
+          .select('id, name')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (customer) {
+          setCustomerName(customer.name);
+          const { count } = await supabase
+            .from('vendor_customer_connections')
+            .select('*', { count: 'exact', head: true })
+            .eq('customer_id', customer.id);
+          setConnectionCount(count || 0);
+        }
+      } catch (error) {
+        console.error('Error loading customer data:', error);
+      } finally {
+        setLoadingWelcome(false);
+      }
+    };
+
+    loadCustomerData();
+  }, [user]);
 
   const monthOptions = useMemo(() => {
     const options = [];
@@ -130,8 +166,20 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-lg p-6">
-        <h2 className="text-2xl font-bold mb-2">Welcome back!</h2>
-        <p className="text-green-100">Manage your daily essentials with ease</p>
+        {loadingWelcome ? (
+          <Skeleton className="h-16 w-full bg-white/20" />
+        ) : (
+          <>
+            <h2 className="text-2xl font-bold mb-2">Welcome back, {customerName}!</h2>
+            <div className="flex items-center space-x-4 text-green-100">
+              <div className="flex items-center space-x-2">
+                <Users className="h-4 w-4" />
+                <span>{connectionCount} Connected Vendors</span>
+              </div>
+              <span className="px-2 py-1 bg-white/20 rounded text-sm">Customer</span>
+            </div>
+          </>
+        )}
       </div>
 
 

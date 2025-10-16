@@ -28,11 +28,11 @@ const Index = () => {
   };
 
   if (userType === 'vendor') {
-    return <VendorApp onBack={() => setUserType(null)} />;
+    return <VendorApp />;
   }
 
   if (userType === 'customer') {
-    return <CustomerApp onBack={() => setUserType(null)} />;
+    return <CustomerApp />;
   }
 
   return (

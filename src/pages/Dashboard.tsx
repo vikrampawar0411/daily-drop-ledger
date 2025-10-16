@@ -22,10 +22,6 @@ const Dashboard = () => {
     }
   }, [user, getUserRole, navigate]);
 
-  const handleBack = () => {
-    navigate('/');
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50">
@@ -42,11 +38,11 @@ const Dashboard = () => {
   }
 
   if (userRole === 'vendor') {
-    return <VendorApp onBack={handleBack} />;
+    return <VendorApp />;
   }
 
   if (userRole === 'customer') {
-    return <CustomerApp onBack={handleBack} />;
+    return <CustomerApp />;
   }
 
   return null;

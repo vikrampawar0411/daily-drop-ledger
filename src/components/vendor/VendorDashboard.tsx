@@ -1,18 +1,53 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Milk, Newspaper, Users, DollarSign, TrendingUp, MapPin, Receipt } from "lucide-react";
+import { Milk, Newspaper, Users, DollarSign, TrendingUp, MapPin, Receipt, ShieldCheck } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
 import { Skeleton } from "@/components/ui/skeleton";
 import { startOfWeek, startOfMonth, startOfYear, endOfDay } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface VendorDashboardProps {
   onNavigate?: (tab: string) => void;
 }
 
 const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
+  const { user } = useAuth();
   const { orders, loading } = useOrders();
   const [timeRange, setTimeRange] = useState<"today" | "week" | "month" | "year">("today");
+  const [vendorName, setVendorName] = useState("");
+  const [connectionCount, setConnectionCount] = useState(0);
+  const [loadingWelcome, setLoadingWelcome] = useState(true);
+
+  useEffect(() => {
+    const loadVendorData = async () => {
+      if (!user) return;
+      
+      try {
+        const { data: vendor } = await supabase
+          .from('vendors')
+          .select('id, name')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (vendor) {
+          setVendorName(vendor.name);
+          const { count } = await supabase
+            .from('vendor_customer_connections')
+            .select('*', { count: 'exact', head: true })
+            .eq('vendor_id', vendor.id);
+          setConnectionCount(count || 0);
+        }
+      } catch (error) {
+        console.error('Error loading vendor data:', error);
+      } finally {
+        setLoadingWelcome(false);
+      }
+    };
+
+    loadVendorData();
+  }, [user]);
 
   const getDateRange = () => {
     const now = new Date();
@@ -99,6 +134,27 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
 
   return (
     <div className="space-y-6">
+      {/* Welcome Section */}
+      <div className="bg-gradient-to-r from-blue-500 to-green-500 text-white rounded-lg p-6">
+        {loadingWelcome ? (
+          <Skeleton className="h-16 w-full bg-white/20" />
+        ) : (
+          <>
+            <div className="flex items-center space-x-2 mb-2">
+              <h2 className="text-2xl font-bold">Welcome back, {vendorName}!</h2>
+              <ShieldCheck className="h-6 w-6" />
+            </div>
+            <div className="flex items-center space-x-4 text-blue-100">
+              <div className="flex items-center space-x-2">
+                <Users className="h-4 w-4" />
+                <span>{connectionCount} Connected Customers</span>
+              </div>
+              <span className="px-2 py-1 bg-white/20 rounded text-sm">Vendor</span>
+            </div>
+          </>
+        )}
+      </div>
+
       {/* Time Range Selector */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Overview</h2>
