@@ -209,7 +209,7 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
 
           <Card 
             className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 cursor-pointer hover:opacity-90 transition-opacity"
-            onClick={() => onNavigate?.('customers')}
+            onClick={() => onNavigate?.('hierarchy')}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium opacity-90">Societies</CardTitle>
