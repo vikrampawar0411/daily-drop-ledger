@@ -74,7 +74,7 @@ const SocietyHierarchyView = () => {
     return society ? Array.from(society.wings.values()) : [];
   }, [navigation, societyData]);
 
-  // Get flats for selected wing
+  // Get flats for selected wing - only pending orders
   const flatsData = useMemo(() => {
     if (navigation.level !== "flats" || !navigation.societyId || !navigation.wingNumber) return [];
     
@@ -84,22 +84,23 @@ const SocietyHierarchyView = () => {
     if (!wing) return [];
     
     const grouped = new Map();
-    wing.orders.forEach(order => {
-      const flatNumber = order.customer?.flat_plot_house_number || "Unknown";
-      const customerName = order.customer?.name || "Unknown Customer";
-      
-      if (!grouped.has(flatNumber)) {
-        grouped.set(flatNumber, {
-          flatNumber,
-          customerName,
-          address: order.customer?.address,
-          phone: order.customer?.phone,
-          orders: []
-        });
-      }
-      
-      grouped.get(flatNumber).orders.push(order);
-    });
+    // Filter only pending orders
+    wing.orders
+      .filter(order => order.status === 'pending')
+      .forEach(order => {
+        const flatNumber = order.customer?.flat_plot_house_number || "Unknown";
+        const customerName = order.customer?.name || "Unknown Customer";
+        
+        if (!grouped.has(flatNumber)) {
+          grouped.set(flatNumber, {
+            flatNumber,
+            customerName,
+            orders: []
+          });
+        }
+        
+        grouped.get(flatNumber).orders.push(order);
+      });
     
     return Array.from(grouped.values());
   }, [navigation, societyData]);
@@ -234,83 +235,48 @@ const SocietyHierarchyView = () => {
         </div>
       )}
 
-      {/* Flats View */}
+      {/* Flats View - Simple view for pending orders */}
       {navigation.level === "flats" && (
-        <div className="space-y-4">
-          {flatsData.map((flat) => (
-            <Card key={flat.flatNumber}>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-blue-100 p-2 rounded-lg">
-                      <Home className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <div className="text-lg font-bold">Flat {flat.flatNumber}</div>
-                      <div className="text-sm text-gray-600">{flat.customerName}</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-gray-600">Total Orders</div>
-                    <div className="text-xl font-bold text-blue-600">{flat.orders.length}</div>
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4 pb-4 border-b">
-                    <div>
-                      <div className="text-sm text-gray-600">Phone</div>
-                      <div className="font-medium">{flat.phone || "N/A"}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Address</div>
-                      <div className="font-medium">{flat.address || "N/A"}</div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-semibold mb-3 flex items-center space-x-2">
-                      <Package className="h-4 w-4" />
-                      <span>Products to Deliver</span>
-                    </h4>
-                    <div className="space-y-2">
-                      {flat.orders.map((order) => (
-                        <div 
-                          key={order.id} 
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                        >
-                          <div className="flex-1">
-                            <div className="font-medium">{order.product.name}</div>
-                            <div className="text-sm text-gray-600">
-                              {new Date(order.order_date).toLocaleDateString()}
-                            </div>
-                          </div>
-                          <div className="text-center mx-4">
-                            <div className="font-bold text-blue-600">{order.quantity} {order.unit}</div>
-                            <div className="text-xs text-gray-500">Quantity</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="font-bold text-green-600">₹{order.total_amount}</div>
-                            <div className="text-xs text-gray-500">Amount</div>
-                          </div>
-                          <Badge 
-                            className={
-                              order.status === 'pending' ? 'bg-orange-100 text-orange-800' :
-                              order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                              'bg-red-100 text-red-800'
-                            }
-                          >
-                            {order.status}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {flatsData.length === 0 ? (
+            <Card className="col-span-full">
+              <CardContent className="pt-6">
+                <p className="text-center text-gray-600">No pending orders for this wing</p>
               </CardContent>
             </Card>
-          ))}
+          ) : (
+            flatsData.map((flat) => (
+              <Card key={flat.flatNumber} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center space-x-2">
+                    <Home className="h-5 w-5 text-blue-600" />
+                    <span className="text-lg">Flat {flat.flatNumber}</span>
+                  </CardTitle>
+                  <p className="text-sm text-gray-600">{flat.customerName}</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {flat.orders.map((order) => (
+                      <div 
+                        key={order.id} 
+                        className="flex items-center justify-between p-2 bg-orange-50 rounded border-l-4 border-orange-500"
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{order.product.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {new Date(order.order_date).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-blue-600">{order.quantity} {order.unit}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       )}
     </div>
