@@ -30,15 +30,18 @@ const OrderManagement = () => {
 
   const getDateRange = () => {
     const now = new Date();
+    const futureDate = new Date();
+    futureDate.setFullYear(futureDate.getFullYear() + 1); // Include next year's orders
+    
     switch (dateRange) {
       case "week":
-        return { start: startOfWeek(now), end: endOfDay(now) };
+        return { start: startOfWeek(now), end: futureDate };
       case "month":
-        return { start: startOfMonth(now), end: endOfDay(now) };
+        return { start: startOfMonth(now), end: futureDate };
       case "year":
-        return { start: startOfYear(now), end: endOfDay(now) };
+        return { start: startOfYear(now), end: futureDate };
       default: // today
-        return { start: new Date(now.setHours(0, 0, 0, 0)), end: endOfDay(now) };
+        return { start: new Date(now.setHours(0, 0, 0, 0)), end: futureDate };
     }
   };
 
@@ -174,10 +177,10 @@ const OrderManagement = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="week">This Week</SelectItem>
-                  <SelectItem value="month">This Month</SelectItem>
-                  <SelectItem value="year">This Year</SelectItem>
+                  <SelectItem value="today">Today & Future</SelectItem>
+                  <SelectItem value="week">This Week & Future</SelectItem>
+                  <SelectItem value="month">This Month & Future</SelectItem>
+                  <SelectItem value="year">This Year & Future</SelectItem>
                 </SelectContent>
               </Select>
             </div>

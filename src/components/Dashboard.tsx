@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Store, Users, ShoppingCart, Package } from "lucide-react";
+import { Store, Users, ShoppingCart, Package, TrendingUp, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -72,10 +73,11 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
         </div>
       </div>
     );
@@ -83,7 +85,13 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Overview Cards */}
+      {/* Welcome Section */}
+      <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg p-6">
+        <h2 className="text-2xl font-bold mb-2">Admin Dashboard</h2>
+        <p className="text-red-100">Complete overview of the system</p>
+      </div>
+
+      {/* System Overview */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-4">System Overview</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -139,27 +147,33 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <ShoppingCart className="h-5 w-5 text-blue-600" />
+              <CardTitle className="flex items-center space-x-2 text-blue-600">
+                <ShoppingCart className="h-5 w-5" />
                 <span>Orders Today</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-blue-600">{stats.todayOrders}</div>
-              <p className="text-sm text-gray-600 mt-2">orders placed today</p>
+              <div className="flex items-center space-x-2 text-sm text-gray-600 mt-2">
+                <TrendingUp className="h-4 w-4" />
+                <span>orders placed today</span>
+              </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Package className="h-5 w-5 text-green-600" />
+              <CardTitle className="flex items-center space-x-2 text-green-600">
+                <DollarSign className="h-5 w-5" />
                 <span>Today's Revenue</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-green-600">₹{stats.todayRevenue.toFixed(2)}</div>
-              <p className="text-sm text-gray-600 mt-2">total earnings today</p>
+              <div className="flex items-center space-x-2 text-sm text-gray-600 mt-2">
+                <TrendingUp className="h-4 w-4" />
+                <span>total earnings today</span>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -170,20 +184,20 @@ const Dashboard = () => {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">This Month's Overview</h3>
         <Card>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">₹{stats.totalRevenue.toFixed(2)}</div>
-                <div className="text-sm text-gray-600">Total Revenue</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
+                <div className="text-3xl font-bold text-blue-600">₹{stats.totalRevenue.toFixed(2)}</div>
+                <div className="text-sm text-gray-600 mt-2">Total Revenue</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{stats.thisMonthOrders}</div>
-                <div className="text-sm text-gray-600">Orders This Month</div>
+              <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg">
+                <div className="text-3xl font-bold text-purple-600">{stats.thisMonthOrders}</div>
+                <div className="text-sm text-gray-600 mt-2">Orders This Month</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">
+              <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg">
+                <div className="text-3xl font-bold text-orange-600">
                   ₹{stats.thisMonthOrders > 0 ? (stats.totalRevenue / stats.thisMonthOrders).toFixed(2) : '0.00'}
                 </div>
-                <div className="text-sm text-gray-600">Avg Order Value</div>
+                <div className="text-sm text-gray-600 mt-2">Avg Order Value</div>
               </div>
             </div>
           </CardContent>

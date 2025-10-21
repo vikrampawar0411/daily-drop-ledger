@@ -4,12 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Milk, Newspaper, Users, Receipt, TrendingUp, Calendar, MapPin, ArrowLeft, LogOut } from "lucide-react";
+import { Milk, Newspaper, Users, Receipt, TrendingUp, Calendar, MapPin, ArrowLeft, LogOut, Package } from "lucide-react";
 import VendorDashboard from "./VendorDashboard";
 import CustomerManagement from "./CustomerManagement";
 import OrderManagement from "./OrderManagement";
 import ProductManagement from "./ProductManagement";
 import { AreaSocietyManagement } from "./AreaSocietyManagement";
+import SocietyHierarchyView from "./SocietyHierarchyView";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVendors } from "@/hooks/useVendors";
 
@@ -61,7 +62,7 @@ const VendorApp = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-fit lg:grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6 lg:w-fit lg:grid-cols-6">
             <TabsTrigger value="dashboard" className="flex items-center space-x-2">
               <TrendingUp className="h-4 w-4" />
               <span>Dashboard</span>
@@ -74,8 +75,12 @@ const VendorApp = () => {
               <Receipt className="h-4 w-4" />
               <span>Orders</span>
             </TabsTrigger>
-            <TabsTrigger value="products" className="flex items-center space-x-2">
+            <TabsTrigger value="hierarchy" className="flex items-center space-x-2">
               <MapPin className="h-4 w-4" />
+              <span>Delivery View</span>
+            </TabsTrigger>
+            <TabsTrigger value="products" className="flex items-center space-x-2">
+              <Package className="h-4 w-4" />
               <span>Products</span>
             </TabsTrigger>
             <TabsTrigger value="areas" className="flex items-center space-x-2">
@@ -94,6 +99,10 @@ const VendorApp = () => {
 
           <TabsContent value="orders">
             <OrderManagement />
+          </TabsContent>
+
+          <TabsContent value="hierarchy">
+            <SocietyHierarchyView />
           </TabsContent>
 
           <TabsContent value="products">
