@@ -1,21 +1,45 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, MapPin, Users, Package } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
+import { startOfWeek, startOfMonth, startOfYear, endOfDay } from "date-fns";
 
 const AreaHierarchyView = () => {
   const { orders, loading } = useOrders();
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [selectedSociety, setSelectedSociety] = useState<string | null>(null);
+  const [timeRange, setTimeRange] = useState<"today" | "week" | "month" | "year">("today");
+
+  const getDateRange = () => {
+    const now = new Date();
+    switch (timeRange) {
+      case "week":
+        return { start: startOfWeek(now), end: endOfDay(now) };
+      case "month":
+        return { start: startOfMonth(now), end: endOfDay(now) };
+      case "year":
+        return { start: startOfYear(now), end: endOfDay(now) };
+      default: // today
+        return { start: new Date(now.setHours(0, 0, 0, 0)), end: endOfDay(now) };
+    }
+  };
+
+  // Filter orders by time range
+  const filteredOrders = useMemo(() => {
+    const { start, end } = getDateRange();
+    return orders.filter(order => {
+      const orderDate = new Date(order.order_date);
+      return orderDate >= start && orderDate <= end && order.status === 'pending';
+    });
+  }, [orders, timeRange]);
 
   // Get unique areas with order counts
   const areasData = useMemo(() => {
     const areaMap = new Map();
     
-    orders
-      .filter(order => order.status === 'pending')
-      .forEach(order => {
+    filteredOrders.forEach(order => {
         const area = order.customer?.address || 'Unknown Area';
         const society = order.customer?.society_id || 'Unknown Society';
         
@@ -37,7 +61,7 @@ const AreaHierarchyView = () => {
       societyCount: area.societies.size,
       orderCount: area.orderCount
     })).sort((a, b) => b.orderCount - a.orderCount);
-  }, [orders]);
+  }, [filteredOrders]);
 
   // Get societies for selected area
   const societiesData = useMemo(() => {
@@ -45,8 +69,8 @@ const AreaHierarchyView = () => {
     
     const societyMap = new Map();
     
-    orders
-      .filter(order => order.status === 'pending' && order.customer?.address === selectedArea)
+    filteredOrders
+      .filter(order => order.customer?.address === selectedArea)
       .forEach(order => {
         const societyId = order.customer?.society_id || 'unknown';
         const societyName = order.customer?.wing_number 
@@ -71,7 +95,7 @@ const AreaHierarchyView = () => {
       });
     
     return Array.from(societyMap.values()).sort((a, b) => b.orderCount - a.orderCount);
-  }, [orders, selectedArea]);
+  }, [filteredOrders, selectedArea]);
 
   // Get flats for selected society
   const flatsData = useMemo(() => {
@@ -79,9 +103,8 @@ const AreaHierarchyView = () => {
     
     const flatMap = new Map();
     
-    orders
+    filteredOrders
       .filter(order => 
-        order.status === 'pending' &&
         order.customer?.address === selectedArea &&
         order.customer?.society_id === selectedSociety
       )
@@ -104,7 +127,7 @@ const AreaHierarchyView = () => {
       });
     
     return Array.from(flatMap.values());
-  }, [orders, selectedArea, selectedSociety]);
+  }, [filteredOrders, selectedArea, selectedSociety]);
 
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
@@ -114,9 +137,22 @@ const AreaHierarchyView = () => {
   if (!selectedArea) {
     return (
       <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Areas Overview</h2>
-          <p className="text-gray-600">Select an area to view delivery details</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Areas Overview</h2>
+            <p className="text-gray-600">Select an area to view delivery details</p>
+          </div>
+          <Select value={timeRange} onValueChange={(v: any) => setTimeRange(v)}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="week">This Week</SelectItem>
+              <SelectItem value="month">This Month</SelectItem>
+              <SelectItem value="year">This Year</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {areasData.length > 0 ? (

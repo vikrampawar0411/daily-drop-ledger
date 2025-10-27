@@ -2,10 +2,12 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, Home, Users, Package, ArrowLeft, ChevronRight } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
 import { useSocieties } from "@/hooks/useSocieties";
 import { useAreas } from "@/hooks/useAreas";
+import { startOfWeek, startOfMonth, startOfYear, endOfDay } from "date-fns";
 
 type ViewLevel = "societies" | "wings" | "flats";
 
@@ -21,12 +23,36 @@ const SocietyHierarchyView = () => {
   const { societies } = useSocieties();
   const { areas } = useAreas();
   const [navigation, setNavigation] = useState<NavigationState>({ level: "societies" });
+  const [timeRange, setTimeRange] = useState<"today" | "week" | "month" | "year">("today");
+
+  const getDateRange = () => {
+    const now = new Date();
+    switch (timeRange) {
+      case "week":
+        return { start: startOfWeek(now), end: endOfDay(now) };
+      case "month":
+        return { start: startOfMonth(now), end: endOfDay(now) };
+      case "year":
+        return { start: startOfYear(now), end: endOfDay(now) };
+      default: // today
+        return { start: new Date(now.setHours(0, 0, 0, 0)), end: endOfDay(now) };
+    }
+  };
+
+  // Filter orders by time range
+  const filteredOrders = useMemo(() => {
+    const { start, end } = getDateRange();
+    return orders.filter(order => {
+      const orderDate = new Date(order.order_date);
+      return orderDate >= start && orderDate <= end;
+    });
+  }, [orders, timeRange]);
 
   // Group orders by society
   const societyData = useMemo(() => {
     const grouped = new Map();
     
-    orders.forEach(order => {
+    filteredOrders.forEach(order => {
       const societyId = order.customer?.society_id;
       const societyName = societies.find(s => s.id === societyId)?.name || "Unknown Society";
       
@@ -64,7 +90,7 @@ const SocietyHierarchyView = () => {
     });
     
     return Array.from(grouped.values());
-  }, [orders, societies]);
+  }, [filteredOrders, societies]);
 
   // Get wings for selected society
   const wingsData = useMemo(() => {
@@ -139,13 +165,26 @@ const SocietyHierarchyView = () => {
             {navigation.level === "flats" && `${navigation.societyName} - Wing ${navigation.wingNumber} - Flats`}
           </h2>
         </div>
-        <div className="flex items-center space-x-2 text-sm text-gray-600">
-          <Building2 className="h-4 w-4" />
-          <span>
-            {navigation.level === "societies" && `${societyData.length} Societies`}
-            {navigation.level === "wings" && `${wingsData.length} Wings`}
-            {navigation.level === "flats" && `${flatsData.length} Flats`}
-          </span>
+        <div className="flex items-center space-x-4">
+          <Select value={timeRange} onValueChange={(v: any) => setTimeRange(v)}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="week">This Week</SelectItem>
+              <SelectItem value="month">This Month</SelectItem>
+              <SelectItem value="year">This Year</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <Building2 className="h-4 w-4" />
+            <span>
+              {navigation.level === "societies" && `${societyData.length} Societies`}
+              {navigation.level === "wings" && `${wingsData.length} Wings`}
+              {navigation.level === "flats" && `${flatsData.length} Flats`}
+            </span>
+          </div>
         </div>
       </div>
 
