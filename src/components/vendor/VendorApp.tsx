@@ -11,6 +11,7 @@ import OrderManagement from "./OrderManagement";
 import ProductManagement from "./ProductManagement";
 import { AreaSocietyManagement } from "./AreaSocietyManagement";
 import SocietyHierarchyView from "./SocietyHierarchyView";
+import AreaHierarchyView from "./AreaHierarchyView";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVendors } from "@/hooks/useVendors";
 
@@ -62,7 +63,7 @@ const VendorApp = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 lg:w-fit lg:grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7 lg:w-fit lg:grid-cols-7">
             <TabsTrigger value="dashboard" className="flex items-center space-x-2">
               <TrendingUp className="h-4 w-4" />
               <span>Dashboard</span>
@@ -77,7 +78,11 @@ const VendorApp = () => {
             </TabsTrigger>
             <TabsTrigger value="hierarchy" className="flex items-center space-x-2">
               <MapPin className="h-4 w-4" />
-              <span>Delivery View</span>
+              <span>Society View</span>
+            </TabsTrigger>
+            <TabsTrigger value="area-hierarchy" className="flex items-center space-x-2">
+              <MapPin className="h-4 w-4" />
+              <span>Area View</span>
             </TabsTrigger>
             <TabsTrigger value="products" className="flex items-center space-x-2">
               <Package className="h-4 w-4" />
@@ -85,7 +90,7 @@ const VendorApp = () => {
             </TabsTrigger>
             <TabsTrigger value="areas" className="flex items-center space-x-2">
               <MapPin className="h-4 w-4" />
-              <span>Areas</span>
+              <span>Manage Areas</span>
             </TabsTrigger>
           </TabsList>
 
@@ -103,6 +108,10 @@ const VendorApp = () => {
 
           <TabsContent value="hierarchy">
             <SocietyHierarchyView />
+          </TabsContent>
+
+          <TabsContent value="area-hierarchy">
+            <AreaHierarchyView />
           </TabsContent>
 
           <TabsContent value="products">

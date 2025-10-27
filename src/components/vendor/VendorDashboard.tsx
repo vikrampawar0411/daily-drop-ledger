@@ -189,13 +189,17 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{todayStats.totalOrders}</div>
-              <p className="text-xs opacity-90">orders today</p>
+              <p className="text-xs opacity-90">
+                {timeRange === "today" ? "orders today" : 
+                 timeRange === "week" ? "orders this week" :
+                 timeRange === "month" ? "orders this month" : "orders this year"}
+              </p>
             </CardContent>
           </Card>
 
           <Card 
             className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 cursor-pointer hover:opacity-90 transition-opacity"
-            onClick={() => onNavigate?.('areas')}
+            onClick={() => onNavigate?.('area-hierarchy')}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium opacity-90">Areas Served</CardTitle>
@@ -203,7 +207,11 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{todayStats.areasServed}</div>
-              <p className="text-xs opacity-90">areas covered</p>
+              <p className="text-xs opacity-90">
+                {timeRange === "today" ? "areas today" : 
+                 timeRange === "week" ? "areas this week" :
+                 timeRange === "month" ? "areas this month" : "areas this year"}
+              </p>
             </CardContent>
           </Card>
 
@@ -217,7 +225,11 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{todayStats.societiesServed}</div>
-              <p className="text-xs opacity-90">societies served</p>
+              <p className="text-xs opacity-90">
+                {timeRange === "today" ? "societies today" : 
+                 timeRange === "week" ? "societies this week" :
+                 timeRange === "month" ? "societies this month" : "societies this year"}
+              </p>
             </CardContent>
           </Card>
 
@@ -231,7 +243,11 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">₹{todayStats.totalRevenue}</div>
-              <p className="text-xs opacity-90">today's earnings</p>
+              <p className="text-xs opacity-90">
+                {timeRange === "today" ? "today's earnings" : 
+                 timeRange === "week" ? "this week's earnings" :
+                 timeRange === "month" ? "this month's earnings" : "this year's earnings"}
+              </p>
             </CardContent>
           </Card>
         </div>
