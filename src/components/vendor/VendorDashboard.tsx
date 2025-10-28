@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface VendorDashboardProps {
-  onNavigate?: (tab: string) => void;
+  onNavigate?: (tab: string, params?: any) => void;
 }
 
 const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
@@ -181,7 +181,7 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card 
             className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 cursor-pointer hover:opacity-90 transition-opacity"
-            onClick={() => onNavigate?.('orders')}
+            onClick={() => onNavigate?.('orders', { timeRange, status: 'all' })}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium opacity-90">Total Orders</CardTitle>
@@ -199,7 +199,7 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
 
           <Card 
             className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 cursor-pointer hover:opacity-90 transition-opacity"
-            onClick={() => onNavigate?.('area-hierarchy')}
+            onClick={() => onNavigate?.('area-hierarchy', { timeRange })}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium opacity-90">Areas Served</CardTitle>
@@ -217,7 +217,7 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
 
           <Card 
             className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 cursor-pointer hover:opacity-90 transition-opacity"
-            onClick={() => onNavigate?.('hierarchy')}
+            onClick={() => onNavigate?.('hierarchy', { timeRange })}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium opacity-90">Societies</CardTitle>

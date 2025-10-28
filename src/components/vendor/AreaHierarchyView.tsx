@@ -6,11 +6,15 @@ import { ArrowLeft, MapPin, Users, Package } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
 import { startOfWeek, startOfMonth, startOfYear, endOfDay } from "date-fns";
 
-const AreaHierarchyView = () => {
+interface AreaHierarchyViewProps {
+  initialTimeRange?: "today" | "week" | "month" | "year";
+}
+
+const AreaHierarchyView = ({ initialTimeRange }: AreaHierarchyViewProps = {}) => {
   const { orders, loading } = useOrders();
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [selectedSociety, setSelectedSociety] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState<"today" | "week" | "month" | "year">("today");
+  const [timeRange, setTimeRange] = useState<"today" | "week" | "month" | "year">(initialTimeRange || "today");
 
   const getDateRange = () => {
     const now = new Date();

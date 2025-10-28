@@ -13,16 +13,22 @@ import { useAreas } from "@/hooks/useAreas";
 import { useSocieties } from "@/hooks/useSocieties";
 import { format, startOfWeek, startOfMonth, startOfYear, endOfDay } from "date-fns";
 
-const OrderManagement = () => {
-  const [dateRange, setDateRange] = useState<"today" | "week" | "month" | "year">("today");
+interface OrderManagementProps {
+  initialTimeRange?: "today" | "week" | "month" | "year";
+  initialStatus?: string;
+}
+
+const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementProps = {}) => {
+  const [dateRange, setDateRange] = useState<"today" | "week" | "month" | "year">(initialTimeRange || "today");
   const [selectedArea, setSelectedArea] = useState("all");
   const [selectedSociety, setSelectedSociety] = useState("all");
   const [selectedWing, setSelectedWing] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("pending");
+  const [selectedStatus, setSelectedStatus] = useState(initialStatus || "pending");
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [selectedOrderDate, setSelectedOrderDate] = useState<string | null>(null);
   const [deliveryDateTime, setDeliveryDateTime] = useState("");
   const { orders, loading, updateOrderStatus } = useOrders();
   const { areas } = useAreas();
@@ -67,10 +73,26 @@ const OrderManagement = () => {
     return [...new Set(orders.map(o => o.customer?.wing_number).filter(Boolean))];
   }, [orders]);
 
-  const handleMarkDelivered = (orderId: string) => {
+  const handleMarkDelivered = (orderId: string, orderDate: string) => {
     setSelectedOrderId(orderId);
+    setSelectedOrderDate(orderDate);
     setDeliveryDateTime(new Date().toISOString().slice(0, 16));
     setDeliveryDialogOpen(true);
+  };
+
+  const handleSetPreviousDelivery = () => {
+    if (selectedOrderDate) {
+      const orderDate = new Date(selectedOrderDate);
+      orderDate.setHours(7, 0, 0, 0);
+      setDeliveryDateTime(orderDate.toISOString().slice(0, 16));
+    }
+  };
+
+  const isDeliveryDateDifferent = () => {
+    if (!selectedOrderDate || !deliveryDateTime) return false;
+    const orderDate = new Date(selectedOrderDate).toDateString();
+    const deliveryDate = new Date(deliveryDateTime).toDateString();
+    return orderDate !== deliveryDate;
   };
 
   const confirmDelivery = () => {
@@ -319,7 +341,7 @@ const OrderManagement = () => {
                           <Button
                             size="sm"
                             className="bg-green-600 hover:bg-green-700"
-                            onClick={() => handleMarkDelivered(order.id)}
+                            onClick={() => handleMarkDelivered(order.id, order.order_date)}
                           >
                             Deliver
                           </Button>
@@ -389,7 +411,11 @@ const OrderManagement = () => {
       <Dialog open={deliveryDialogOpen} onOpenChange={setDeliveryDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Mark Order as Delivered</DialogTitle>
+            <DialogTitle>
+              {isDeliveryDateDifferent() 
+                ? "Confirm Order Delivery - Different Date Detected" 
+                : "Confirm Order is Delivered"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -405,6 +431,21 @@ const OrderManagement = () => {
                 Defaults to current time. Modify if needed.
               </p>
             </div>
+            {isDeliveryDateDifferent() && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="text-sm text-yellow-800 mb-2">
+                  ⚠️ Delivery date differs from order date
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSetPreviousDelivery}
+                  className="w-full"
+                >
+                  Previous Delivered Entry (Order Date at 7:00 AM)
+                </Button>
+              </div>
+            )}
             <div className="flex space-x-2 justify-end">
               <Button variant="outline" onClick={() => setDeliveryDialogOpen(false)}>
                 Cancel

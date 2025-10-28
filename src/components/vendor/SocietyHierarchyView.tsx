@@ -18,12 +18,16 @@ interface NavigationState {
   wingNumber?: string;
 }
 
-const SocietyHierarchyView = () => {
+interface SocietyHierarchyViewProps {
+  initialTimeRange?: "today" | "week" | "month" | "year";
+}
+
+const SocietyHierarchyView = ({ initialTimeRange }: SocietyHierarchyViewProps = {}) => {
   const { orders, loading } = useOrders();
   const { societies } = useSocieties();
   const { areas } = useAreas();
   const [navigation, setNavigation] = useState<NavigationState>({ level: "societies" });
-  const [timeRange, setTimeRange] = useState<"today" | "week" | "month" | "year">("today");
+  const [timeRange, setTimeRange] = useState<"today" | "week" | "month" | "year">(initialTimeRange || "today");
 
   const getDateRange = () => {
     const now = new Date();

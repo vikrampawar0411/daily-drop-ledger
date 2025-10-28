@@ -18,11 +18,17 @@ import { useVendors } from "@/hooks/useVendors";
 const VendorApp = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [navigationParams, setNavigationParams] = useState<any>({});
   const { signOut, user } = useAuth();
   const { vendors } = useVendors();
   
   // Get the current vendor's ID
   const currentVendorId = vendors[0]?.id || "";
+
+  const handleNavigation = (tab: string, params?: any) => {
+    setActiveTab(tab);
+    setNavigationParams(params || {});
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -95,7 +101,7 @@ const VendorApp = () => {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <VendorDashboard onNavigate={setActiveTab} />
+            <VendorDashboard onNavigate={handleNavigation} />
           </TabsContent>
 
           <TabsContent value="customers">
@@ -103,15 +109,18 @@ const VendorApp = () => {
           </TabsContent>
 
           <TabsContent value="orders">
-            <OrderManagement />
+            <OrderManagement 
+              initialTimeRange={navigationParams.timeRange}
+              initialStatus={navigationParams.status}
+            />
           </TabsContent>
 
           <TabsContent value="hierarchy">
-            <SocietyHierarchyView />
+            <SocietyHierarchyView initialTimeRange={navigationParams.timeRange} />
           </TabsContent>
 
           <TabsContent value="area-hierarchy">
-            <AreaHierarchyView />
+            <AreaHierarchyView initialTimeRange={navigationParams.timeRange} />
           </TabsContent>
 
           <TabsContent value="products">
