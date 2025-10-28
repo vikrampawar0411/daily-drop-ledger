@@ -36,18 +36,16 @@ const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementPro
 
   const getDateRange = () => {
     const now = new Date();
-    const futureDate = new Date();
-    futureDate.setFullYear(futureDate.getFullYear() + 1); // Include next year's orders
     
     switch (dateRange) {
       case "week":
-        return { start: startOfWeek(now), end: futureDate };
+        return { start: startOfWeek(now), end: endOfDay(now) };
       case "month":
-        return { start: startOfMonth(now), end: futureDate };
+        return { start: startOfMonth(now), end: endOfDay(now) };
       case "year":
-        return { start: startOfYear(now), end: futureDate };
+        return { start: startOfYear(now), end: endOfDay(now) };
       default: // today
-        return { start: new Date(now.setHours(0, 0, 0, 0)), end: futureDate };
+        return { start: new Date(now.setHours(0, 0, 0, 0)), end: endOfDay(now) };
     }
   };
 
@@ -199,10 +197,10 @@ const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementPro
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="today">Today & Future</SelectItem>
-                  <SelectItem value="week">This Week & Future</SelectItem>
-                  <SelectItem value="month">This Month & Future</SelectItem>
-                  <SelectItem value="year">This Year & Future</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="week">This Week</SelectItem>
+                  <SelectItem value="month">This Month</SelectItem>
+                  <SelectItem value="year">This Year</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -337,7 +335,7 @@ const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementPro
                       <TableCell className="text-right font-medium">₹{order.total_amount}</TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
                       <TableCell>
-                        {order.status === "pending" && (
+                        {order.status === "pending" && new Date(order.order_date) <= new Date() && (
                           <Button
                             size="sm"
                             className="bg-green-600 hover:bg-green-700"
@@ -442,7 +440,7 @@ const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementPro
                   onClick={handleSetPreviousDelivery}
                   className="w-full"
                 >
-                  Previous Delivered Entry (Order Date at 7:00 AM)
+                  Previous Delivered Entry
                 </Button>
               </div>
             )}
