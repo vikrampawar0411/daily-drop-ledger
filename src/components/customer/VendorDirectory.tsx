@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, MapPin, Phone, Plus, Check, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Search, Filter, MapPin, Phone, Plus, Check, X, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/hooks/useProducts";
 import { useVendorConnections } from "@/hooks/useVendorConnections";
@@ -31,6 +32,8 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [vendorsLoading, setVendorsLoading] = useState(true);
+  const [selectedVendor, setSelectedVendor] = useState<any>(null);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const { products: allProducts, loading: productsLoading } = useProducts();
   const { vendorProducts, loading: vendorProductsLoading } = useVendorProducts();
   const { 
@@ -111,6 +114,11 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
     } else {
       await connectToVendor(vendorId);
     }
+  };
+
+  const handleViewDetails = (vendor: any) => {
+    setSelectedVendor(vendor);
+    setShowDetailsDialog(true);
   };
 
   return (
@@ -219,6 +227,14 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
               <div className="flex space-x-2 pt-2">
                 <Button 
                   size="sm" 
+                  variant="outline"
+                  onClick={() => handleViewDetails(vendor)}
+                >
+                  <Info className="h-4 w-4 mr-2" />
+                  View Details
+                </Button>
+                <Button 
+                  size="sm" 
                   className="flex-1"
                   variant={isConnected(vendor.id) ? "destructive" : "default"}
                   onClick={() => handleVendorConnection(vendor.id)}
@@ -257,6 +273,125 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
           </CardContent>
         </Card>
       )}
+
+      {/* Vendor Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">{selectedVendor?.name}</DialogTitle>
+            <DialogDescription>
+              Complete product catalog and vendor information
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedVendor && (
+            <div className="space-y-6">
+              {/* Vendor Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">Category</span>
+                  <p className="text-base">{selectedVendor.category}</p>
+                </div>
+                {selectedVendor.contact_person && (
+                  <div>
+                    <span className="text-sm font-medium text-muted-foreground">Contact Person</span>
+                    <p className="text-base">{selectedVendor.contact_person}</p>
+                  </div>
+                )}
+                {selectedVendor.phone && (
+                  <div>
+                    <span className="text-sm font-medium text-muted-foreground">Phone</span>
+                    <p className="text-base">{selectedVendor.phone}</p>
+                  </div>
+                )}
+                {selectedVendor.email && (
+                  <div>
+                    <span className="text-sm font-medium text-muted-foreground">Email</span>
+                    <p className="text-base">{selectedVendor.email}</p>
+                  </div>
+                )}
+                {selectedVendor.address && (
+                  <div className="col-span-2">
+                    <span className="text-sm font-medium text-muted-foreground">Address</span>
+                    <p className="text-base">{selectedVendor.address}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Products */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Available Products</h3>
+                {selectedVendor.products.length > 0 ? (
+                  <div className="grid gap-3">
+                    {selectedVendor.products.map((product: any) => (
+                      <Card key={product.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h4 className="font-semibold text-base">{product.name}</h4>
+                                <Badge variant="secondary">{product.category}</Badge>
+                              </div>
+                              {product.description && (
+                                <p className="text-sm text-muted-foreground mb-2">{product.description}</p>
+                              )}
+                              <div className="flex items-center gap-4 text-sm">
+                                <span className="text-muted-foreground">Availability: <span className="font-medium text-foreground">{product.availability}</span></span>
+                                <span className="text-muted-foreground">Unit: <span className="font-medium text-foreground">{product.unit}</span></span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-primary">₹{product.price}</div>
+                              <div className="text-sm text-muted-foreground">per {product.unit}</div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-8">No products available from this vendor</p>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-4 border-t">
+                <Button 
+                  variant={isConnected(selectedVendor.id) ? "destructive" : "default"}
+                  onClick={() => {
+                    handleVendorConnection(selectedVendor.id);
+                    setShowDetailsDialog(false);
+                  }}
+                  className="flex-1"
+                >
+                  {isConnected(selectedVendor.id) ? (
+                    <>
+                      <X className="h-4 w-4 mr-2" />
+                      Disconnect from Vendor
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Connect with Vendor
+                    </>
+                  )}
+                </Button>
+                {isConnected(selectedVendor.id) && (
+                  <Button 
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    onClick={() => {
+                      setShowDetailsDialog(false);
+                      onNavigate?.('calendar');
+                    }}
+                  >
+                    Place Order
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
