@@ -252,18 +252,28 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
           <div className="flex flex-col space-y-4">
             <div className="flex items-center justify-between">
               <CardTitle>Monthly Statistics</CardTitle>
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Select month" />
-                </SelectTrigger>
-                <SelectContent>
-                  {monthOptions.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex flex-col items-end space-y-1">
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Select month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {monthOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="text-xs text-muted-foreground">
+                  {(() => {
+                    const [year, month] = selectedMonth.split('-').map(Number);
+                    const firstDay = new Date(year, month - 1, 1);
+                    const lastDay = new Date(year, month, 0);
+                    return `${firstDay.toLocaleDateString()} - ${lastDay.toLocaleDateString()}`;
+                  })()}
+                </div>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Filter by Vendor (Multi-select)</Label>

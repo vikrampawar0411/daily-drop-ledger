@@ -530,6 +530,92 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          created_at: string
+          created_by_user_id: string | null
+          customer_id: string
+          end_date: string | null
+          frequency: string
+          id: string
+          paused_from: string | null
+          paused_until: string | null
+          price_per_unit: number
+          product_id: string
+          quantity: number
+          start_date: string
+          status: string
+          unit: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_user_id?: string | null
+          customer_id: string
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          paused_from?: string | null
+          paused_until?: string | null
+          price_per_unit: number
+          product_id: string
+          quantity: number
+          start_date: string
+          status?: string
+          unit: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by_user_id?: string | null
+          customer_id?: string
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          paused_from?: string | null
+          paused_until?: string | null
+          price_per_unit?: number
+          product_id?: string
+          quantity?: number
+          start_date?: string
+          status?: string
+          unit?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -743,16 +829,10 @@ export type Database = {
       }
     }
     Functions: {
-      admin_exists: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      bootstrap_admin: {
-        Args: { admin_user_id: string }
-        Returns: undefined
-      }
+      admin_exists: { Args: never; Returns: boolean }
+      bootstrap_admin: { Args: { admin_user_id: string }; Returns: undefined }
       create_vendor_customer_connections_for_all: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: undefined
       }
       has_role: {
@@ -762,14 +842,8 @@ export type Database = {
         }
         Returns: boolean
       }
-      link_orphaned_records: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      make_user_admin: {
-        Args: { target_user_id: string }
-        Returns: undefined
-      }
+      link_orphaned_records: { Args: never; Returns: undefined }
+      make_user_admin: { Args: { target_user_id: string }; Returns: undefined }
       vendor_can_view_customer: {
         Args: { _customer_id: string; _vendor_user_id: string }
         Returns: boolean

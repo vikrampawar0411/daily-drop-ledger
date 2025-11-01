@@ -156,19 +156,27 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
       </div>
 
       {/* Time Range Selector */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Overview</h2>
-        <Select value={timeRange} onValueChange={(v: any) => setTimeRange(v)}>
-          <SelectTrigger className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="week">This Week</SelectItem>
-            <SelectItem value="month">This Month</SelectItem>
-            <SelectItem value="year">This Year</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="flex flex-col space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-gray-900">Overview</h2>
+          <Select value={timeRange} onValueChange={(v: any) => setTimeRange(v)}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="week">This Week</SelectItem>
+              <SelectItem value="month">This Month</SelectItem>
+              <SelectItem value="year">This Year</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="text-sm text-muted-foreground">
+          {(() => {
+            const { start, end } = getDateRange();
+            return `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
+          })()}
+        </div>
       </div>
 
       {/* Today's Summary */}

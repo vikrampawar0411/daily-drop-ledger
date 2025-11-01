@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Search, MapPin, Users, Phone, Mail } from "lucide-react";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useStates } from "@/hooks/useStates";
 import { useCities } from "@/hooks/useCities";
 import { useAreas } from "@/hooks/useAreas";
@@ -26,6 +27,36 @@ const CustomerManagement = () => {
   const [selectedAreaId, setSelectedAreaId] = useState("");
   const { customers, loading, refetch } = useCustomers();
   const { toast } = useToast();
+  const [connectedCustomerIds, setConnectedCustomerIds] = useState<Set<string>>(new Set());
+  const [vendorId, setVendorId] = useState<string | null>(null);
+  const { user } = useAuth();
+
+  // Fetch vendor ID and connected customers
+  useEffect(() => {
+    const fetchVendorConnections = async () => {
+      if (!user) return;
+      
+      const { data: vendor } = await supabase
+        .from('vendors')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (vendor) {
+        setVendorId(vendor.id);
+        const { data: connections } = await supabase
+          .from('vendor_customer_connections')
+          .select('customer_id')
+          .eq('vendor_id', vendor.id);
+        
+        if (connections) {
+          setConnectedCustomerIds(new Set(connections.map(c => c.customer_id)));
+        }
+      }
+    };
+    
+    fetchVendorConnections();
+  }, [user]);
   const { states } = useStates();
   const { cities } = useCities(selectedStateId);
   const { areas } = useAreas();
@@ -49,8 +80,9 @@ const CustomerManagement = () => {
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          customer.phone.includes(searchTerm);
+    const isConnected = connectedCustomerIds.has(customer.id);
     
-    return matchesSearch;
+    return matchesSearch && isConnected;
   });
 
   const handleAddCustomer = async () => {
