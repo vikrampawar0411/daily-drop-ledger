@@ -399,6 +399,7 @@ export type Database = {
           created_by_user_id: string | null
           description: string | null
           id: string
+          image_url: string | null
           is_active: boolean
           name: string
           price: number
@@ -414,6 +415,7 @@ export type Database = {
           created_by_user_id?: string | null
           description?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           name: string
           price: number
@@ -429,6 +431,7 @@ export type Database = {
           created_by_user_id?: string | null
           description?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           name?: string
           price?: number

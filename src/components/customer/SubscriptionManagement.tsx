@@ -1,20 +1,73 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
-import { Pause, Play, X, Calendar as CalendarIcon } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Pause, Play, X, Calendar as CalendarIcon, Plus } from "lucide-react";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { useVendors } from "@/hooks/useVendors";
+import { useProducts } from "@/hooks/useProducts";
+import { useVendorProducts } from "@/hooks/useVendorProducts";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
 const SubscriptionManagement = () => {
-  const { subscriptions, loading, pauseSubscription, resumeSubscription, cancelSubscription } = useSubscriptions();
+  const { user } = useAuth();
+  const { subscriptions, loading, pauseSubscription, resumeSubscription, cancelSubscription, createSubscription } = useSubscriptions();
+  const { vendors } = useVendors();
+  const { products } = useProducts();
+  const { vendorProducts } = useVendorProducts();
   const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedSubscription, setSelectedSubscription] = useState<string | null>(null);
   const [pauseFromDate, setPauseFromDate] = useState<Date | undefined>(new Date());
   const [pauseUntilDate, setPauseUntilDate] = useState<Date | undefined>(undefined);
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  
+  // New subscription form state
+  const [newSubscription, setNewSubscription] = useState({
+    vendor_id: "",
+    product_id: "",
+    quantity: 1,
+    frequency: "daily",
+    start_date: new Date().toISOString().split('T')[0]
+  });
+
+  // Fetch customer ID
+  useEffect(() => {
+    const fetchCustomerId = async () => {
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (data) {
+        setCustomerId(data.id);
+      }
+    };
+    
+    fetchCustomerId();
+  }, [user]);
+  
+  // Get available products for selected vendor
+  const availableProducts = vendorProducts
+    .filter(vp => vp.vendor_id === newSubscription.vendor_id && vp.is_active)
+    .map(vp => {
+      const product = products.find(p => p.id === vp.product_id);
+      return product ? {
+        ...product,
+        price: vp.price_override || product.price
+      } : null;
+    })
+    .filter(p => p !== null);
 
   const handlePause = (subscriptionId: string) => {
     setSelectedSubscription(subscriptionId);
@@ -32,6 +85,41 @@ const SubscriptionManagement = () => {
       setSelectedSubscription(null);
       setPauseFromDate(new Date());
       setPauseUntilDate(undefined);
+    }
+  };
+  
+  const handleCreateSubscription = async () => {
+    if (!customerId || !newSubscription.vendor_id || !newSubscription.product_id) return;
+    
+    const selectedProduct = availableProducts.find((p: any) => p.id === newSubscription.product_id);
+    if (!selectedProduct) return;
+    
+    try {
+      await createSubscription({
+        customer_id: customerId,
+        vendor_id: newSubscription.vendor_id,
+        product_id: newSubscription.product_id,
+        quantity: newSubscription.quantity,
+        unit: selectedProduct.unit,
+        price_per_unit: selectedProduct.price,
+        frequency: newSubscription.frequency,
+        start_date: newSubscription.start_date,
+        end_date: null,
+        status: 'active',
+        paused_from: null,
+        paused_until: null,
+      });
+      
+      setCreateDialogOpen(false);
+      setNewSubscription({
+        vendor_id: "",
+        product_id: "",
+        quantity: 1,
+        frequency: "daily",
+        start_date: new Date().toISOString().split('T')[0]
+      });
+    } catch (error) {
+      console.error("Error creating subscription:", error);
     }
   };
 
@@ -74,9 +162,15 @@ const SubscriptionManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Subscription Management</h2>
-        <p className="text-sm text-muted-foreground">Manage your recurring orders</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Subscription Management</h2>
+          <p className="text-sm text-muted-foreground">Manage your recurring orders</p>
+        </div>
+        <Button onClick={() => setCreateDialogOpen(true)} className="bg-green-600 hover:bg-green-700">
+          <Plus className="h-4 w-4 mr-2" />
+          New Subscription
+        </Button>
       </div>
 
       {subscriptions.length === 0 ? (
@@ -181,6 +275,101 @@ const SubscriptionManagement = () => {
         </div>
       )}
 
+      {/* Create Subscription Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Subscription</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Vendor</Label>
+              <Select 
+                value={newSubscription.vendor_id} 
+                onValueChange={(value) => setNewSubscription({...newSubscription, vendor_id: value, product_id: ""})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select vendor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vendors.map((vendor) => (
+                    <SelectItem key={vendor.id} value={vendor.id}>
+                      {vendor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label>Product</Label>
+              <Select 
+                value={newSubscription.product_id} 
+                onValueChange={(value) => setNewSubscription({...newSubscription, product_id: value})}
+                disabled={!newSubscription.vendor_id}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select product" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableProducts.map((product: any) => (
+                    <SelectItem key={product.id} value={product.id}>
+                      {product.name} - ₹{product.price}/{product.unit}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label>Quantity</Label>
+              <Input 
+                type="number" 
+                min="1"
+                value={newSubscription.quantity}
+                onChange={(e) => setNewSubscription({...newSubscription, quantity: parseInt(e.target.value)})}
+              />
+            </div>
+            
+            <div>
+              <Label>Frequency</Label>
+              <Select 
+                value={newSubscription.frequency} 
+                onValueChange={(value) => setNewSubscription({...newSubscription, frequency: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label>Start Date</Label>
+              <Input 
+                type="date" 
+                value={newSubscription.start_date}
+                onChange={(e) => setNewSubscription({...newSubscription, start_date: e.target.value})}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+            <Button 
+              onClick={handleCreateSubscription}
+              disabled={!newSubscription.vendor_id || !newSubscription.product_id}
+            >
+              Create Subscription
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pause Subscription Dialog */}
       <Dialog open={pauseDialogOpen} onOpenChange={setPauseDialogOpen}>
         <DialogContent>
           <DialogHeader>

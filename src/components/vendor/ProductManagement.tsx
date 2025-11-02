@@ -6,23 +6,28 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Package, Milk, Newspaper, Trash2 } from "lucide-react";
+import { Plus, Package, Milk, Newspaper, Trash2, Upload, Image as ImageIcon } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { useVendorProducts } from "@/hooks/useVendorProducts";
 import { useProductRequests } from "@/hooks/useProductRequests";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const ProductManagement = () => {
   const { products, loading: productsLoading } = useProducts();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [vendorId, setVendorId] = useState<string | undefined>();
   const { vendorProducts, loading: vendorProductsLoading, addVendorProduct, removeVendorProduct } = useVendorProducts(vendorId);
   const { productRequests, loading: requestsLoading, createProductRequest } = useProductRequests(vendorId);
   
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
+  const [showImageDialog, setShowImageDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<string>("");
+  const [selectedProductForImage, setSelectedProductForImage] = useState<any>(null);
+  const [uploading, setUploading] = useState(false);
   const [newRequest, setNewRequest] = useState({
     name: "",
     category: "",
@@ -86,6 +91,61 @@ const ProductManagement = () => {
       } catch (error) {
         // Error handled by hook
       }
+    }
+  };
+  
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0 || !selectedProductForImage) {
+      return;
+    }
+
+    const file = event.target.files[0];
+    setUploading(true);
+
+    try {
+      // Create a unique file name
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${selectedProductForImage.id}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // Upload image to storage
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+
+      // Update product with image URL
+      const { error: updateError } = await supabase
+        .from('products')
+        .update({ image_url: publicUrl })
+        .eq('id', selectedProductForImage.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Success",
+        description: "Product image uploaded successfully",
+      });
+
+      setShowImageDialog(false);
+      setSelectedProductForImage(null);
+      
+      // Refresh products
+      window.location.reload();
+    } catch (error: any) {
+      toast({
+        title: "Error uploading image",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -176,7 +236,16 @@ const ProductManagement = () => {
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                   <CardContent className="space-y-3">
+                    {(vp.product as any)?.image_url && (
+                      <div className="w-full h-32 rounded-lg overflow-hidden bg-gray-100">
+                        <img 
+                          src={(vp.product as any).image_url} 
+                          alt={vp.product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
                         <span className="font-medium">Category:</span>
@@ -200,11 +269,23 @@ const ProductManagement = () => {
                       </div>
                     )}
 
-                    <div className="pt-2">
+                    <div className="pt-2 flex gap-2">
                       <Button 
                         size="sm" 
                         variant="outline"
-                        className="w-full"
+                        className="flex-1"
+                        onClick={() => {
+                          setSelectedProductForImage(vp.product);
+                          setShowImageDialog(true);
+                        }}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        {(vp.product as any)?.image_url ? 'Change' : 'Add'} Image
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="flex-1"
                         onClick={() => removeVendorProduct(vp.id)}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
@@ -387,6 +468,43 @@ const ProductManagement = () => {
             >
               Submit Request
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload Image Dialog */}
+      <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Product Image</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {(selectedProductForImage as any)?.image_url && (
+              <div className="w-full h-48 rounded-lg overflow-hidden bg-gray-100">
+                <img 
+                  src={(selectedProductForImage as any).image_url} 
+                  alt={selectedProductForImage?.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Select Image for {selectedProductForImage?.name}
+              </label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={uploading}
+              />
+              {uploading && (
+                <p className="text-sm text-muted-foreground mt-2">Uploading...</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowImageDialog(false)}>Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

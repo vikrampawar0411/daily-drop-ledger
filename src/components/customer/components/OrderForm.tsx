@@ -165,15 +165,19 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
     });
   };
 
-  // Get orders for a specific date
+  // Get orders for a specific date - show ALL orders when vendor/product selected
   const getOrdersForDate = (date: Date) => {
-    if (!selectedVendor || !selectedProduct) return [];
     const dateStr = date.toISOString().split('T')[0];
     const orders = allOrders(date);
+    
+    // If no vendor/product selected, return empty
+    if (!selectedVendor || !selectedProduct) return [];
+    
+    // Return orders for the selected vendor and product
     return orders.filter(order => {
       if (!order.order_date) return false;
       const orderDate = new Date(order.order_date);
-      if (isNaN(orderDate.getTime())) return false; // Check if date is valid
+      if (isNaN(orderDate.getTime())) return false;
       const orderDateStr = orderDate.toISOString().split('T')[0];
       return orderDateStr === dateStr && order.vendor === selectedVendor && order.product === selectedProduct;
     });

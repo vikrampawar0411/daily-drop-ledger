@@ -72,10 +72,17 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
         .filter(vp => vp.vendor_id === vendor.id && vp.is_active)
         .map(vp => {
           const product = allProducts.find(p => p.id === vp.product_id);
-          return product ? {
-            ...product,
+          if (!product) return null;
+          
+          return {
+            id: product.id,
+            name: product.name,
+            category: product.category,
+            description: product.description,
+            unit: product.unit,
+            availability: product.availability,
             price: vp.price_override || product.price
-          } : null;
+          };
         })
         .filter(p => p !== null);
       
