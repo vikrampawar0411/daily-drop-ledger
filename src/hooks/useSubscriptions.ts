@@ -89,6 +89,29 @@ export const useSubscriptions = () => {
 
       if (error) throw error;
 
+      // Trigger order generation for this subscription
+      try {
+        const response = await fetch(
+          'https://ssaogbrpjvxvlxtdivah.supabase.co/functions/v1/generate-subscription-orders',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYW9nYnJwanZ4dmx4dGRpdmFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0MzE1OTIsImV4cCI6MjA3NTAwNzU5Mn0.QQn4MgbPVHi83q5jWwL5qYJNrwnFylHlUyawK_bJaiM`,
+            },
+            body: JSON.stringify({}),
+          }
+        );
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log('Orders generated:', result);
+        }
+      } catch (generationError) {
+        console.error('Error generating orders:', generationError);
+        // Don't fail the subscription creation if order generation fails
+      }
+
       await fetchSubscriptions();
       toast({
         title: "Success",

@@ -25,20 +25,20 @@ export const useVendorProducts = (vendorId?: string) => {
   const { toast } = useToast();
 
   const fetchVendorProducts = async () => {
-    if (!vendorId) {
-      setLoading(false);
-      return;
-    }
-
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("vendor_products")
         .select(`
           *,
           product:products(*)
-        `)
-        .eq("vendor_id", vendorId)
-        .order("created_at", { ascending: false });
+        `);
+      
+      // If vendorId is provided, filter by it, otherwise fetch all
+      if (vendorId) {
+        query = query.eq("vendor_id", vendorId);
+      }
+      
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
       setVendorProducts(data || []);
