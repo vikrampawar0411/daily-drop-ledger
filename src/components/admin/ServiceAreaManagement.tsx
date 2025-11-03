@@ -311,31 +311,37 @@ export const ServiceAreaManagement = () => {
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {cities.map((city) => (
-              <Card key={city.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{city.name}</CardTitle>
-                    <Badge variant={city.status === 'active' ? 'default' : 'secondary'}>
-                      {city.status}
-                    </Badge>
-                  </div>
-                  {city.description && (
-                    <p className="text-sm text-muted-foreground">{city.description}</p>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleDeleteCity(city.id)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+            {cities.map((city) => {
+              const state = states.find(s => s.id === city.state_id);
+              return (
+                <Card key={city.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{city.name}</CardTitle>
+                      <Badge variant={city.status === 'active' ? 'default' : 'secondary'}>
+                        {city.status}
+                      </Badge>
+                    </div>
+                    {state && (
+                      <p className="text-sm text-muted-foreground">{state.name}</p>
+                    )}
+                    {city.description && (
+                      <p className="text-sm text-muted-foreground mt-1">{city.description}</p>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteCity(city.id)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </TabsContent>
 
@@ -395,31 +401,38 @@ export const ServiceAreaManagement = () => {
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {areas.map((area) => (
-              <Card key={area.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{area.name}</CardTitle>
-                    <Badge variant={area.status === 'active' ? 'default' : 'secondary'}>
-                      {area.status}
-                    </Badge>
-                  </div>
-                  {area.description && (
-                    <p className="text-sm text-muted-foreground">{area.description}</p>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleDeleteArea(area.id)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+            {areas.map((area) => {
+              const city = cities.find(c => c.id === area.city_id);
+              const state = city ? states.find(s => s.id === city.state_id) : null;
+              return (
+                <Card key={area.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{area.name}</CardTitle>
+                      <Badge variant={area.status === 'active' ? 'default' : 'secondary'}>
+                        {area.status}
+                      </Badge>
+                    </div>
+                    {city && state && (
+                      <p className="text-sm text-muted-foreground">{city.name}, {state.name}</p>
+                    )}
+                    {area.description && (
+                      <p className="text-sm text-muted-foreground mt-1">{area.description}</p>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteArea(area.id)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </TabsContent>
 
@@ -488,47 +501,55 @@ export const ServiceAreaManagement = () => {
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {societies.map((society) => (
-              <Card key={society.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{society.name}</CardTitle>
-                    <Badge variant={society.status === 'active' ? 'default' : 'secondary'}>
-                      {society.status}
-                    </Badge>
-                  </div>
-                  {society.description && (
-                    <p className="text-sm text-muted-foreground">{society.description}</p>
-                  )}
-                  {society.address && (
-                    <p className="text-sm text-gray-600 mt-2">
-                      <MapPin className="h-4 w-4 inline mr-1" />
-                      {society.address}
-                    </p>
-                  )}
-                </CardHeader>
-                <CardContent className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setEditingSociety(society);
-                      setShowEditDialog(true);
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleDeleteSociety(society.id)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+            {societies.map((society) => {
+              const area = areas.find(a => a.id === society.area_id);
+              const city = area ? cities.find(c => c.id === area.city_id) : null;
+              const state = city ? states.find(s => s.id === city.state_id) : null;
+              return (
+                <Card key={society.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{society.name}</CardTitle>
+                      <Badge variant={society.status === 'active' ? 'default' : 'secondary'}>
+                        {society.status}
+                      </Badge>
+                    </div>
+                    {area && city && state && (
+                      <p className="text-sm text-muted-foreground">{area.name}, {city.name}, {state.name}</p>
+                    )}
+                    {society.description && (
+                      <p className="text-sm text-muted-foreground mt-1">{society.description}</p>
+                    )}
+                    {society.address && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        <MapPin className="h-4 w-4 inline mr-1" />
+                        {society.address}
+                      </p>
+                    )}
+                  </CardHeader>
+                  <CardContent className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingSociety(society);
+                        setShowEditDialog(true);
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteSociety(society.id)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </TabsContent>
       </Tabs>
