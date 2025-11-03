@@ -470,6 +470,7 @@ export type Database = {
       }
       societies: {
         Row: {
+          address: string | null
           area_id: string
           created_at: string
           description: string | null
@@ -479,6 +480,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address?: string | null
           area_id: string
           created_at?: string
           description?: string | null
@@ -488,6 +490,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address?: string | null
           area_id?: string
           created_at?: string
           description?: string | null

@@ -14,6 +14,7 @@ import { useStates } from "@/hooks/useStates";
 import { useCities } from "@/hooks/useCities";
 import { useAreas } from "@/hooks/useAreas";
 import { useSocieties } from "@/hooks/useSocieties";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 export const ServiceAreaManagement = () => {
   const { toast } = useToast();
@@ -26,7 +27,9 @@ export const ServiceAreaManagement = () => {
   const [stateForm, setStateForm] = useState({ name: "", description: "" });
   const [cityForm, setCityForm] = useState({ name: "", description: "", state_id: "" });
   const [areaForm, setAreaForm] = useState({ name: "", description: "", city_id: "" });
-  const [societyForm, setSocietyForm] = useState({ name: "", description: "", area_id: "" });
+  const [societyForm, setSocietyForm] = useState({ name: "", description: "", area_id: "", address: "" });
+  const [editingSociety, setEditingSociety] = useState<any>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   const handleAddState = async () => {
     try {
@@ -126,10 +129,37 @@ export const ServiceAreaManagement = () => {
       if (error) throw error;
 
       toast({ title: "Success", description: "Society added successfully" });
-      setSocietyForm({ name: "", description: "", area_id: "" });
+      setSocietyForm({ name: "", description: "", area_id: "", address: "" });
       queryClient.invalidateQueries({ queryKey: ["societies"] });
     } catch (error: any) {
       toast({ title: "Error adding society", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleUpdateSociety = async () => {
+    try {
+      if (!editingSociety?.name) {
+        toast({ title: "Error", description: "Society name is required", variant: "destructive" });
+        return;
+      }
+
+      const { error } = await supabase
+        .from("societies")
+        .update({
+          name: editingSociety.name,
+          description: editingSociety.description,
+          address: editingSociety.address
+        })
+        .eq("id", editingSociety.id);
+
+      if (error) throw error;
+
+      toast({ title: "Success", description: "Society updated successfully" });
+      setShowEditDialog(false);
+      setEditingSociety(null);
+      queryClient.invalidateQueries({ queryKey: ["societies"] });
+    } catch (error: any) {
+      toast({ title: "Error updating society", description: error.message, variant: "destructive" });
     }
   };
 
@@ -403,7 +433,7 @@ export const ServiceAreaManagement = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="society-area">Area *</Label>
                   <Select
@@ -429,6 +459,15 @@ export const ServiceAreaManagement = () => {
                     value={societyForm.name}
                     onChange={(e) => setSocietyForm({ ...societyForm, name: e.target.value })}
                     placeholder="e.g., Green Park Society"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="society-address">Address *</Label>
+                  <Input
+                    id="society-address"
+                    value={societyForm.address}
+                    onChange={(e) => setSocietyForm({ ...societyForm, address: e.target.value })}
+                    placeholder="Full address"
                   />
                 </div>
                 <div className="space-y-2">
@@ -461,8 +500,24 @@ export const ServiceAreaManagement = () => {
                   {society.description && (
                     <p className="text-sm text-muted-foreground">{society.description}</p>
                   )}
+                  {society.address && (
+                    <p className="text-sm text-gray-600 mt-2">
+                      <MapPin className="h-4 w-4 inline mr-1" />
+                      {society.address}
+                    </p>
+                  )}
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditingSociety(society);
+                      setShowEditDialog(true);
+                    }}
+                  >
+                    Edit
+                  </Button>
                   <Button
                     variant="destructive"
                     size="sm"
@@ -477,6 +532,52 @@ export const ServiceAreaManagement = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Society Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Society</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-society-name">Society Name *</Label>
+              <Input
+                id="edit-society-name"
+                value={editingSociety?.name || ""}
+                onChange={(e) => setEditingSociety({ ...editingSociety, name: e.target.value })}
+                placeholder="Society name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-society-address">Address *</Label>
+              <Input
+                id="edit-society-address"
+                value={editingSociety?.address || ""}
+                onChange={(e) => setEditingSociety({ ...editingSociety, address: e.target.value })}
+                placeholder="Full address"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-society-desc">Description</Label>
+              <Input
+                id="edit-society-desc"
+                value={editingSociety?.description || ""}
+                onChange={(e) => setEditingSociety({ ...editingSociety, description: e.target.value })}
+                placeholder="Optional description"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateSociety}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

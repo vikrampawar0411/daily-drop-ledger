@@ -60,7 +60,7 @@ const AdminApp = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2 bg-gradient-to-r from-red-600 to-orange-600 text-white px-3 py-2 rounded-lg">
+              <div className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-2 rounded-lg">
                 <Shield className="h-6 w-6" />
               </div>
               <div>
@@ -101,7 +101,7 @@ const AdminApp = () => {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <Dashboard />
+            <Dashboard onNavigate={setActiveTab} />
           </TabsContent>
 
           <TabsContent value="customers">
