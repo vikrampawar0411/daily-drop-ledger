@@ -475,12 +475,12 @@ export const ServiceAreaManagement = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="society-address">Address *</Label>
+                  <Label htmlFor="society-address">PIN code *</Label>
                   <Input
                     id="society-address"
                     value={societyForm.address}
                     onChange={(e) => setSocietyForm({ ...societyForm, address: e.target.value })}
-                    placeholder="Full address"
+                    placeholder="Enter PIN code"
                   />
                 </div>
                 <div className="space-y-2">
@@ -571,12 +571,12 @@ export const ServiceAreaManagement = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-society-address">Address *</Label>
+              <Label htmlFor="edit-society-address">PIN code *</Label>
               <Input
                 id="edit-society-address"
                 value={editingSociety?.address || ""}
                 onChange={(e) => setEditingSociety({ ...editingSociety, address: e.target.value })}
-                placeholder="Full address"
+                placeholder="Enter PIN code"
               />
             </div>
             <div className="space-y-2">
