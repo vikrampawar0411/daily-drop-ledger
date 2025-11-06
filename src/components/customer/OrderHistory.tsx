@@ -379,8 +379,8 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                   <TableRow>
                     <TableHead>Day</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead className="font-bold">Vendor</TableHead>
-                    <TableHead className="font-bold">Product</TableHead>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead>Product</TableHead>
                     <TableHead>Quantity</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
@@ -398,16 +398,10 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                       {getDayName(order.order_date)}
                     </TableCell>
                     <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
-                    <TableCell 
-                      className="font-bold"
-                      style={{ color: getVendorProductColor(order.vendor.name, order.product.name) }}
-                    >
+                    <TableCell>
                       {order.vendor.name}
                     </TableCell>
-                    <TableCell 
-                      className="font-bold"
-                      style={{ color: getVendorProductColor(order.vendor.name, order.product.name) }}
-                    >
+                    <TableCell>
                       {order.product.name}
                     </TableCell>
                     <TableCell>{order.quantity} {order.unit}</TableCell>

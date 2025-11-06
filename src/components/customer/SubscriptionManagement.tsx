@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Pause, Play, X, Calendar as CalendarIcon, Plus } from "lucide-react";
+import { Pause, Play, X, Calendar as CalendarIcon, Plus, Package } from "lucide-react";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { useVendors } from "@/hooks/useVendors";
 import { useProducts } from "@/hooks/useProducts";
@@ -172,6 +172,36 @@ const SubscriptionManagement = () => {
           New Subscription
         </Button>
       </div>
+
+      {/* Top Available Products */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Subscribe - Popular Products</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {products.slice(0, 12).map((product) => (
+              <Card 
+                key={product.id} 
+                className="cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => {
+                  setNewSubscription({...newSubscription, product_id: product.id});
+                  setCreateDialogOpen(true);
+                }}
+              >
+                <CardContent className="p-3">
+                  <div className="aspect-square mb-2 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                    <Package className="h-12 w-12 text-gray-400" />
+                  </div>
+                  <h4 className="font-semibold text-sm mb-1 truncate">{product.name}</h4>
+                  <p className="text-xs text-muted-foreground">₹{product.price}/{product.unit}</p>
+                  <Badge variant="outline" className="text-xs mt-1">{product.category}</Badge>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {subscriptions.length === 0 ? (
         <Card>

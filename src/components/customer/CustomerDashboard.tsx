@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, ShoppingCart, Calendar, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock } from "lucide-react";
+import { Users, ShoppingCart, Calendar, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock, Download, FileDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VendorOrderTabs } from "./components/VendorOrderTabs";
 import { useOrders } from "@/hooks/useOrders";
@@ -14,6 +14,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { CheckCircle, XCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { format } from "date-fns";
+import * as XLSX from 'xlsx';
 
 interface CustomerDashboardProps {
   onNavigate?: (tab: string) => void;
@@ -32,19 +36,73 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   });
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
+  const [orderDetailsDialogOpen, setOrderDetailsDialogOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
-  // Hash function to generate consistent colors for vendor-product combinations
-  const getVendorProductColor = (vendorName: string, productName: string) => {
-    const combined = `${vendorName}-${productName}`;
-    let hash = 0;
-    for (let i = 0; i < combined.length; i++) {
-      hash = combined.charCodeAt(i) + ((hash << 5) - hash);
+  const handleOrderClick = (order: any) => {
+    setSelectedOrder(order);
+    setOrderDetailsDialogOpen(true);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "delivered":
+        return "bg-green-100 text-green-800";
+      case "cancelled":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-blue-100 text-blue-800";
     }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "delivered":
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case "cancelled":
+        return <XCircle className="h-4 w-4 text-red-600" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-600" />;
+    }
+  };
+
+  const exportToCSV = () => {
+    const csvData = monthlyStats.orders.map(order => ({
+      'Date': new Date(order.order_date).toLocaleDateString(),
+      'Vendor': order.vendor.name,
+      'Product': order.product.name,
+      'Quantity': `${order.quantity} ${order.unit}`,
+      'Total': order.total_amount,
+      'Status': order.status,
+    }));
     
-    // Generate distinct hue values
-    const hue = Math.abs(hash % 360);
-    // Use high saturation and medium lightness for vibrant, readable colors
-    return `hsl(${hue}, 70%, 45%)`;
+    const csv = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `orders-${selectedMonth}.csv`;
+    a.click();
+  };
+
+  const exportToExcel = () => {
+    const excelData = monthlyStats.orders.map(order => ({
+      'Date': new Date(order.order_date).toLocaleDateString(),
+      'Vendor': order.vendor.name,
+      'Product': order.product.name,
+      'Quantity': `${order.quantity} ${order.unit}`,
+      'Total': order.total_amount,
+      'Status': order.status,
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Orders');
+    XLSX.writeFile(wb, `orders-${selectedMonth}.xlsx`);
   };
 
   useEffect(() => {
@@ -388,15 +446,37 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
 
           {/* Orders Table for Selected Period */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Orders for Selected Period</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Orders for Selected Period</h3>
+              {monthlyStats.orders.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Export
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={exportToCSV}>
+                      <FileDown className="h-4 w-4 mr-2" />
+                      Export as CSV
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={exportToExcel}>
+                      <FileDown className="h-4 w-4 mr-2" />
+                      Export as Excel
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Day</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead className="font-bold">Vendor</TableHead>
-                    <TableHead className="font-bold">Product</TableHead>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead>Product</TableHead>
                     <TableHead>Quantity</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
@@ -415,38 +495,24 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                           <TableRow 
                             key={order.id} 
                             className="cursor-pointer hover:bg-muted/50"
-                            onClick={() => onNavigate?.('history')}
+                            onClick={() => handleOrderClick(order)}
                           >
                             <TableCell className={`font-semibold ${isSunday ? 'text-red-700' : ''}`}>
                               {dayName}
                             </TableCell>
                             <TableCell>{orderDate.toLocaleDateString()}</TableCell>
-                            <TableCell 
-                              className="font-bold"
-                              style={{ color: getVendorProductColor(order.vendor.name, order.product.name) }}
-                            >
+                            <TableCell>
                               {order.vendor.name}
                             </TableCell>
-                            <TableCell 
-                              className="font-bold"
-                              style={{ color: getVendorProductColor(order.vendor.name, order.product.name) }}
-                            >
+                            <TableCell>
                               {order.product.name}
                             </TableCell>
                             <TableCell>{order.quantity} {order.unit}</TableCell>
                             <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
                             <TableCell>
-                              <Badge className={
-                                order.status === 'delivered' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : order.status === 'cancelled'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-blue-100 text-blue-800'
-                              }>
-                                {order.status === 'delivered' && <CheckCircle className="h-4 w-4 mr-1" />}
-                                {order.status === 'cancelled' && <XCircle className="h-4 w-4 mr-1" />}
-                                {order.status === 'pending' && <Clock className="h-4 w-4 mr-1" />}
-                                <span className="capitalize">{order.status}</span>
+                              <Badge className={getStatusColor(order.status)}>
+                                {getStatusIcon(order.status)}
+                                <span className="ml-1 capitalize">{order.status}</span>
                               </Badge>
                             </TableCell>
                           </TableRow>
@@ -493,6 +559,69 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Order Details Dialog */}
+      <Dialog open={orderDetailsDialogOpen} onOpenChange={setOrderDetailsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Order Details</DialogTitle>
+          </DialogHeader>
+          {selectedOrder && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm text-muted-foreground">Order ID</Label>
+                  <div className="font-medium">#{selectedOrder.id.slice(0, 8)}</div>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Date</Label>
+                  <div className="font-medium">{new Date(selectedOrder.order_date).toLocaleDateString()}</div>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Vendor</Label>
+                  <div className="font-medium">{selectedOrder.vendor.name}</div>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Product</Label>
+                  <div className="font-medium">{selectedOrder.product.name}</div>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Quantity</Label>
+                  <div className="font-medium">{selectedOrder.quantity} {selectedOrder.unit}</div>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Total Amount</Label>
+                  <div className="font-medium">₹{selectedOrder.total_amount}</div>
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-sm text-muted-foreground">Status</Label>
+                  <Badge className={getStatusColor(selectedOrder.status)}>
+                    {getStatusIcon(selectedOrder.status)}
+                    <span className="ml-1 capitalize">{selectedOrder.status}</span>
+                  </Badge>
+                </div>
+              </div>
+              {selectedOrder.delivered_at && (
+                <div className="bg-green-50 rounded-lg p-3">
+                  <Label className="text-sm text-green-800">Delivered at:</Label>
+                  <div className="text-green-600">{format(new Date(selectedOrder.delivered_at), "PPp")}</div>
+                </div>
+              )}
+              {selectedOrder.dispute_raised && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <Label className="text-sm text-red-800">Dispute Raised:</Label>
+                  <div className="text-red-600">{selectedOrder.dispute_reason}</div>
+                </div>
+              )}
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setOrderDetailsDialogOpen(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
