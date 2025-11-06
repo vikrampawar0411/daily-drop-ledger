@@ -165,21 +165,18 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
     });
   };
 
-  // Get orders for a specific date - show ALL orders when vendor/product selected
+  // Get orders for a specific date - show ALL orders for the date
   const getOrdersForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
     const orders = allOrders(date);
     
-    // If no vendor/product selected, return empty
-    if (!selectedVendor || !selectedProduct) return [];
-    
-    // Return orders for the selected vendor and product
+    // Return all orders for the date
     return orders.filter(order => {
       if (!order.order_date) return false;
       const orderDate = new Date(order.order_date);
       if (isNaN(orderDate.getTime())) return false;
       const orderDateStr = orderDate.toISOString().split('T')[0];
-      return orderDateStr === dateStr && order.vendor === selectedVendor && order.product === selectedProduct;
+      return orderDateStr === dateStr;
     });
   };
 
@@ -414,7 +411,7 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
         </div>
 
         <div className="space-y-4">
-          {selectedVendor && selectedProduct && selectedDates.length > 0 && (
+          {selectedDates.length > 0 && (
             <div>
               <label className="block text-sm font-medium mb-2">Orders on Selected Dates</label>
               <div className="overflow-x-auto">
@@ -422,6 +419,8 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
                   <thead>
                     <tr className="border-b">
                       <th className="text-left py-2 px-3">Date</th>
+                      <th className="text-left py-2 px-3">Vendor</th>
+                      <th className="text-left py-2 px-3">Product</th>
                       <th className="text-left py-2 px-3">Quantity</th>
                       <th className="text-right py-2 px-3">Actions</th>
                     </tr>
@@ -437,9 +436,25 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
                           <td className="py-2 px-3">
                             {ordersOnDate.length > 0 ? (
                               ordersOnDate.map((order, idx) => (
-                                <span key={idx} className="mr-2">
-                                  {order.quantity} {order.unit}
-                                </span>
+                                <div key={idx}>{order.vendor}</div>
+                              ))
+                            ) : (
+                              <span className="text-gray-500">-</span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3">
+                            {ordersOnDate.length > 0 ? (
+                              ordersOnDate.map((order, idx) => (
+                                <div key={idx}>{order.product}</div>
+                              ))
+                            ) : (
+                              <span className="text-gray-500">-</span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3">
+                            {ordersOnDate.length > 0 ? (
+                              ordersOnDate.map((order, idx) => (
+                                <div key={idx}>{order.quantity} {order.unit}</div>
                               ))
                             ) : (
                               <span className="text-gray-500">No orders</span>
