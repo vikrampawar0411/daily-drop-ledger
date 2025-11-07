@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Search, Filter, MapPin, Phone, Plus, Check, X, Info } from "lucide-react";
+import { Search, Filter, MapPin, Phone, Plus, Check, X, Info, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/hooks/useProducts";
 import { useVendorConnections } from "@/hooks/useVendorConnections";
@@ -333,23 +333,62 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                     {selectedVendor.products.map((product: any) => (
                       <Card key={product.id}>
                         <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
+                          <div className="flex items-start gap-4">
+                            {/* Product Image */}
+                            <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                              {product.image_url ? (
+                                <img 
+                                  src={product.image_url} 
+                                  alt={product.name} 
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Package className="h-8 w-8 text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-2">
-                                <h4 className="font-semibold text-base">{product.name}</h4>
-                                <Badge variant="secondary">{product.category}</Badge>
+                                <h4 className="font-semibold text-base truncate">{product.name}</h4>
+                                <Badge variant="secondary" className="flex-shrink-0">{product.category}</Badge>
                               </div>
                               {product.description && (
-                                <p className="text-sm text-muted-foreground mb-2">{product.description}</p>
+                                <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{product.description}</p>
                               )}
-                              <div className="flex items-center gap-4 text-sm">
+                              <div className="flex items-center gap-4 text-sm mb-3">
                                 <span className="text-muted-foreground">Availability: <span className="font-medium text-foreground">{product.availability}</span></span>
                                 <span className="text-muted-foreground">Unit: <span className="font-medium text-foreground">{product.unit}</span></span>
                               </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-2xl font-bold text-primary">₹{product.price}</div>
-                              <div className="text-sm text-muted-foreground">per {product.unit}</div>
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="text-2xl font-bold text-primary">₹{product.price}</div>
+                                  <div className="text-xs text-muted-foreground">per {product.unit}</div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button 
+                                    size="sm"
+                                    onClick={() => {
+                                      setShowDetailsDialog(false);
+                                      onNavigate?.('calendar');
+                                    }}
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    Order Now
+                                  </Button>
+                                  <Button 
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setShowDetailsDialog(false);
+                                      onNavigate?.('subscriptions');
+                                    }}
+                                  >
+                                    Subscribe
+                                  </Button>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </CardContent>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,22 +7,34 @@ import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Pause, Play, X, Calendar as CalendarIcon, Plus, Package } from "lucide-react";
+import { Pause, Play, X, Calendar as CalendarIcon, Plus, Package, History, Download } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { useVendors } from "@/hooks/useVendors";
 import { useProducts } from "@/hooks/useProducts";
 import { useVendorProducts } from "@/hooks/useVendorProducts";
+import { useOrders } from "@/hooks/useOrders";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import * as XLSX from 'xlsx';
 
-const SubscriptionManagement = () => {
+interface SubscriptionManagementProps {
+  onNavigate?: (tab: string) => void;
+}
+
+const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}) => {
   const { user } = useAuth();
   const { subscriptions, loading, pauseSubscription, resumeSubscription, cancelSubscription, createSubscription } = useSubscriptions();
   const { vendors } = useVendors();
   const { products } = useProducts();
   const { vendorProducts } = useVendorProducts();
+  const { orders: allOrders } = useOrders();
   const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
+  const [activeSubTab, setActiveSubTab] = useState("active");
+  const [selectedVendorFilter, setSelectedVendorFilter] = useState("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedSubscription, setSelectedSubscription] = useState<string | null>(null);
   const [pauseFromDate, setPauseFromDate] = useState<Date | undefined>(new Date());
@@ -58,16 +70,78 @@ const SubscriptionManagement = () => {
   }, [user]);
   
   // Get available products for selected vendor
-  const availableProducts = vendorProducts
-    .filter(vp => vp.vendor_id === newSubscription.vendor_id && vp.is_active)
-    .map(vp => {
-      const product = products.find(p => p.id === vp.product_id);
-      return product ? {
-        ...product,
-        price: vp.price_override || product.price
-      } : null;
-    })
-    .filter(p => p !== null);
+  const availableProducts = useMemo(() => {
+    if (selectedVendorFilter === "all") {
+      return vendorProducts
+        .filter(vp => vp.is_active)
+        .map(vp => {
+          const product = products.find(p => p.id === vp.product_id);
+          return product ? {
+            ...product,
+            price: vp.price_override || product.price
+          } : null;
+        })
+        .filter(p => p !== null);
+    }
+    
+    return vendorProducts
+      .filter(vp => vp.vendor_id === (selectedVendorFilter || newSubscription.vendor_id) && vp.is_active)
+      .map(vp => {
+        const product = products.find(p => p.id === vp.product_id);
+        return product ? {
+          ...product,
+          price: vp.price_override || product.price
+        } : null;
+      })
+      .filter(p => p !== null);
+  }, [vendorProducts, products, selectedVendorFilter, newSubscription.vendor_id]);
+  
+  // Filter orders from subscriptions
+  const subscriptionOrders = useMemo(() => {
+    return allOrders.filter(order => {
+      const hasSubscription = subscriptions.some(sub => 
+        sub.vendor_id === order.vendor.id && 
+        sub.product_id === order.product.id
+      );
+      return hasSubscription;
+    });
+  }, [allOrders, subscriptions]);
+  
+  const exportToCSV = () => {
+    const csvData = subscriptionOrders.map(order => ({
+      Date: format(new Date(order.order_date), 'yyyy-MM-dd'),
+      Vendor: order.vendor.name,
+      Product: order.product.name,
+      Quantity: order.quantity,
+      Unit: order.unit,
+      Price: Number(order.total_amount) / Number(order.quantity),
+      Total: order.total_amount,
+      Status: order.status
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(csvData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Subscription Orders");
+    XLSX.writeFile(wb, `subscription_orders_${format(new Date(), 'yyyy-MM-dd')}.csv`, { bookType: 'csv' });
+  };
+
+  const exportToExcel = () => {
+    const excelData = subscriptionOrders.map(order => ({
+      Date: format(new Date(order.order_date), 'yyyy-MM-dd'),
+      Vendor: order.vendor.name,
+      Product: order.product.name,
+      Quantity: order.quantity,
+      Unit: order.unit,
+      'Price per Unit': Number(order.total_amount) / Number(order.quantity),
+      'Total Amount': order.total_amount,
+      Status: order.status
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Subscription Orders");
+    XLSX.writeFile(wb, `subscription_orders_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  };
 
   const handlePause = (subscriptionId: string) => {
     setSelectedSubscription(subscriptionId);
@@ -162,46 +236,79 @@ const SubscriptionManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">Subscription Management</h2>
-          <p className="text-sm text-muted-foreground">Manage your recurring orders</p>
+          <p className="text-sm text-muted-foreground">Manage recurring orders and view history</p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)} className="bg-green-600 hover:bg-green-700">
           <Plus className="h-4 w-4 mr-2" />
           New Subscription
         </Button>
       </div>
+      
+      <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="active">
+            <Package className="h-4 w-4 mr-2" />
+            Active Subscriptions
+          </TabsTrigger>
+          <TabsTrigger value="history">
+            <History className="h-4 w-4 mr-2" />
+            Order History
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Top Available Products */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Subscribe - Popular Products</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {products.slice(0, 12).map((product) => (
-              <Card 
-                key={product.id} 
-                className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => {
-                  setNewSubscription({...newSubscription, product_id: product.id});
-                  setCreateDialogOpen(true);
-                }}
-              >
-                <CardContent className="p-3">
-                  <div className="aspect-square mb-2 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-                    <Package className="h-12 w-12 text-gray-400" />
-                  </div>
-                  <h4 className="font-semibold text-sm mb-1 truncate">{product.name}</h4>
-                  <p className="text-xs text-muted-foreground">₹{product.price}/{product.unit}</p>
-                  <Badge variant="outline" className="text-xs mt-1">{product.category}</Badge>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+        <TabsContent value="active" className="space-y-6">
+
+        {/* Vendor Filter for Products */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Quick Subscribe - Popular Products</CardTitle>
+              <Select value={selectedVendorFilter} onValueChange={setSelectedVendorFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by vendor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Vendors</SelectItem>
+                  {vendors.map((vendor) => (
+                    <SelectItem key={vendor.id} value={vendor.id}>
+                      {vendor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {availableProducts.slice(0, 12).map((product: any) => (
+                <Card 
+                  key={product.id} 
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => {
+                    setNewSubscription({...newSubscription, product_id: product.id});
+                    setCreateDialogOpen(true);
+                  }}
+                >
+                  <CardContent className="p-3">
+                    <div className="aspect-square mb-2 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                      {product.image_url ? (
+                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Package className="h-12 w-12 text-gray-400" />
+                      )}
+                    </div>
+                    <h4 className="font-semibold text-sm mb-1 truncate">{product.name}</h4>
+                    <p className="text-xs text-muted-foreground">₹{product.price}/{product.unit}</p>
+                    <Badge variant="outline" className="text-xs mt-1">{product.category}</Badge>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
       {subscriptions.length === 0 ? (
         <Card>
@@ -304,6 +411,74 @@ const SubscriptionManagement = () => {
           ))}
         </div>
       )}
+        </TabsContent>
+        
+        <TabsContent value="history" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Subscription Order History</CardTitle>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Export
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={exportToCSV}>
+                      Export as CSV
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={exportToExcel}>
+                      Export as Excel
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {subscriptionOrders.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No orders from subscriptions yet
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Vendor</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Price</TableHead>
+                        <TableHead>Total</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {subscriptionOrders.map((order) => (
+                        <TableRow key={order.id}>
+                          <TableCell>{format(new Date(order.order_date), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell>{order.vendor.name}</TableCell>
+                          <TableCell>{order.product.name}</TableCell>
+                          <TableCell>{order.quantity} {order.unit}</TableCell>
+                          <TableCell>₹{(Number(order.total_amount) / Number(order.quantity)).toFixed(2)}</TableCell>
+                          <TableCell>₹{order.total_amount}</TableCell>
+                          <TableCell>
+                            <Badge variant={order.status === 'delivered' ? 'default' : 'secondary'}>
+                              {order.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Create Subscription Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>

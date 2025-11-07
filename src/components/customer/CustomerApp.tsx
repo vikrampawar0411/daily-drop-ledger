@@ -4,12 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Receipt, Calendar, ShoppingCart, ArrowLeft, LogOut, Repeat } from "lucide-react";
+import { Users, Calendar, ShoppingCart, LogOut, Repeat, User } from "lucide-react";
 import CustomerDashboard from "./CustomerDashboard";
 import VendorDirectory from "./VendorDirectory";
-import OrderHistory from "./OrderHistory";
 import OrderCalendar from "./OrderCalendar";
 import SubscriptionManagement from "./SubscriptionManagement";
+import AccountSettings from "./AccountSettings";
 import { useAuth } from "@/contexts/AuthContext";
 
 const CustomerApp = () => {
@@ -57,12 +57,8 @@ const CustomerApp = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 lg:w-fit lg:grid-cols-5 gap-1">
             <TabsTrigger value="dashboard" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
-              <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+              <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Dashboard</span>
-            </TabsTrigger>
-            <TabsTrigger value="vendors" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
-              <Users className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Vendors</span>
             </TabsTrigger>
             <TabsTrigger value="calendar" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
               <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -72,9 +68,13 @@ const CustomerApp = () => {
               <Repeat className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Subscriptions</span>
             </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
-              <Receipt className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">History</span>
+            <TabsTrigger value="vendors" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
+              <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Vendors</span>
+            </TabsTrigger>
+            <TabsTrigger value="account" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
+              <User className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Account</span>
             </TabsTrigger>
           </TabsList>
 
@@ -82,23 +82,20 @@ const CustomerApp = () => {
             <CustomerDashboard onNavigate={setActiveTab} />
           </TabsContent>
 
-          <TabsContent value="vendors">
-            <VendorDirectory onNavigate={setActiveTab} />
-          </TabsContent>
-
           <TabsContent value="calendar">
             <OrderCalendar />
           </TabsContent>
 
           <TabsContent value="subscriptions">
-            <SubscriptionManagement />
+            <SubscriptionManagement onNavigate={setActiveTab} />
           </TabsContent>
 
-          <TabsContent value="history">
-            <OrderHistory 
-              initialVendorFilter={sessionStorage.getItem('orderHistoryVendor') || undefined}
-              initialStatusFilter={sessionStorage.getItem('orderHistoryStatus') || undefined}
-            />
+          <TabsContent value="vendors">
+            <VendorDirectory onNavigate={setActiveTab} />
+          </TabsContent>
+
+          <TabsContent value="account">
+            <AccountSettings />
           </TabsContent>
         </Tabs>
       </div>
