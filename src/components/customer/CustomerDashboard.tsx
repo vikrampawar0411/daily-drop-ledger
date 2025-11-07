@@ -295,7 +295,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
             <Button 
               variant="outline" 
               className="h-20 flex flex-col items-center justify-center space-y-2"
-              onClick={() => onNavigate?.('history')}
+              onClick={() => onNavigate?.('subscriptions')}
             >
               <Bell className="h-6 w-6" />
               <span>Manage Subscriptions</span>
@@ -374,7 +374,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             <Card 
               className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => onNavigate?.('history')}
+              onClick={() => onNavigate?.('subscriptions')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-blue-900">Total Orders</CardTitle>
@@ -388,7 +388,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
 
             <Card 
               className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => onNavigate?.('history')}
+              onClick={() => onNavigate?.('subscriptions')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-green-900">Orders Delivered</CardTitle>
@@ -402,7 +402,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
 
             <Card 
               className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => onNavigate?.('history')}
+              onClick={() => onNavigate?.('subscriptions')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-amber-900">Orders Scheduled</CardTitle>
@@ -416,7 +416,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
 
             <Card 
               className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => onNavigate?.('history')}
+              onClick={() => onNavigate?.('subscriptions')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-purple-900">Monthly Spend</CardTitle>
@@ -430,7 +430,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
 
             <Card 
               className="bg-gradient-to-br from-rose-50 to-rose-100 border-rose-200 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => onNavigate?.('history')}
+              onClick={() => onNavigate?.('subscriptions')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-rose-900">Forecasted Bill</CardTitle>
