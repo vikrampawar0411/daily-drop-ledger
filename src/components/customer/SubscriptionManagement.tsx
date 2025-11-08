@@ -36,6 +36,11 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
   const [selectedVendorFilter, setSelectedVendorFilter] = useState("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedSubscription, setSelectedSubscription] = useState<string | null>(null);
+  
+  // Order history filters
+  const [historyVendorFilter, setHistoryVendorFilter] = useState("all");
+  const [historyProductFilter, setHistoryProductFilter] = useState("all");
+  const [historyStatusFilter, setHistoryStatusFilter] = useState("all");
   const [pauseFromDate, setPauseFromDate] = useState<Date | undefined>(new Date());
   const [pauseUntilDate, setPauseUntilDate] = useState<Date | undefined>(undefined);
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -108,16 +113,27 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
       .filter(p => p !== null);
   }, [vendorProducts, products, selectedVendorFilter, newSubscription.vendor_id]);
   
-  // Filter orders from subscriptions
+  // Filter orders with history filters applied
   const subscriptionOrders = useMemo(() => {
-    return allOrders.filter(order => {
-      const hasSubscription = subscriptions.some(sub => 
-        sub.vendor_id === order.vendor.id && 
-        sub.product_id === order.product.id
-      );
-      return hasSubscription;
-    });
-  }, [allOrders, subscriptions]);
+    let filtered = allOrders;
+    
+    // Apply vendor filter
+    if (historyVendorFilter !== "all") {
+      filtered = filtered.filter(order => order.vendor_id === historyVendorFilter);
+    }
+    
+    // Apply product filter
+    if (historyProductFilter !== "all") {
+      filtered = filtered.filter(order => order.product_id === historyProductFilter);
+    }
+    
+    // Apply status filter
+    if (historyStatusFilter !== "all") {
+      filtered = filtered.filter(order => order.status === historyStatusFilter);
+    }
+    
+    return filtered;
+  }, [allOrders, historyVendorFilter, historyProductFilter, historyStatusFilter]);
   
   const exportToCSV = () => {
     const csvData = subscriptionOrders.map(order => ({
@@ -428,24 +444,79 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
         <TabsContent value="history" className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Subscription Order History</CardTitle>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Download className="h-4 w-4 mr-2" />
-                      Export
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={exportToCSV}>
-                      Export as CSV
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={exportToExcel}>
-                      Export as Excel
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              <div className="flex flex-col space-y-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle>Order History</CardTitle>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Export
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={exportToCSV}>
+                        Export as CSV
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={exportToExcel}>
+                        Export as Excel
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                
+                {/* Filter Controls */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-sm mb-2">Vendor</Label>
+                    <Select value={historyVendorFilter} onValueChange={setHistoryVendorFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Vendors" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Vendors</SelectItem>
+                        {vendors.map((vendor) => (
+                          <SelectItem key={vendor.id} value={vendor.id}>
+                            {vendor.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm mb-2">Product</Label>
+                    <Select value={historyProductFilter} onValueChange={setHistoryProductFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Products" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Products</SelectItem>
+                        {products.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm mb-2">Status</Label>
+                    <Select value={historyStatusFilter} onValueChange={setHistoryStatusFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Statuses" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="confirmed">Confirmed</SelectItem>
+                        <SelectItem value="delivered">Delivered</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
