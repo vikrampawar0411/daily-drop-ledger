@@ -132,7 +132,12 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Vendor Directory</h2>
-        <Button className="bg-green-600 hover:bg-green-700">
+        <Button 
+          className="bg-green-600 hover:bg-green-700"
+          onClick={() => {
+            window.open('mailto:support@example.com?subject=New Vendor Request&body=Please provide vendor details...', '_blank');
+          }}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Request New Vendor
         </Button>

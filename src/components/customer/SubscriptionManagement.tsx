@@ -15,7 +15,6 @@ import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { useVendors } from "@/hooks/useVendors";
 import { useProducts } from "@/hooks/useProducts";
 import { useVendorProducts } from "@/hooks/useVendorProducts";
-import { useOrders } from "@/hooks/useOrders";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -31,7 +30,7 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
   const { vendors } = useVendors();
   const { products } = useProducts();
   const { vendorProducts } = useVendorProducts();
-  const { orders: allOrders } = useOrders();
+  const [allOrders, setAllOrders] = useState<any[]>([]);
   const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState("active");
   const [selectedVendorFilter, setSelectedVendorFilter] = useState("all");
@@ -50,23 +49,36 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
     start_date: new Date().toISOString().split('T')[0]
   });
 
-  // Fetch customer ID
+  // Fetch customer ID and all orders
   useEffect(() => {
-    const fetchCustomerId = async () => {
+    const fetchCustomerData = async () => {
       if (!user) return;
       
-      const { data } = await supabase
+      const { data: customerData } = await supabase
         .from('customers')
         .select('id')
         .eq('user_id', user.id)
         .maybeSingle();
       
-      if (data) {
-        setCustomerId(data.id);
+      if (customerData) {
+        setCustomerId(customerData.id);
+        
+        // Fetch all orders for this customer
+        const { data: ordersData } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            vendor:vendors(id, name),
+            product:products(id, name)
+          `)
+          .eq('customer_id', customerData.id)
+          .order('order_date', { ascending: false });
+        
+        setAllOrders(ordersData || []);
       }
     };
     
-    fetchCustomerId();
+    fetchCustomerData();
   }, [user]);
   
   // Get available products for selected vendor
