@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Pause, Play, X, Calendar as CalendarIcon, Plus, Package, History, Download } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -41,6 +43,8 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
   const [historyVendorFilter, setHistoryVendorFilter] = useState("all");
   const [historyProductFilter, setHistoryProductFilter] = useState("all");
   const [historyStatusFilter, setHistoryStatusFilter] = useState("all");
+  const [historyStartDate, setHistoryStartDate] = useState<Date | undefined>(undefined);
+  const [historyEndDate, setHistoryEndDate] = useState<Date | undefined>(undefined);
   const [pauseFromDate, setPauseFromDate] = useState<Date | undefined>(new Date());
   const [pauseUntilDate, setPauseUntilDate] = useState<Date | undefined>(undefined);
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -132,8 +136,23 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
       filtered = filtered.filter(order => order.status === historyStatusFilter);
     }
     
+    // Apply date range filter
+    if (historyStartDate) {
+      filtered = filtered.filter(order => {
+        const orderDate = new Date(order.order_date);
+        return orderDate >= historyStartDate;
+      });
+    }
+    
+    if (historyEndDate) {
+      filtered = filtered.filter(order => {
+        const orderDate = new Date(order.order_date);
+        return orderDate <= historyEndDate;
+      });
+    }
+    
     return filtered;
-  }, [allOrders, historyVendorFilter, historyProductFilter, historyStatusFilter]);
+  }, [allOrders, historyVendorFilter, historyProductFilter, historyStatusFilter, historyStartDate, historyEndDate]);
   
   const exportToCSV = () => {
     const csvData = subscriptionOrders.map(order => ({
@@ -466,7 +485,7 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
                 </div>
                 
                 {/* Filter Controls */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                   <div>
                     <Label className="text-sm mb-2">Vendor</Label>
                     <Select value={historyVendorFilter} onValueChange={setHistoryVendorFilter}>
@@ -516,7 +535,80 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  <div>
+                    <Label className="text-sm mb-2">Start Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !historyStartDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {historyStartDate ? format(historyStartDate, "MMM dd, yyyy") : "From..."}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={historyStartDate}
+                          onSelect={setHistoryStartDate}
+                          initialFocus
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm mb-2">End Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !historyEndDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {historyEndDate ? format(historyEndDate, "MMM dd, yyyy") : "To..."}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={historyEndDate}
+                          onSelect={setHistoryEndDate}
+                          initialFocus
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
+                
+                {/* Clear Filters Button */}
+                {(historyVendorFilter !== "all" || historyProductFilter !== "all" || historyStatusFilter !== "all" || historyStartDate || historyEndDate) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setHistoryVendorFilter("all");
+                      setHistoryProductFilter("all");
+                      setHistoryStatusFilter("all");
+                      setHistoryStartDate(undefined);
+                      setHistoryEndDate(undefined);
+                    }}
+                    className="mt-2"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Clear Filters
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
