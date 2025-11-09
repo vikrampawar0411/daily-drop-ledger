@@ -51,6 +51,8 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
     const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     return `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
   });
+  const [startDatePopoverOpen, setStartDatePopoverOpen] = useState(false);
+  const [endDatePopoverOpen, setEndDatePopoverOpen] = useState(false);
   const [pauseFromDate, setPauseFromDate] = useState<Date | undefined>(new Date());
   const [pauseUntilDate, setPauseUntilDate] = useState<Date | undefined>(undefined);
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -140,15 +142,32 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
   const subscriptionOrders = useMemo(() => {
     let filtered = allOrders;
     
-    // Apply month filter
-    if (historyMonth !== "all") {
-      const [year, month] = historyMonth.split('-').map(Number);
-      const firstDay = new Date(year, month - 1, 1);
-      const lastDay = new Date(year, month, 0);
-      filtered = filtered.filter(order => {
-        const orderDate = new Date(order.order_date);
-        return orderDate >= firstDay && orderDate <= lastDay;
-      });
+    // PRIORITY 1: Date range filter (overrides month filter)
+    if (historyStartDate || historyEndDate) {
+      if (historyStartDate) {
+        filtered = filtered.filter(order => {
+          const orderDate = new Date(order.order_date);
+          return orderDate >= historyStartDate;
+        });
+      }
+      
+      if (historyEndDate) {
+        filtered = filtered.filter(order => {
+          const orderDate = new Date(order.order_date);
+          return orderDate <= historyEndDate;
+        });
+      }
+    } else {
+      // PRIORITY 2: Month filter (only applies when no date range is set)
+      if (historyMonth !== "all") {
+        const [year, month] = historyMonth.split('-').map(Number);
+        const firstDay = new Date(year, month - 1, 1);
+        const lastDay = new Date(year, month, 0);
+        filtered = filtered.filter(order => {
+          const orderDate = new Date(order.order_date);
+          return orderDate >= firstDay && orderDate <= lastDay;
+        });
+      }
     }
     
     // Apply vendor filter
@@ -164,21 +183,6 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
     // Apply status filter
     if (historyStatusFilter !== "all") {
       filtered = filtered.filter(order => order.status === historyStatusFilter);
-    }
-    
-    // Apply date range filter
-    if (historyStartDate) {
-      filtered = filtered.filter(order => {
-        const orderDate = new Date(order.order_date);
-        return orderDate >= historyStartDate;
-      });
-    }
-    
-    if (historyEndDate) {
-      filtered = filtered.filter(order => {
-        const orderDate = new Date(order.order_date);
-        return orderDate <= historyEndDate;
-      });
     }
     
     return filtered;
@@ -585,7 +589,7 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
                   
                   <div>
                     <Label className="text-sm mb-2">Start Date</Label>
-                    <Popover>
+                    <Popover open={startDatePopoverOpen} onOpenChange={setStartDatePopoverOpen}>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
@@ -602,7 +606,11 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
                         <Calendar
                           mode="single"
                           selected={historyStartDate}
-                          onSelect={setHistoryStartDate}
+                          onSelect={(date) => {
+                            setHistoryStartDate(date);
+                            setHistoryMonth("all");
+                            setStartDatePopoverOpen(false);
+                          }}
                           initialFocus
                           className={cn("p-3 pointer-events-auto")}
                         />
@@ -612,7 +620,7 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
                   
                   <div>
                     <Label className="text-sm mb-2">End Date</Label>
-                    <Popover>
+                    <Popover open={endDatePopoverOpen} onOpenChange={setEndDatePopoverOpen}>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
@@ -629,7 +637,11 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
                         <Calendar
                           mode="single"
                           selected={historyEndDate}
-                          onSelect={setHistoryEndDate}
+                          onSelect={(date) => {
+                            setHistoryEndDate(date);
+                            setHistoryMonth("all");
+                            setEndDatePopoverOpen(false);
+                          }}
                           initialFocus
                           className={cn("p-3 pointer-events-auto")}
                         />
@@ -656,6 +668,8 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
                       setHistoryStatusFilter("all");
                       setHistoryStartDate(undefined);
                       setHistoryEndDate(undefined);
+                      setStartDatePopoverOpen(false);
+                      setEndDatePopoverOpen(false);
                     }}
                     className="mt-2"
                   >
