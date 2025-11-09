@@ -45,6 +45,12 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
   const [historyStatusFilter, setHistoryStatusFilter] = useState("all");
   const [historyStartDate, setHistoryStartDate] = useState<Date | undefined>(undefined);
   const [historyEndDate, setHistoryEndDate] = useState<Date | undefined>(undefined);
+  const [historyMonth, setHistoryMonth] = useState(() => {
+    // Default to previous month
+    const today = new Date();
+    const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    return `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [pauseFromDate, setPauseFromDate] = useState<Date | undefined>(new Date());
   const [pauseUntilDate, setPauseUntilDate] = useState<Date | undefined>(undefined);
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -117,9 +123,33 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
       .filter(p => p !== null);
   }, [vendorProducts, products, selectedVendorFilter, newSubscription.vendor_id]);
   
+  // Generate month options (last 12 months)
+  const monthOptions = useMemo(() => {
+    const options = [];
+    const today = new Date();
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const label = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      options.push({ value, label });
+    }
+    return options;
+  }, []);
+
   // Filter orders with history filters applied
   const subscriptionOrders = useMemo(() => {
     let filtered = allOrders;
+    
+    // Apply month filter
+    if (historyMonth !== "all") {
+      const [year, month] = historyMonth.split('-').map(Number);
+      const firstDay = new Date(year, month - 1, 1);
+      const lastDay = new Date(year, month, 0);
+      filtered = filtered.filter(order => {
+        const orderDate = new Date(order.order_date);
+        return orderDate >= firstDay && orderDate <= lastDay;
+      });
+    }
     
     // Apply vendor filter
     if (historyVendorFilter !== "all") {
@@ -152,7 +182,7 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
     }
     
     return filtered;
-  }, [allOrders, historyVendorFilter, historyProductFilter, historyStatusFilter, historyStartDate, historyEndDate]);
+  }, [allOrders, historyMonth, historyVendorFilter, historyProductFilter, historyStatusFilter, historyStartDate, historyEndDate]);
   
   const exportToCSV = () => {
     const csvData = subscriptionOrders.map(order => ({
@@ -485,7 +515,24 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
                 </div>
                 
                 {/* Filter Controls */}
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  <div>
+                    <Label className="text-sm mb-2">Month</Label>
+                    <Select value={historyMonth} onValueChange={setHistoryMonth}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Time</SelectItem>
+                        {monthOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
                   <div>
                     <Label className="text-sm mb-2">Vendor</Label>
                     <Select value={historyVendorFilter} onValueChange={setHistoryVendorFilter}>
@@ -592,11 +639,18 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
                 </div>
                 
                 {/* Clear Filters Button */}
-                {(historyVendorFilter !== "all" || historyProductFilter !== "all" || historyStatusFilter !== "all" || historyStartDate || historyEndDate) && (
+                {(historyMonth !== (() => {
+                  const today = new Date();
+                  const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                  return `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
+                })() || historyVendorFilter !== "all" || historyProductFilter !== "all" || historyStatusFilter !== "all" || historyStartDate || historyEndDate) && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => {
+                      const today = new Date();
+                      const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                      setHistoryMonth(`${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`);
                       setHistoryVendorFilter("all");
                       setHistoryProductFilter("all");
                       setHistoryStatusFilter("all");

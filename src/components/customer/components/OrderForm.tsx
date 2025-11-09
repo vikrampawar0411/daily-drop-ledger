@@ -167,17 +167,8 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
 
   // Get orders for a specific date - show ALL orders for the date
   const getOrdersForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    const orders = allOrders(date);
-    
-    // Return all orders for the date
-    return orders.filter(order => {
-      if (!order.order_date) return false;
-      const orderDate = new Date(order.order_date);
-      if (isNaN(orderDate.getTime())) return false;
-      const orderDateStr = orderDate.toISOString().split('T')[0];
-      return orderDateStr === dateStr;
-    });
+    // The allOrders function already returns filtered orders for the date
+    return allOrders(date);
   };
 
   const checkCustomerDetailsComplete = async () => {
