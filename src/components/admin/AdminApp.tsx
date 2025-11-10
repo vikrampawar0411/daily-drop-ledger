@@ -9,10 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import CustomerManagement from "@/components/vendor/CustomerManagement";
 import VendorManagement from "./VendorManagement";
 import OrderManagement from "@/components/vendor/OrderManagement";
-import UnifiedProductManagement from "./UnifiedProductManagement";
 import { ServiceAreaManagement } from "./ServiceAreaManagement";
-import AdminSubscriptionManagement from "./AdminSubscriptionManagement";
 import AdminOrderHistory from "./AdminOrderHistory";
+import ProductManagement from "@/components/vendor/ProductManagement";
 
 const AdminApp = () => {
   const navigate = useNavigate();
@@ -89,13 +88,12 @@ const AdminApp = () => {
       {/* Admin Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-8 mb-8 h-auto">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7 mb-8 h-auto">
             <TabsTrigger value="dashboard" className="text-xs sm:text-sm">Dashboard</TabsTrigger>
             <TabsTrigger value="customers" className="text-xs sm:text-sm">Customers</TabsTrigger>
             <TabsTrigger value="vendors" className="text-xs sm:text-sm">Vendors</TabsTrigger>
             <TabsTrigger value="orders" className="text-xs sm:text-sm">Orders</TabsTrigger>
             <TabsTrigger value="products" className="text-xs sm:text-sm">Products</TabsTrigger>
-            <TabsTrigger value="subscriptions" className="text-xs sm:text-sm">Subscriptions</TabsTrigger>
             <TabsTrigger value="history" className="text-xs sm:text-sm">Order History</TabsTrigger>
             <TabsTrigger value="service-area" className="text-xs sm:text-sm">Service Area</TabsTrigger>
           </TabsList>
@@ -117,11 +115,7 @@ const AdminApp = () => {
           </TabsContent>
 
           <TabsContent value="products">
-            <UnifiedProductManagement />
-          </TabsContent>
-
-          <TabsContent value="subscriptions">
-            <AdminSubscriptionManagement />
+            <ProductManagement />
           </TabsContent>
 
           <TabsContent value="history">
