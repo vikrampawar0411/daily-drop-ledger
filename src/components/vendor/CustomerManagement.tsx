@@ -30,11 +30,24 @@ const CustomerManagement = () => {
   const [connectedCustomerIds, setConnectedCustomerIds] = useState<Set<string>>(new Set());
   const [vendorId, setVendorId] = useState<string | null>(null);
   const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Fetch vendor ID and connected customers
   useEffect(() => {
     const fetchVendorConnections = async () => {
       if (!user) return;
+      
+      // Check if user is admin
+      const { data: userRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (userRole?.role === 'admin') {
+        setIsAdmin(true);
+        return;
+      }
       
       const { data: vendor } = await supabase
         .from('vendors')
@@ -80,9 +93,11 @@ const CustomerManagement = () => {
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          customer.phone.includes(searchTerm);
+    
+    // For admin, show all customers. For vendor, show only connected ones
     const isConnected = connectedCustomerIds.has(customer.id);
     
-    return matchesSearch && isConnected;
+    return matchesSearch && (isAdmin || isConnected);
   });
 
   const handleAddCustomer = async () => {

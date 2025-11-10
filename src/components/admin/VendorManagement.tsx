@@ -12,6 +12,7 @@ import { Search, Store, Phone, Mail, MapPin } from "lucide-react";
 import { useVendors } from "@/hooks/useVendors";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { VendorDetailsContent } from "./VendorDetailsContent";
 
 const VENDOR_CATEGORIES = [
   "Milk & Dairy",
@@ -28,7 +29,9 @@ const VendorManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [vendorDetailsOpen, setVendorDetailsOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<any>(null);
+  const [viewingVendor, setViewingVendor] = useState<any>(null);
   const { vendors, loading, refetch } = useVendors();
   const { toast } = useToast();
 
@@ -172,6 +175,11 @@ const VendorManagement = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const openVendorDetails = (vendor: any) => {
+    setViewingVendor(vendor);
+    setVendorDetailsOpen(true);
   };
 
   const openEditDialog = (vendor: any) => {
@@ -385,6 +393,16 @@ const VendorManagement = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Vendor Details Dialog */}
+        <Dialog open={vendorDetailsOpen} onOpenChange={setVendorDetailsOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Vendor Details - {viewingVendor?.name}</DialogTitle>
+            </DialogHeader>
+            <VendorDetailsContent vendorId={viewingVendor?.id} />
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Search */}
@@ -455,7 +473,7 @@ const VendorManagement = () => {
                   <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditDialog(vendor)}>
                     Edit
                   </Button>
-                  <Button size="sm" variant="outline" className="flex-1">
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => openVendorDetails(vendor)}>
                     View Details
                   </Button>
                 </div>

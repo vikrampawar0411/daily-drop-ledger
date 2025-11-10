@@ -9,10 +9,10 @@ import { supabase } from "@/integrations/supabase/client";
 import CustomerManagement from "@/components/vendor/CustomerManagement";
 import VendorManagement from "./VendorManagement";
 import OrderManagement from "@/components/vendor/OrderManagement";
-import ProductManagement from "@/components/vendor/ProductManagement";
-import ProductRequestsManagement from "./ProductRequestsManagement";
-import { MasterTablesManagement } from "./MasterTablesManagement";
+import UnifiedProductManagement from "./UnifiedProductManagement";
 import { ServiceAreaManagement } from "./ServiceAreaManagement";
+import AdminSubscriptionManagement from "./AdminSubscriptionManagement";
+import AdminOrderHistory from "./AdminOrderHistory";
 
 const AdminApp = () => {
   const navigate = useNavigate();
@@ -89,15 +89,15 @@ const AdminApp = () => {
       {/* Admin Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-8 mb-8">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="customers">Customers</TabsTrigger>
-            <TabsTrigger value="vendors">Vendors</TabsTrigger>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
-            <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="requests">Product Requests</TabsTrigger>
-            <TabsTrigger value="service-area">Service Area</TabsTrigger>
-            <TabsTrigger value="master">Master Tables</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-8 mb-8 h-auto">
+            <TabsTrigger value="dashboard" className="text-xs sm:text-sm">Dashboard</TabsTrigger>
+            <TabsTrigger value="customers" className="text-xs sm:text-sm">Customers</TabsTrigger>
+            <TabsTrigger value="vendors" className="text-xs sm:text-sm">Vendors</TabsTrigger>
+            <TabsTrigger value="orders" className="text-xs sm:text-sm">Orders</TabsTrigger>
+            <TabsTrigger value="products" className="text-xs sm:text-sm">Products</TabsTrigger>
+            <TabsTrigger value="subscriptions" className="text-xs sm:text-sm">Subscriptions</TabsTrigger>
+            <TabsTrigger value="history" className="text-xs sm:text-sm">Order History</TabsTrigger>
+            <TabsTrigger value="service-area" className="text-xs sm:text-sm">Service Area</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">
@@ -117,19 +117,19 @@ const AdminApp = () => {
           </TabsContent>
 
           <TabsContent value="products">
-            <ProductManagement />
+            <UnifiedProductManagement />
           </TabsContent>
 
-          <TabsContent value="requests">
-            <ProductRequestsManagement />
+          <TabsContent value="subscriptions">
+            <AdminSubscriptionManagement />
+          </TabsContent>
+
+          <TabsContent value="history">
+            <AdminOrderHistory />
           </TabsContent>
 
           <TabsContent value="service-area">
             <ServiceAreaManagement />
-          </TabsContent>
-
-          <TabsContent value="master">
-            <MasterTablesManagement />
           </TabsContent>
         </Tabs>
       </div>
