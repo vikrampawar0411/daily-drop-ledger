@@ -14,10 +14,6 @@ export interface OrderWithDetails {
   dispute_raised: boolean;
   dispute_reason: string | null;
   dispute_raised_at: string | null;
-  updated_by?: {
-    name: string | null;
-    email: string;
-  };
   customer: {
     id: string;
     name: string;
@@ -63,8 +59,7 @@ export const useOrders = () => {
           *,
           customer:customers(id, name, address, phone, area_id, society_id, wing_number),
           vendor:vendors(id, name, category),
-          product:products(id, name, category, price),
-          updated_by:profiles!orders_updated_by_user_id_fkey(name, email)
+          product:products(id, name, category, price)
         `);
 
       // Filter based on user role
@@ -119,7 +114,6 @@ export const useOrders = () => {
         dispute_raised: order.dispute_raised || false,
         dispute_reason: order.dispute_reason,
         dispute_raised_at: order.dispute_raised_at,
-        updated_by: order.updated_by,
         customer: Array.isArray(order.customer) ? order.customer[0] : order.customer,
         vendor: Array.isArray(order.vendor) ? order.vendor[0] : order.vendor,
         product: Array.isArray(order.product) ? order.product[0] : order.product,

@@ -574,11 +574,6 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                 <div className="bg-green-50 rounded-lg p-3">
                   <Label className="text-sm text-green-800">Delivered at:</Label>
                   <div className="text-green-600">{format(new Date(selectedOrder.delivered_at), "PPp")}</div>
-                  {selectedOrder.updated_by && (
-                    <div className="mt-1 text-sm text-green-700">
-                      Status updated by: {selectedOrder.updated_by.name || selectedOrder.updated_by.email}
-                    </div>
-                  )}
                 </div>
               )}
               {selectedOrder.dispute_raised && (
