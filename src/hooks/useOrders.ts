@@ -14,6 +14,10 @@ export interface OrderWithDetails {
   dispute_raised: boolean;
   dispute_reason: string | null;
   dispute_raised_at: string | null;
+  updated_by?: {
+    name: string | null;
+    email: string;
+  };
   customer: {
     id: string;
     name: string;
@@ -59,7 +63,8 @@ export const useOrders = () => {
           *,
           customer:customers(id, name, address, phone, area_id, society_id, wing_number),
           vendor:vendors(id, name, category),
-          product:products(id, name, category, price)
+          product:products(id, name, category, price),
+          updated_by:profiles!orders_updated_by_user_id_fkey(name, email)
         `);
 
       // Filter based on user role
@@ -103,7 +108,7 @@ export const useOrders = () => {
       if (error) throw error;
       
       // Transform the data to match our interface
-      const transformedData = data?.map(order => ({
+      const transformedData = data?.map((order: any) => ({
         id: order.id,
         order_date: order.order_date,
         quantity: order.quantity,
@@ -114,6 +119,7 @@ export const useOrders = () => {
         dispute_raised: order.dispute_raised || false,
         dispute_reason: order.dispute_reason,
         dispute_raised_at: order.dispute_raised_at,
+        updated_by: order.updated_by,
         customer: Array.isArray(order.customer) ? order.customer[0] : order.customer,
         vendor: Array.isArray(order.vendor) ? order.vendor[0] : order.vendor,
         product: Array.isArray(order.product) ? order.product[0] : order.product,
@@ -139,9 +145,12 @@ export const useOrders = () => {
     try {
       const updateData: any = { status };
       
-      // If marking as delivered, set the delivered_at timestamp
+      // If marking as delivered, set the delivered_at timestamp and track who updated it
       if (status === 'delivered') {
         updateData.delivered_at = deliveredAt || new Date().toISOString();
+        if (user) {
+          updateData.updated_by_user_id = user.id;
+        }
       }
 
       const { error } = await supabase
@@ -151,16 +160,13 @@ export const useOrders = () => {
 
       if (error) throw error;
 
-      setOrders(prev =>
-        prev.map(order =>
-          order.id === orderId ? { ...order, ...updateData } : order
-        )
-      );
-
       toast({
         title: "Success",
         description: "Order status updated",
       });
+      
+      // Refetch to get updated data with user info
+      await fetchOrders();
     } catch (error: any) {
       toast({
         title: "Error updating order",

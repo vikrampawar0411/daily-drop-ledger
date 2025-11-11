@@ -33,7 +33,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
   const [disputeReason, setDisputeReason] = useState("");
   const [modifyOrderDialogOpen, setModifyOrderDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const { orders, loading, raiseDispute } = useOrders();
+  const { orders, loading, raiseDispute, updateOrderStatus } = useOrders();
 
   // Hash function to generate consistent colors for vendor-product combinations
   const getVendorProductColor = (vendorName: string, productName: string) => {
@@ -414,6 +414,19 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
+                        {order.status === "pending" && (
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            className="text-green-600 hover:text-green-700"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateOrderStatus(order.id, "delivered");
+                            }}
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        )}
                         {order.status === "delivered" && !order.dispute_raised && (
                           <Button 
                             size="sm" 
@@ -561,6 +574,11 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                 <div className="bg-green-50 rounded-lg p-3">
                   <Label className="text-sm text-green-800">Delivered at:</Label>
                   <div className="text-green-600">{format(new Date(selectedOrder.delivered_at), "PPp")}</div>
+                  {selectedOrder.updated_by && (
+                    <div className="mt-1 text-sm text-green-700">
+                      Status updated by: {selectedOrder.updated_by.name || selectedOrder.updated_by.email}
+                    </div>
+                  )}
                 </div>
               )}
               {selectedOrder.dispute_raised && (

@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import * as XLSX from 'xlsx';
+import SubscriptionCalendarView from "./components/SubscriptionCalendarView";
 
 interface SubscriptionManagementProps {
   onNavigate?: (tab: string) => void;
@@ -819,29 +820,18 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
 
       {/* Pause Subscription Dialog */}
       <Dialog open={pauseDialogOpen} onOpenChange={setPauseDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Pause Subscription</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label>Pause From</Label>
-              <Calendar
-                mode="single"
-                selected={pauseFromDate}
-                onSelect={setPauseFromDate}
-                className="rounded-md border"
-              />
-            </div>
-            <div>
-              <Label>Resume On</Label>
-              <Calendar
-                mode="single"
-                selected={pauseUntilDate}
-                onSelect={setPauseUntilDate}
-                className="rounded-md border"
-              />
-            </div>
+            <SubscriptionCalendarView
+              pauseFromDate={pauseFromDate}
+              pauseUntilDate={pauseUntilDate}
+              onSelectPauseFrom={setPauseFromDate}
+              onSelectPauseUntil={setPauseUntilDate}
+              orders={allOrders}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPauseDialogOpen(false)}>Cancel</Button>

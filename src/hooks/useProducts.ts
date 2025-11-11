@@ -12,6 +12,7 @@ export interface Product {
   description: string | null;
   is_active: boolean;
   status: string;
+  image_url: string | null;
 }
 
 export const useProducts = () => {

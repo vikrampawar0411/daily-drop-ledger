@@ -1,15 +1,22 @@
-
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+
+interface Order {
+  id: string;
+  order_date: string;
+  status: string;
+  [key: string]: any;
+}
 
 interface OrderCalendarViewProps {
   selectedDate: Date | undefined;
   onSelectDate: (date: Date | undefined) => void;
   hasOrdersOnDate: (date: Date) => boolean;
+  getOrdersForDate: (date: Date) => Order[];
 }
 
-const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate }: OrderCalendarViewProps) => {
+const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrdersForDate }: OrderCalendarViewProps) => {
   return (
     <Card>
       <CardHeader>
@@ -20,22 +27,69 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate }: Orde
           mode="single"
           selected={selectedDate}
           onSelect={onSelectDate}
-          className="rounded-md border pointer-events-auto"
+          className={cn("rounded-md border pointer-events-auto")}
           modifiers={{
-            hasOrders: (date) => hasOrdersOnDate(date)
+            hasOrders: (date) => hasOrdersOnDate(date),
+            deliveredOrder: (date) => {
+              const dateStr = date.toISOString().split('T')[0];
+              const orders = getOrdersForDate(date);
+              return orders.some(o => 
+                o.order_date && 
+                new Date(o.order_date).toISOString().split('T')[0] === dateStr && 
+                o.status === 'delivered'
+              );
+            },
+            pendingOrder: (date) => {
+              const dateStr = date.toISOString().split('T')[0];
+              const orders = getOrdersForDate(date);
+              return orders.some(o => 
+                o.order_date && 
+                new Date(o.order_date).toISOString().split('T')[0] === dateStr && 
+                o.status === 'pending'
+              );
+            },
+            futureOrder: (date) => {
+              const dateStr = date.toISOString().split('T')[0];
+              const today = new Date().toISOString().split('T')[0];
+              const orders = getOrdersForDate(date);
+              return dateStr > today && orders.length > 0;
+            }
           }}
           modifiersStyles={{
             hasOrders: {
               backgroundColor: '#dbeafe',
               color: '#1e40af',
               fontWeight: 'bold'
+            },
+            deliveredOrder: {
+              backgroundColor: '#86efac',
+              color: '#166534',
+              fontWeight: 'bold'
+            },
+            pendingOrder: {
+              backgroundColor: '#60a5fa',
+              color: '#1e3a8a',
+              fontWeight: 'bold'
+            },
+            futureOrder: {
+              backgroundColor: '#bfdbfe',
+              color: '#1e40af',
+              fontWeight: '500'
             }
           }}
         />
-        <div className="mt-4 text-sm text-gray-600">
+        <div className="mt-4 space-y-2 text-sm text-gray-600">
           <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-blue-100 border border-blue-300 rounded"></div>
-            <span>Dates with orders</span>
+            <div className="w-3 h-3 bg-[#86efac] border border-[#166534] rounded"></div>
+            <span>Delivered orders</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-[#60a5fa] border border-[#1e3a8a] rounded"></div>
+            <span>Pending orders</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-[#bfdbfe] border border-[#1e40af] rounded"></div>
+            <span>Future orders</span>
           </div>
         </div>
       </CardContent>

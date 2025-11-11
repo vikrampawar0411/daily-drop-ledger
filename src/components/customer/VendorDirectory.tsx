@@ -81,7 +81,8 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
             description: product.description,
             unit: product.unit,
             availability: product.availability,
-            price: vp.price_override || product.price
+            price: vp.price_override || product.price,
+            image_url: product.image_url
           };
         })
         .filter(p => p !== null);
