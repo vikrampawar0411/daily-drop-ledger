@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { CheckCircle, XCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
@@ -655,6 +655,9 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Order Details</DialogTitle>
+            <DialogDescription>
+              View complete information about this order
+            </DialogDescription>
           </DialogHeader>
           {selectedOrder && (
             <div className="space-y-4">
@@ -718,6 +721,9 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Bulk Status Update</DialogTitle>
+            <DialogDescription>
+              Update the delivery status for multiple orders at once
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <p>Are you sure you want to mark {selectedOrderIds.length} order(s) as delivered?</p>
