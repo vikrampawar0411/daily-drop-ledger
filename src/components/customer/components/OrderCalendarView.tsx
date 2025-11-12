@@ -67,14 +67,14 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
               fontWeight: 'bold'
             },
             pendingOrder: {
-              backgroundColor: '#60a5fa',
-              color: '#1e3a8a',
-              fontWeight: 'bold'
-            },
-            futureOrder: {
               backgroundColor: '#bfdbfe',
               color: '#1e40af',
               fontWeight: '500'
+            },
+            futureOrder: {
+              backgroundColor: '#60a5fa',
+              color: '#1e3a8a',
+              fontWeight: 'bold'
             }
           }}
         />
@@ -84,11 +84,11 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
             <span>Delivered orders</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-[#60a5fa] border border-[#1e3a8a] rounded"></div>
+            <div className="w-3 h-3 bg-[#bfdbfe] border border-[#1e40af] rounded"></div>
             <span>Pending orders</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-[#bfdbfe] border border-[#1e40af] rounded"></div>
+            <div className="w-3 h-3 bg-[#60a5fa] border border-[#1e3a8a] rounded"></div>
             <span>Future orders</span>
           </div>
         </div>

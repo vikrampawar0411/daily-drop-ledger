@@ -30,6 +30,7 @@ interface VendorDirectoryProps {
 const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [showConnectedOnly, setShowConnectedOnly] = useState(false);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [vendorsLoading, setVendorsLoading] = useState(true);
   const [selectedVendor, setSelectedVendor] = useState<any>(null);
@@ -37,6 +38,7 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
   const { products: allProducts, loading: productsLoading } = useProducts();
   const { vendorProducts, loading: vendorProductsLoading } = useVendorProducts();
   const { 
+    connectedVendorIds,
     isConnected, 
     connectToVendor, 
     disconnectFromVendor, 
@@ -102,8 +104,9 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
     const matchesSearch = vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (vendor.address?.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = selectedCategory === "all" || vendor.category === selectedCategory;
+    const matchesConnection = !showConnectedOnly || connectedVendorIds.includes(vendor.id);
     
-    return matchesSearch && matchesCategory && vendor.is_active;
+    return matchesSearch && matchesCategory && matchesConnection && vendor.is_active;
   });
 
   if (vendorsLoading || productsLoading || vendorProductsLoading || connectionsLoading) {
@@ -131,17 +134,31 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Vendor Directory</h2>
-        <Button 
-          className="bg-green-600 hover:bg-green-700"
-          onClick={() => {
-            window.open('mailto:support@example.com?subject=New Vendor Request&body=Please provide vendor details...', '_blank');
-          }}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Request New Vendor
-        </Button>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Vendor Directory</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            {showConnectedOnly ? `Showing ${filteredVendors.length} connected vendors` : 'Browse all vendors'}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            variant={showConnectedOnly ? "default" : "outline"}
+            onClick={() => setShowConnectedOnly(!showConnectedOnly)}
+          >
+            <Check className="h-4 w-4 mr-2" />
+            {showConnectedOnly ? 'Show All' : 'Connected Only'}
+          </Button>
+          <Button 
+            className="bg-green-600 hover:bg-green-700"
+            onClick={() => {
+              window.open('mailto:support@example.com?subject=New Vendor Request&body=Please provide vendor details...', '_blank');
+            }}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Request New Vendor
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}

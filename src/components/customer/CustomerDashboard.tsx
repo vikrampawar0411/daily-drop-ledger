@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, ShoppingCart, Calendar, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock, Download, FileDown } from "lucide-react";
+import { Users, ShoppingCart, Calendar, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock, Download, FileDown, ChevronDown, ChevronUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VendorOrderTabs } from "./components/VendorOrderTabs";
 import { useOrders } from "@/hooks/useOrders";
@@ -16,7 +16,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 
 interface CustomerDashboardProps {
@@ -25,8 +27,9 @@ interface CustomerDashboardProps {
 
 const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   const { user } = useAuth();
-  const { orders, loading: ordersLoading } = useOrders();
+  const { orders, loading: ordersLoading, updateOrderStatus } = useOrders();
   const { vendors, loading: vendorsLoading } = useVendors();
+  const { toast } = useToast();
   const [customerName, setCustomerName] = useState("");
   const [connectionCount, setConnectionCount] = useState(0);
   const [loadingWelcome, setLoadingWelcome] = useState(true);
@@ -38,6 +41,9 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
   const [orderDetailsDialogOpen, setOrderDetailsDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [tableExpanded, setTableExpanded] = useState(false);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [bulkUpdateDialogOpen, setBulkUpdateDialogOpen] = useState(false);
 
   const handleOrderClick = (order: any) => {
     setSelectedOrder(order);
@@ -103,6 +109,55 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Orders');
     XLSX.writeFile(wb, `orders-${selectedMonth}.xlsx`);
+  };
+
+  const handleBulkStatusUpdate = async () => {
+    if (selectedOrderIds.length === 0) {
+      toast({
+        title: "No orders selected",
+        description: "Please select orders to update",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Update all selected orders to delivered
+      for (const orderId of selectedOrderIds) {
+        await updateOrderStatus(orderId, 'delivered');
+      }
+      
+      toast({
+        title: "Success",
+        description: `${selectedOrderIds.length} order(s) marked as delivered`,
+      });
+      
+      setSelectedOrderIds([]);
+      setBulkUpdateDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update orders",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleOrderSelection = (orderId: string) => {
+    setSelectedOrderIds(prev => 
+      prev.includes(orderId) 
+        ? prev.filter(id => id !== orderId)
+        : [...prev, orderId]
+    );
+  };
+
+  const toggleAllOrders = () => {
+    const pendingOrders = monthlyStats.orders.filter(o => o.status === 'pending');
+    if (selectedOrderIds.length === pendingOrders.length) {
+      setSelectedOrderIds([]);
+    } else {
+      setSelectedOrderIds(pendingOrders.map(o => o.id));
+    }
   };
 
   useEffect(() => {
@@ -445,118 +500,153 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
 
 
           {/* Orders Table for Selected Period */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Orders for Selected Period</h3>
-              {monthlyStats.orders.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Download className="h-4 w-4 mr-2" />
-                      Export
+          <Collapsible open={tableExpanded} onOpenChange={setTableExpanded}>
+            <div className="space-y-4">
+              {/* Summary Section - Always Visible */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="bg-gray-50">
+                  <CardContent className="pt-4">
+                    <div className="text-2xl font-bold">{monthlyStats.totalOrders}</div>
+                    <p className="text-sm text-muted-foreground">Total Orders</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-green-50">
+                  <CardContent className="pt-4">
+                    <div className="text-2xl font-bold text-green-700">{monthlyStats.deliveredOrders}</div>
+                    <p className="text-sm text-green-700">Delivered</p>
+                    <p className="text-xs text-muted-foreground">₹{monthlyStats.deliveredSpend}</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-blue-50">
+                  <CardContent className="pt-4">
+                    <div className="text-2xl font-bold text-blue-700">{monthlyStats.scheduledOrders}</div>
+                    <p className="text-sm text-blue-700">Pending</p>
+                    <p className="text-xs text-muted-foreground">₹{monthlyStats.forecastedBill}</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-purple-50">
+                  <CardContent className="pt-4">
+                    <div className="text-2xl font-bold text-purple-700">₹{Math.round(monthlyStats.orders.reduce((sum, o) => sum + Number(o.total_amount), 0))}</div>
+                    <p className="text-sm text-purple-700">Total Amount</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline">
+                    {tableExpanded ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
+                    {tableExpanded ? 'Hide' : 'Show'} Detailed Orders
+                  </Button>
+                </CollapsibleTrigger>
+                <div className="flex gap-2">
+                  {selectedOrderIds.length > 0 && (
+                    <Button onClick={() => setBulkUpdateDialogOpen(true)} className="bg-green-600 hover:bg-green-700">
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Mark {selectedOrderIds.length} as Delivered
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={exportToCSV}>
-                      <FileDown className="h-4 w-4 mr-2" />
-                      Export as CSV
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={exportToExcel}>
-                      <FileDown className="h-4 w-4 mr-2" />
-                      Export as Excel
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Day</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Vendor</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {monthlyStats.orders.length > 0 ? (
-                    <>
-                      {monthlyStats.orders.map((order) => {
-                        const orderDate = new Date(order.order_date);
-                        const isSunday = orderDate.getDay() === 0;
-                        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                        const dayName = days[orderDate.getDay()];
-                        
-                        return (
-                          <TableRow 
-                            key={order.id} 
-                            className="cursor-pointer hover:bg-muted/50"
-                            onClick={() => handleOrderClick(order)}
-                          >
-                            <TableCell className={`font-semibold ${isSunday ? 'text-red-700' : ''}`}>
-                              {dayName}
-                            </TableCell>
-                            <TableCell>{orderDate.toLocaleDateString()}</TableCell>
-                            <TableCell>
-                              {order.vendor.name}
-                            </TableCell>
-                            <TableCell>
-                              {order.product.name}
-                            </TableCell>
-                            <TableCell>{order.quantity} {order.unit}</TableCell>
-                            <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
-                            <TableCell>
-                              <Badge className={getStatusColor(order.status)}>
-                                {getStatusIcon(order.status)}
-                                <span className="ml-1 capitalize">{order.status}</span>
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                      {/* Summary Rows */}
-                      <TableRow className="border-t-2 border-gray-300 bg-gray-50 font-bold">
-                        <TableCell colSpan={4} className="text-right">TOTAL (All Orders):</TableCell>
-                        <TableCell>{monthlyStats.orders.reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}</TableCell>
-                        <TableCell>₹{Math.round(monthlyStats.orders.reduce((sum, o) => sum + Number(o.total_amount), 0))}</TableCell>
-                        <TableCell></TableCell>
+                  )}
+                  {monthlyStats.orders.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Download className="h-4 w-4 mr-2" />
+                          Export
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={exportToCSV}>
+                          <FileDown className="h-4 w-4 mr-2" />
+                          Export as CSV
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={exportToExcel}>
+                          <FileDown className="h-4 w-4 mr-2" />
+                          Export as Excel
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              </div>
+
+              <CollapsibleContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox 
+                            checked={selectedOrderIds.length === monthlyStats.orders.filter(o => o.status === 'pending').length && monthlyStats.orders.filter(o => o.status === 'pending').length > 0}
+                            onCheckedChange={toggleAllOrders}
+                          />
+                        </TableHead>
+                        <TableHead>Day</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Vendor</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Total</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
-                      <TableRow className="bg-green-50 font-semibold">
-                        <TableCell colSpan={4} className="text-right">Delivered Orders:</TableCell>
-                        <TableCell>{monthlyStats.orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}</TableCell>
-                        <TableCell>₹{monthlyStats.deliveredSpend}</TableCell>
-                        <TableCell></TableCell>
-                      </TableRow>
-                      <TableRow className="bg-blue-50 font-semibold">
-                        <TableCell colSpan={4} className="text-right">Pending Orders:</TableCell>
-                        <TableCell>{monthlyStats.orders.filter(o => o.status === 'pending').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}</TableCell>
-                        <TableCell>₹{monthlyStats.forecastedBill}</TableCell>
-                        <TableCell></TableCell>
-                      </TableRow>
-                      {monthlyStats.orders.some(o => o.status === 'cancelled') && (
-                        <TableRow className="bg-red-50 font-semibold">
-                          <TableCell colSpan={4} className="text-right">Cancelled Orders:</TableCell>
-                          <TableCell>{monthlyStats.orders.filter(o => o.status === 'cancelled').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}</TableCell>
-                          <TableCell>₹{Math.round(monthlyStats.orders.filter(o => o.status === 'cancelled').reduce((sum, o) => sum + Number(o.total_amount), 0))}</TableCell>
-                          <TableCell></TableCell>
+                    </TableHeader>
+                    <TableBody>
+                      {monthlyStats.orders.length > 0 ? (
+                        monthlyStats.orders.map((order) => {
+                          const orderDate = new Date(order.order_date);
+                          const isSunday = orderDate.getDay() === 0;
+                          const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                          const dayName = days[orderDate.getDay()];
+                          
+                          return (
+                            <TableRow 
+                              key={order.id} 
+                              className="cursor-pointer hover:bg-muted/50"
+                            >
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                {order.status === 'pending' && (
+                                  <Checkbox 
+                                    checked={selectedOrderIds.includes(order.id)}
+                                    onCheckedChange={() => toggleOrderSelection(order.id)}
+                                  />
+                                )}
+                              </TableCell>
+                              <TableCell 
+                                className={`font-semibold ${isSunday ? 'text-red-700' : ''}`}
+                                onClick={() => handleOrderClick(order)}
+                              >
+                                {dayName}
+                              </TableCell>
+                              <TableCell onClick={() => handleOrderClick(order)}>{orderDate.toLocaleDateString()}</TableCell>
+                              <TableCell onClick={() => handleOrderClick(order)}>
+                                {order.vendor.name}
+                              </TableCell>
+                              <TableCell onClick={() => handleOrderClick(order)}>
+                                {order.product.name}
+                              </TableCell>
+                              <TableCell onClick={() => handleOrderClick(order)}>{order.quantity} {order.unit}</TableCell>
+                              <TableCell className="font-semibold" onClick={() => handleOrderClick(order)}>₹{order.total_amount}</TableCell>
+                              <TableCell onClick={() => handleOrderClick(order)}>
+                                <Badge className={getStatusColor(order.status)}>
+                                  {getStatusIcon(order.status)}
+                                  <span className="ml-1 capitalize">{order.status}</span>
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                            No orders found for the selected period
+                          </TableCell>
                         </TableRow>
                       )}
-                    </>
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                        No orders found for the selected period
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    </TableBody>
+                  </Table>
+                </div>
+              </CollapsibleContent>
             </div>
-          </div>
+          </Collapsible>
         </CardContent>
       </Card>
 
@@ -620,6 +710,26 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Update Dialog */}
+      <Dialog open={bulkUpdateDialogOpen} onOpenChange={setBulkUpdateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Bulk Status Update</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>Are you sure you want to mark {selectedOrderIds.length} order(s) as delivered?</p>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setBulkUpdateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleBulkStatusUpdate} className="bg-green-600 hover:bg-green-700">
+                Confirm
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

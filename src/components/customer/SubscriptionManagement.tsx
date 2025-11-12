@@ -232,15 +232,19 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
 
   const handlePauseConfirm = async () => {
     if (selectedSubscription && pauseFromDate && pauseUntilDate) {
-      await pauseSubscription(
-        selectedSubscription,
-        pauseFromDate.toISOString().split('T')[0],
-        pauseUntilDate.toISOString().split('T')[0]
-      );
-      setPauseDialogOpen(false);
-      setSelectedSubscription(null);
-      setPauseFromDate(new Date());
-      setPauseUntilDate(undefined);
+      try {
+        await pauseSubscription(
+          selectedSubscription,
+          pauseFromDate.toISOString().split('T')[0],
+          pauseUntilDate.toISOString().split('T')[0]
+        );
+        setPauseDialogOpen(false);
+        setSelectedSubscription(null);
+        setPauseFromDate(new Date());
+        setPauseUntilDate(undefined);
+      } catch (error) {
+        console.error('Error pausing subscription:', error);
+      }
     }
   };
   
