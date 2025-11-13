@@ -59,22 +59,22 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
             hasOrders: {
               backgroundColor: '#dbeafe',
               color: '#1e40af',
-              fontWeight: 'bold'
+              fontWeight: 'normal'
             },
             deliveredOrder: {
               backgroundColor: '#86efac',
               color: '#166534',
-              fontWeight: 'bold'
+              fontWeight: 'normal'
             },
             pendingOrder: {
               backgroundColor: '#fbbf24',
               color: '#78350f',
-              fontWeight: '600'
+              fontWeight: 'normal'
             },
             futureOrder: {
               backgroundColor: '#93c5fd',
               color: '#1e3a8a',
-              fontWeight: '500'
+              fontWeight: 'normal'
             }
           }}
         />

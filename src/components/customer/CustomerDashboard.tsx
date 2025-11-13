@@ -77,10 +77,26 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       'Date': new Date(order.order_date).toLocaleDateString(),
       'Vendor': order.vendor.name,
       'Product': order.product.name,
-      'Quantity': `${order.quantity} ${order.unit}`,
-      'Total': order.total_amount,
+      'Quantity': order.quantity,
+      'Unit': order.unit,
+      'Amount': order.total_amount,
       'Status': order.status,
     }));
+    
+    // Calculate totals
+    const totalQuantity = monthlyStats.orders.reduce((sum, o) => sum + Number(o.quantity), 0);
+    const totalAmount = monthlyStats.orders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+    
+    // Add summary rows
+    csvData.push({
+      'Date': '',
+      'Vendor': '',
+      'Product': '',
+      'Quantity': totalQuantity,
+      'Unit': '',
+      'Amount': totalAmount,
+      'Status': 'TOTAL'
+    });
     
     const csv = [
       Object.keys(csvData[0]).join(','),
@@ -100,10 +116,26 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       'Date': new Date(order.order_date).toLocaleDateString(),
       'Vendor': order.vendor.name,
       'Product': order.product.name,
-      'Quantity': `${order.quantity} ${order.unit}`,
-      'Total': order.total_amount,
+      'Quantity': order.quantity,
+      'Unit': order.unit,
+      'Amount': order.total_amount,
       'Status': order.status,
     }));
+    
+    // Calculate totals
+    const totalQuantity = monthlyStats.orders.reduce((sum, o) => sum + Number(o.quantity), 0);
+    const totalAmount = monthlyStats.orders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+    
+    // Add summary row
+    excelData.push({
+      'Date': '',
+      'Vendor': '',
+      'Product': '',
+      'Quantity': totalQuantity,
+      'Unit': '',
+      'Amount': totalAmount,
+      'Status': 'TOTAL'
+    });
     
     const ws = XLSX.utils.json_to_sheet(excelData);
     const wb = XLSX.utils.book_new();
@@ -122,11 +154,20 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     }
 
     try {
-      // Update all selected orders to delivered
-      for (const orderId of selectedOrderIds) {
-        await updateOrderStatus(orderId, 'delivered');
-      }
+      // Update all selected orders to delivered without showing individual toasts
+      const updatePromises = selectedOrderIds.map(orderId => 
+        supabase
+          .from('orders')
+          .update({ 
+            status: 'delivered',
+            delivered_at: new Date().toISOString()
+          })
+          .eq('id', orderId)
+      );
       
+      await Promise.all(updatePromises);
+      
+      // Show single consolidated success message
       toast({
         title: "Success",
         description: `${selectedOrderIds.length} order(s) marked as delivered`,
@@ -134,6 +175,9 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       
       setSelectedOrderIds([]);
       setBulkUpdateDialogOpen(false);
+      
+      // Refresh orders list
+      window.location.reload();
     } catch (error) {
       toast({
         title: "Error",
@@ -617,25 +661,56 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                 
                 {/* Summary at bottom */}
                 <div className="mt-6 pt-6 border-t space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Total Orders:</span>
-                    <span className="text-sm font-bold">{monthlyStats.totalOrders}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-green-700">Delivered:</span>
-                    <span className="text-sm font-bold text-green-700">{monthlyStats.deliveredOrders} (₹{monthlyStats.deliveredSpend})</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-blue-700">Pending:</span>
-                    <span className="text-sm font-bold text-blue-700">{monthlyStats.scheduledOrders} (₹{monthlyStats.forecastedBill})</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-red-700">Cancelled:</span>
-                    <span className="text-sm font-bold text-red-700">{monthlyStats.orders.filter(o => o.status === 'cancelled').length}</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-2 border-t">
-                    <span className="text-base font-bold">Total Amount:</span>
-                    <span className="text-base font-bold text-purple-700">₹{Math.round(monthlyStats.orders.reduce((sum, o) => sum + Number(o.total_amount), 0))}</span>
+                  <div className="pt-4 border-t">
+                    <h4 className="font-semibold mb-2">Order Summary</h4>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Orders</TableHead>
+                          <TableHead className="text-right">Quantity</TableHead>
+                          <TableHead className="text-right">Amount (₹)</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell className="text-green-700 font-medium">Delivered</TableCell>
+                          <TableCell className="text-right">{monthlyStats.deliveredOrders}</TableCell>
+                          <TableCell className="text-right">
+                            {monthlyStats.orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">{monthlyStats.deliveredSpend}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="text-blue-700 font-medium">Pending</TableCell>
+                          <TableCell className="text-right">{monthlyStats.scheduledOrders}</TableCell>
+                          <TableCell className="text-right">
+                            {monthlyStats.orders.filter(o => o.status === 'pending').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">{monthlyStats.forecastedBill}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="text-red-700 font-medium">Cancelled</TableCell>
+                          <TableCell className="text-right">{monthlyStats.orders.filter(o => o.status === 'cancelled').length}</TableCell>
+                          <TableCell className="text-right">
+                            {monthlyStats.orders.filter(o => o.status === 'cancelled').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {Math.round(monthlyStats.orders.filter(o => o.status === 'cancelled').reduce((sum, o) => sum + Number(o.total_amount), 0))}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow className="font-bold border-t-2">
+                          <TableCell>Total</TableCell>
+                          <TableCell className="text-right">{monthlyStats.totalOrders}</TableCell>
+                          <TableCell className="text-right">
+                            {monthlyStats.orders.reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {Math.round(monthlyStats.orders.reduce((sum, o) => sum + Number(o.total_amount), 0))}
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               </CollapsibleContent>
