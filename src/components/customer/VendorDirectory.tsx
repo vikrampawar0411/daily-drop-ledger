@@ -51,14 +51,19 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
       try {
         const { data, error } = await supabase
           .from("vendors")
-          .select("*")
+          .select("id, name, category, contact_person, phone, email, address, is_active, created_at")
           .eq("is_active", true)
           .order("created_at", { ascending: false });
 
-        if (error) throw error;
-        setVendors(data || []);
+        if (error) {
+          console.error("Error fetching vendors:", error);
+          setVendors([]);
+        } else {
+          setVendors(data || []);
+        }
       } catch (error) {
         console.error("Error fetching vendors:", error);
+        setVendors([]);
       } finally {
         setVendorsLoading(false);
       }
