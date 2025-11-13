@@ -502,36 +502,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
           {/* Orders Table for Selected Period */}
           <Collapsible open={tableExpanded} onOpenChange={setTableExpanded}>
             <div className="space-y-4">
-              {/* Summary Section - Always Visible */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="bg-gray-50">
-                  <CardContent className="pt-4">
-                    <div className="text-2xl font-bold">{monthlyStats.totalOrders}</div>
-                    <p className="text-sm text-muted-foreground">Total Orders</p>
-                  </CardContent>
-                </Card>
-                <Card className="bg-green-50">
-                  <CardContent className="pt-4">
-                    <div className="text-2xl font-bold text-green-700">{monthlyStats.deliveredOrders}</div>
-                    <p className="text-sm text-green-700">Delivered</p>
-                    <p className="text-xs text-muted-foreground">₹{monthlyStats.deliveredSpend}</p>
-                  </CardContent>
-                </Card>
-                <Card className="bg-blue-50">
-                  <CardContent className="pt-4">
-                    <div className="text-2xl font-bold text-blue-700">{monthlyStats.scheduledOrders}</div>
-                    <p className="text-sm text-blue-700">Pending</p>
-                    <p className="text-xs text-muted-foreground">₹{monthlyStats.forecastedBill}</p>
-                  </CardContent>
-                </Card>
-                <Card className="bg-purple-50">
-                  <CardContent className="pt-4">
-                    <div className="text-2xl font-bold text-purple-700">₹{Math.round(monthlyStats.orders.reduce((sum, o) => sum + Number(o.total_amount), 0))}</div>
-                    <p className="text-sm text-purple-700">Total Amount</p>
-                  </CardContent>
-                </Card>
-              </div>
-
               <div className="flex items-center justify-between">
                 <CollapsibleTrigger asChild>
                   <Button variant="outline">
@@ -643,6 +613,30 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                       )}
                     </TableBody>
                   </Table>
+                </div>
+                
+                {/* Summary at bottom */}
+                <div className="mt-6 pt-6 border-t space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Total Orders:</span>
+                    <span className="text-sm font-bold">{monthlyStats.totalOrders}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-green-700">Delivered:</span>
+                    <span className="text-sm font-bold text-green-700">{monthlyStats.deliveredOrders} (₹{monthlyStats.deliveredSpend})</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-blue-700">Pending:</span>
+                    <span className="text-sm font-bold text-blue-700">{monthlyStats.scheduledOrders} (₹{monthlyStats.forecastedBill})</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-red-700">Cancelled:</span>
+                    <span className="text-sm font-bold text-red-700">{monthlyStats.orders.filter(o => o.status === 'cancelled').length}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t">
+                    <span className="text-base font-bold">Total Amount:</span>
+                    <span className="text-base font-bold text-purple-700">₹{Math.round(monthlyStats.orders.reduce((sum, o) => sum + Number(o.total_amount), 0))}</span>
+                  </div>
                 </div>
               </CollapsibleContent>
             </div>
