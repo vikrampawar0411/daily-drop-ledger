@@ -107,33 +107,34 @@ const SubscriptionCalendarView = ({
             pauseFrom: {
               backgroundColor: '#fef3c7',
               color: '#92400e',
-              fontWeight: 'bold',
+              fontWeight: 'normal',
               border: '2px solid #f59e0b'
             },
             pauseUntil: {
               backgroundColor: '#fef3c7',
               color: '#92400e',
-              fontWeight: 'bold',
+              fontWeight: 'normal',
               border: '2px solid #f59e0b'
             },
             pauseRange: {
               backgroundColor: '#fef9e7',
-              color: '#92400e'
+              color: '#92400e',
+              fontWeight: 'normal'
             },
             deliveredOrder: {
               backgroundColor: '#86efac',
               color: '#166534',
-              fontWeight: 'bold'
+              fontWeight: 'normal'
             },
             pendingOrder: {
               backgroundColor: '#fbbf24',
               color: '#78350f',
-              fontWeight: '600'
+              fontWeight: 'normal'
             },
             futureOrder: {
               backgroundColor: '#93c5fd',
               color: '#1e3a8a',
-              fontWeight: '500'
+              fontWeight: 'normal'
             }
           }}
           disabled={(date) => isBefore(date, today)}

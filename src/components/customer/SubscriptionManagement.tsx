@@ -101,26 +101,31 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
   
   // Get available products for selected vendor
   const availableProducts = useMemo(() => {
-    if (selectedVendorFilter === "all") {
+    // Use the vendor from the create dialog if it's set, otherwise use the filter
+    const vendorIdToFilter = newSubscription.vendor_id || selectedVendorFilter;
+    
+    if (vendorIdToFilter === "all" || !vendorIdToFilter) {
       return vendorProducts
         .filter(vp => vp.is_active)
         .map(vp => {
           const product = products.find(p => p.id === vp.product_id);
           return product ? {
             ...product,
-            price: vp.price_override || product.price
+            price: vp.price_override || product.price,
+            vendor_id: vp.vendor_id
           } : null;
         })
         .filter(p => p !== null);
     }
     
     return vendorProducts
-      .filter(vp => vp.vendor_id === (selectedVendorFilter || newSubscription.vendor_id) && vp.is_active)
+      .filter(vp => vp.vendor_id === vendorIdToFilter && vp.is_active)
       .map(vp => {
         const product = products.find(p => p.id === vp.product_id);
         return product ? {
           ...product,
-          price: vp.price_override || product.price
+          price: vp.price_override || product.price,
+          vendor_id: vp.vendor_id
         } : null;
       })
       .filter(p => p !== null);
