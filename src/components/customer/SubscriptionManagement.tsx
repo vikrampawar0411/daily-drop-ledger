@@ -7,8 +7,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Pause, Play, X, Calendar as CalendarIcon, Plus, Package, History, Download, Eye } from "lucide-react";
-import { Slider } from "@/components/ui/slider";
+import { Pause, Play, X, Calendar as CalendarIcon, Plus, Package, History, Download, Eye, Minus } from "lucide-react";
+import OrderCalendar from "./OrderCalendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -343,10 +343,14 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
       </div>
       
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="active">
             <Package className="h-4 w-4 mr-2" />
             Active Subscriptions
+          </TabsTrigger>
+          <TabsTrigger value="calendar">
+            <CalendarIcon className="h-4 w-4 mr-2" />
+            Calendar
           </TabsTrigger>
           <TabsTrigger value="history">
             <History className="h-4 w-4 mr-2" />
@@ -356,81 +360,7 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
 
         <TabsContent value="active" className="space-y-6">
 
-        {/* Vendor Filter for Products */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Quick Subscribe - Popular Products</CardTitle>
-              <Select value={selectedVendorFilter} onValueChange={setSelectedVendorFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by vendor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Vendors</SelectItem>
-                  {vendors.map((vendor) => (
-                    <SelectItem key={vendor.id} value={vendor.id}>
-                      {vendor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {availableProducts.slice(0, 12).map((product: any) => {
-                const quantity = productQuantities[product.id] || 1;
-                return (
-                  <Card 
-                    key={product.id} 
-                    className="hover:shadow-lg transition-shadow"
-                  >
-                    <CardContent className="p-3">
-                      <div className="aspect-square mb-2 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-                        {product.image_url ? (
-                          <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <Package className="h-12 w-12 text-gray-400" />
-                        )}
-                      </div>
-                      <h4 className="font-semibold text-sm mb-1 truncate">{product.name}</h4>
-                      <p className="text-xs text-muted-foreground">₹{product.price}/{product.unit}</p>
-                      <Badge variant="outline" className="text-xs mt-1">{product.category}</Badge>
-                      
-                      <div className="mt-3 space-y-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => {
-                            setNewSubscription({...newSubscription, product_id: product.id, quantity});
-                            setCreateDialogOpen(true);
-                          }}
-                        >
-                          <CalendarIcon className="h-3 w-3 mr-1" />
-                          Subscribe
-                        </Button>
-                        
-                        <div className="flex items-center gap-2">
-                          <Slider
-                            value={[quantity]}
-                            onValueChange={(value) => setProductQuantities(prev => ({...prev, [product.id]: value[0]}))}
-                            min={1}
-                            max={10}
-                            step={1}
-                            className="flex-1"
-                          />
-                          <span className="text-xs font-medium w-8 text-center">{quantity}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
+      {/* Active Subscriptions Section */}
       {subscriptions.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
@@ -440,20 +370,30 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {subscriptions.map((subscription) => (
-            <Card key={subscription.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{subscription.vendor?.name}</CardTitle>
-                  {getStatusBadge(subscription.status)}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="text-sm">
-                  <span className="font-medium">Product:</span>
-                  <div className="text-muted-foreground">{subscription.product?.name}</div>
-                </div>
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Your Active Subscriptions</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {subscriptions.map((subscription) => (
+              <Card key={subscription.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="aspect-square w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
+                        {subscription.product?.image_url ? (
+                          <img src={subscription.product.image_url} alt={subscription.product.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Package className="h-8 w-8 text-gray-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-lg truncate">{subscription.vendor?.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground">{subscription.product?.name}</p>
+                      </div>
+                    </div>
+                    {getStatusBadge(subscription.status)}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <span className="font-medium">Quantity:</span>
@@ -531,10 +471,10 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => onNavigate?.('calendar')}
+                    onClick={() => setActiveSubTab('calendar')}
                     className="w-full"
                   >
-                    <Eye className="h-4 w-4 mr-2" />
+                    <CalendarIcon className="h-4 w-4 mr-2" />
                     See Calendar
                   </Button>
                 </div>
@@ -542,8 +482,104 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
             </Card>
           ))}
         </div>
+        </div>
       )}
-        </TabsContent>
+
+      {/* Other Products Section */}
+      {availableProducts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Other Available Products</CardTitle>
+              <Select value={selectedVendorFilter} onValueChange={setSelectedVendorFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by vendor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Vendors</SelectItem>
+                  {vendors.map((vendor) => (
+                    <SelectItem key={vendor.id} value={vendor.id}>
+                      {vendor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {availableProducts.slice(0, 12).map((product: any) => {
+                const quantity = productQuantities[product.id] || 1;
+                return (
+                  <Card 
+                    key={product.id} 
+                    className="hover:shadow-lg transition-shadow"
+                  >
+                    <CardContent className="p-3">
+                      <div className="aspect-square mb-2 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                        {product.image_url ? (
+                          <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Package className="h-12 w-12 text-gray-400" />
+                        )}
+                      </div>
+                      <h4 className="font-semibold text-sm mb-1 truncate">{product.name}</h4>
+                      <p className="text-xs text-muted-foreground">₹{product.price}/{product.unit}</p>
+                      <Badge variant="outline" className="text-xs mt-1">{product.category}</Badge>
+                      
+                      <div className="mt-3 space-y-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            setNewSubscription({...newSubscription, product_id: product.id, quantity});
+                            setCreateDialogOpen(true);
+                          }}
+                        >
+                          <CalendarIcon className="h-3 w-3 mr-1" />
+                          Subscribe
+                        </Button>
+                        
+                        <div className="flex items-center justify-between gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 w-7 p-0"
+                            onClick={() => {
+                              const newQty = Math.max(1, quantity - 1);
+                              setProductQuantities(prev => ({...prev, [product.id]: newQty}));
+                            }}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="text-sm font-medium min-w-[2rem] text-center">{quantity}</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 w-7 p-0"
+                            onClick={() => {
+                              const newQty = Math.min(10, quantity + 1);
+                              setProductQuantities(prev => ({...prev, [product.id]: newQty}));
+                            }}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </TabsContent>
+
+    <TabsContent value="calendar" className="space-y-6">
+      <OrderCalendar />
+    </TabsContent>
         
         <TabsContent value="history" className="space-y-4">
           <Card>
