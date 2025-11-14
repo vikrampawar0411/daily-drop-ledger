@@ -24,6 +24,7 @@ export interface Subscription {
   product?: {
     name: string;
     category: string;
+    image_url: string | null;
   };
 }
 
@@ -57,7 +58,7 @@ export const useSubscriptions = () => {
         .select(`
           *,
           vendor:vendors(name),
-          product:products(name, category)
+          product:products(name, category, image_url)
         `)
         .eq("customer_id", customer.id)
         .order("created_at", { ascending: false });
