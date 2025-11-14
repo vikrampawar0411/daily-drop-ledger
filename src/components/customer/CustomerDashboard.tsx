@@ -19,6 +19,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import * as XLSX from 'xlsx';
 
 interface CustomerDashboardProps {
@@ -41,7 +42,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
   const [orderDetailsDialogOpen, setOrderDetailsDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [tableExpanded, setTableExpanded] = useState(false);
+  const [tableExpanded, setTableExpanded] = useState(true);
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [bulkUpdateDialogOpen, setBulkUpdateDialogOpen] = useState(false);
 
@@ -254,7 +255,8 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       const orderDate = new Date(o.order_date);
       const matchesDate = orderDate >= firstDay && orderDate <= lastDay;
       const matchesVendor = selectedVendors.length === 0 || selectedVendors.includes(o.vendor.id);
-      return matchesDate && matchesVendor;
+      // Exclude cancelled orders
+      return matchesDate && matchesVendor && o.status !== 'cancelled';
     });
     
     const totalOrders = monthOrders.length;
@@ -639,8 +641,15 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                               </TableCell>
                               <TableCell onClick={() => handleOrderClick(order)}>{order.quantity} {order.unit}</TableCell>
                               <TableCell className="font-semibold" onClick={() => handleOrderClick(order)}>₹{order.total_amount}</TableCell>
-                              <TableCell onClick={() => handleOrderClick(order)}>
-                                <Badge className={getStatusColor(order.status)}>
+                              <TableCell onClick={(e) => {
+                                e.stopPropagation();
+                                if (order.status === 'pending') {
+                                  updateOrderStatus(order.id, 'delivered', new Date().toISOString());
+                                } else if (order.status === 'delivered') {
+                                  updateOrderStatus(order.id, 'pending');
+                                }
+                              }}>
+                                <Badge className={cn(getStatusColor(order.status), "cursor-pointer hover:opacity-80")}>
                                   {getStatusIcon(order.status)}
                                   <span className="ml-1 capitalize">{order.status}</span>
                                 </Badge>
@@ -668,7 +677,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                         <TableRow>
                           <TableHead>Status</TableHead>
                           <TableHead className="text-right">Orders</TableHead>
-                          <TableHead className="text-right">Quantity</TableHead>
                           <TableHead className="text-right">Amount (₹)</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -676,38 +684,12 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                         <TableRow>
                           <TableCell className="text-green-700 font-medium">Delivered</TableCell>
                           <TableCell className="text-right">{monthlyStats.deliveredOrders}</TableCell>
-                          <TableCell className="text-right">
-                            {monthlyStats.orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}
-                          </TableCell>
                           <TableCell className="text-right">{monthlyStats.deliveredSpend}</TableCell>
                         </TableRow>
                         <TableRow>
                           <TableCell className="text-blue-700 font-medium">Pending</TableCell>
                           <TableCell className="text-right">{monthlyStats.scheduledOrders}</TableCell>
-                          <TableCell className="text-right">
-                            {monthlyStats.orders.filter(o => o.status === 'pending').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}
-                          </TableCell>
                           <TableCell className="text-right">{monthlyStats.forecastedBill}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="text-red-700 font-medium">Cancelled</TableCell>
-                          <TableCell className="text-right">{monthlyStats.orders.filter(o => o.status === 'cancelled').length}</TableCell>
-                          <TableCell className="text-right">
-                            {monthlyStats.orders.filter(o => o.status === 'cancelled').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {Math.round(monthlyStats.orders.filter(o => o.status === 'cancelled').reduce((sum, o) => sum + Number(o.total_amount), 0))}
-                          </TableCell>
-                        </TableRow>
-                        <TableRow className="font-bold border-t-2">
-                          <TableCell>Total</TableCell>
-                          <TableCell className="text-right">{monthlyStats.totalOrders}</TableCell>
-                          <TableCell className="text-right">
-                            {monthlyStats.orders.reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {Math.round(monthlyStats.orders.reduce((sum, o) => sum + Number(o.total_amount), 0))}
-                          </TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>
