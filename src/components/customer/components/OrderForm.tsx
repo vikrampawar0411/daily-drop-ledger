@@ -20,9 +20,11 @@ interface OrderFormProps {
   allOrders: (date: Date) => any[];
   onDeleteOrder: (orderId: string) => void;
   hasAnyOrdersOnDate?: (date: Date) => boolean;
+  filterVendorId?: string;
+  filterProductId?: string;
 }
 
-const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, onDeleteOrder, hasAnyOrdersOnDate }: OrderFormProps) => {
+const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, onDeleteOrder, hasAnyOrdersOnDate, filterVendorId = "", filterProductId = "" }: OrderFormProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [selectedVendor, setSelectedVendor] = useState("");
@@ -168,7 +170,13 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
   // Get orders for a specific date - show ALL orders for the date
   const getOrdersForDate = (date: Date) => {
     // The allOrders function already returns filtered orders for the date
-    return allOrders(date);
+    const orders = allOrders(date);
+    // Apply additional filters if set
+    return orders.filter((order: any) => {
+      if (filterVendorId && order.vendor_id !== filterVendorId) return false;
+      if (filterProductId && order.product_id !== filterProductId) return false;
+      return true;
+    });
   };
 
   const checkCustomerDetailsComplete = async () => {
