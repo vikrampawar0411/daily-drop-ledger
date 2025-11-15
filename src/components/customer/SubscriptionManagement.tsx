@@ -40,6 +40,11 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
   const [selectedVendorFilter, setSelectedVendorFilter] = useState("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedSubscription, setSelectedSubscription] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("active");
+  
+  // Calendar filter state
+  const [calendarVendorId, setCalendarVendorId] = useState<string>("");
+  const [calendarProductId, setCalendarProductId] = useState<string>("");
   
   // Order history filters
   const [historyVendorFilter, setHistoryVendorFilter] = useState("all");
@@ -65,7 +70,9 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
     product_id: "",
     quantity: 1,
     frequency: "daily",
-    start_date: new Date().toISOString().split('T')[0]
+    start_date: new Date().toISOString().split('T')[0],
+    weekly_days: [] as number[],
+    monthly_date: 1
   });
 
   // Product quantity state for quick subscribe
@@ -103,7 +110,11 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
     fetchCustomerData();
   }, [user]);
   
-  // Get available products for selected vendor
+  // Get available vendors (only those with products)
+  const availableVendors = useMemo(() => {
+    const vendorIds = new Set(vendorProducts.map(vp => vp.vendor_id));
+    return vendors.filter(v => v.is_active && vendorIds.has(v.id));
+  }, [vendors, vendorProducts]);
   const availableProducts = useMemo(() => {
     // Use the vendor from the create dialog if it's set, otherwise use the filter
     const vendorIdToFilter = newSubscription.vendor_id || selectedVendorFilter;
@@ -285,7 +296,9 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
         product_id: "",
         quantity: 1,
         frequency: "daily",
-        start_date: new Date().toISOString().split('T')[0]
+        start_date: new Date().toISOString().split('T')[0],
+        weekly_days: [],
+        monthly_date: 1
       });
     } catch (error) {
       console.error("Error creating subscription:", error);
@@ -471,7 +484,11 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setActiveSubTab('calendar')}
+                    onClick={() => {
+                      setCalendarVendorId(subscription.vendor_id);
+                      setCalendarProductId(subscription.product_id);
+                      setActiveSubTab('calendar');
+                    }}
                     className="w-full"
                   >
                     <CalendarIcon className="h-4 w-4 mr-2" />
@@ -578,7 +595,14 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
     </TabsContent>
 
     <TabsContent value="calendar" className="space-y-6">
-      <OrderCalendar />
+      <OrderCalendar 
+        filterVendorId={calendarVendorId}
+        filterProductId={calendarProductId}
+        onClearFilters={() => {
+          setCalendarVendorId("");
+          setCalendarProductId("");
+        }}
+      />
     </TabsContent>
         
         <TabsContent value="history" className="space-y-4">
@@ -827,7 +851,7 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
                   <SelectValue placeholder="Select vendor" />
                 </SelectTrigger>
                 <SelectContent>
-                  {vendors.map((vendor) => (
+                  {availableVendors.map((vendor) => (
                     <SelectItem key={vendor.id} value={vendor.id}>
                       {vendor.name}
                     </SelectItem>
@@ -875,13 +899,51 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                </SelectContent>
+                    <SelectContent>
+                      <SelectItem value="one_time">One Time</SelectItem>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                    </SelectContent>
               </Select>
             </div>
+            
+            {newSubscription.frequency === "weekly" && (
+              <div>
+                <Label>Delivery Days</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, index) => (
+                    <Button
+                      key={day}
+                      type="button"
+                      variant={newSubscription.weekly_days.includes(index) ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        const newDays = newSubscription.weekly_days.includes(index)
+                          ? newSubscription.weekly_days.filter(d => d !== index)
+                          : [...newSubscription.weekly_days, index];
+                        setNewSubscription({...newSubscription, weekly_days: newDays});
+                      }}
+                    >
+                      {day.slice(0, 3)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {newSubscription.frequency === "monthly" && (
+              <div>
+                <Label>Delivery Date (Day of Month)</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={newSubscription.monthly_date}
+                  onChange={(e) => setNewSubscription({...newSubscription, monthly_date: Number(e.target.value)})}
+                />
+              </div>
+            )}
             
             <div>
               <Label>Start Date</Label>

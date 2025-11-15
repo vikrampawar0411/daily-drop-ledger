@@ -5,6 +5,8 @@ export interface Order {
   product: string;
   quantity: number;
   unit: string;
+  vendor_id?: string;
+  product_id?: string;
 }
 
 export interface DateOrders {
