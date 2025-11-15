@@ -14,6 +14,8 @@ export interface OrderWithDetails {
   dispute_raised: boolean;
   dispute_reason: string | null;
   dispute_raised_at: string | null;
+  updated_by_user_id: string | null;
+  customer_id: string | null;
   customer: {
     id: string;
     name: string;
@@ -22,6 +24,7 @@ export interface OrderWithDetails {
     area_id: string | null;
     society_id: string | null;
     wing_number: string | null;
+    user_id: string | null;
   };
   vendor: {
     id: string;
@@ -57,7 +60,7 @@ export const useOrders = () => {
         .from("orders")
         .select(`
           *,
-          customer:customers(id, name, address, phone, area_id, society_id, wing_number),
+          customer:customers(id, name, address, phone, area_id, society_id, wing_number, user_id),
           vendor:vendors(id, name, category),
           product:products(id, name, category, price)
         `);
@@ -114,6 +117,8 @@ export const useOrders = () => {
         dispute_raised: order.dispute_raised || false,
         dispute_reason: order.dispute_reason,
         dispute_raised_at: order.dispute_raised_at,
+        updated_by_user_id: order.updated_by_user_id,
+        customer_id: order.customer_id,
         customer: Array.isArray(order.customer) ? order.customer[0] : order.customer,
         vendor: Array.isArray(order.vendor) ? order.vendor[0] : order.vendor,
         product: Array.isArray(order.product) ? order.product[0] : order.product,
