@@ -359,7 +359,7 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="active">
             <Package className="h-4 w-4 mr-2" />
-            Active Subscriptions
+            Subscriptions
           </TabsTrigger>
           <TabsTrigger value="calendar">
             <CalendarIcon className="h-4 w-4 mr-2" />
@@ -384,7 +384,7 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
         </Card>
       ) : (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Your Active Subscriptions</h3>
+          <h3 className="text-lg font-semibold">Subscriptions</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {subscriptions.map((subscription) => (
               <Card key={subscription.id} className="hover:shadow-lg transition-shadow">
@@ -507,7 +507,7 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Other Available Products</CardTitle>
+              <CardTitle>Subscribe to Products</CardTitle>
               <Select value={selectedVendorFilter} onValueChange={setSelectedVendorFilter}>
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Filter by vendor" />

@@ -14,9 +14,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { CheckCircle, XCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -28,7 +29,7 @@ interface CustomerDashboardProps {
 
 const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   const { user } = useAuth();
-  const { orders, loading: ordersLoading, updateOrderStatus } = useOrders();
+  const { orders, loading: ordersLoading, updateOrderStatus, raiseDispute } = useOrders();
   const { vendors, loading: vendorsLoading } = useVendors();
   const { toast } = useToast();
   const [customerName, setCustomerName] = useState("");
@@ -45,6 +46,9 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   const [tableExpanded, setTableExpanded] = useState(true);
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [bulkUpdateDialogOpen, setBulkUpdateDialogOpen] = useState(false);
+  const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
+  const [disputeOrderId, setDisputeOrderId] = useState<string | null>(null);
+  const [disputeReason, setDisputeReason] = useState("");
 
   const handleOrderClick = (order: any) => {
     setSelectedOrder(order);
@@ -641,18 +645,51 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                               </TableCell>
                               <TableCell onClick={() => handleOrderClick(order)}>{order.quantity} {order.unit}</TableCell>
                               <TableCell className="font-semibold" onClick={() => handleOrderClick(order)}>₹{order.total_amount}</TableCell>
-                              <TableCell onClick={(e) => {
-                                e.stopPropagation();
-                                if (order.status === 'pending') {
-                                  updateOrderStatus(order.id, 'delivered', new Date().toISOString());
-                                } else if (order.status === 'delivered') {
-                                  updateOrderStatus(order.id, 'pending');
-                                }
-                              }}>
-                                <Badge className={cn(getStatusColor(order.status), "cursor-pointer hover:opacity-80")}>
-                                  {getStatusIcon(order.status)}
-                                  <span className="ml-1 capitalize">{order.status}</span>
-                                </Badge>
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                {order.status === 'delivered' && order.updated_by_user_id && order.customer?.user_id && order.updated_by_user_id !== order.customer.user_id ? (
+                                  // Delivered by vendor - show dispute button
+                                  <div className="flex items-center gap-2">
+                                    <Badge className={cn(getStatusColor(order.status))}>
+                                      {getStatusIcon(order.status)}
+                                      <span className="ml-1 capitalize">{order.status}</span>
+                                    </Badge>
+                                    {!order.dispute_raised && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-xs h-7"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setDisputeOrderId(order.id);
+                                          setDisputeDialogOpen(true);
+                                        }}
+                                      >
+                                        Dispute
+                                      </Button>
+                                    )}
+                                    {order.dispute_raised && (
+                                      <Badge variant="destructive" className="text-xs">
+                                        Disputed
+                                      </Badge>
+                                    )}
+                                  </div>
+                                ) : (
+                                  // Allow customer to toggle status
+                                  <Badge 
+                                    className={cn(getStatusColor(order.status), "cursor-pointer hover:opacity-80")}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (order.status === 'pending') {
+                                        updateOrderStatus(order.id, 'delivered', new Date().toISOString());
+                                      } else if (order.status === 'delivered') {
+                                        updateOrderStatus(order.id, 'pending');
+                                      }
+                                    }}
+                                  >
+                                    {getStatusIcon(order.status)}
+                                    <span className="ml-1 capitalize">{order.status}</span>
+                                  </Badge>
+                                )}
                               </TableCell>
                             </TableRow>
                           );
@@ -787,6 +824,58 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dispute Dialog */}
+      <Dialog open={disputeDialogOpen} onOpenChange={setDisputeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Raise Dispute</DialogTitle>
+            <DialogDescription>
+              Describe the issue with this order
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="dispute-reason">Reason for Dispute</Label>
+              <Textarea
+                id="dispute-reason"
+                placeholder="Please describe the issue..."
+                value={disputeReason}
+                onChange={(e) => setDisputeReason(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setDisputeDialogOpen(false);
+              setDisputeReason("");
+              setDisputeOrderId(null);
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={async () => {
+                if (disputeOrderId && disputeReason.trim()) {
+                  await raiseDispute(disputeOrderId, disputeReason);
+                  setDisputeDialogOpen(false);
+                  setDisputeReason("");
+                  setDisputeOrderId(null);
+                } else {
+                  toast({
+                    title: "Error",
+                    description: "Please provide a reason for the dispute",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              Submit Dispute
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
