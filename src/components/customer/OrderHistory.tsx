@@ -70,6 +70,15 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
     }
   };
 
+  const handleStatusToggle = async (order: any) => {
+    try {
+      const newStatus = order.status === 'pending' ? 'delivered' : 'pending';
+      await updateOrderStatus(order.id, newStatus, newStatus === 'delivered' ? new Date().toISOString() : undefined);
+    } catch (error) {
+      console.error("Failed to update order status:", error);
+    }
+  };
+
   const vendors = useMemo(() => {
     return [...new Set(orders.map(o => o.vendor.name))];
   }, [orders]);
@@ -412,35 +421,33 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                         <span className="ml-1 capitalize">{order.status}</span>
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        {order.status === "pending" && (
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            className="text-green-600 hover:text-green-700"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateOrderStatus(order.id, "delivered");
-                            }}
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {order.status === "delivered" && !order.dispute_raised && (
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            className="text-red-600 hover:text-red-700"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRaiseDispute(order.id);
-                            }}
-                          >
-                            <AlertTriangle className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      {order.updated_by_user_id && order.customer?.user_id && order.updated_by_user_id !== order.customer.user_id ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRaiseDispute(order.id)}
+                          disabled={order.dispute_raised}
+                        >
+                          {order.dispute_raised ? (
+                            <>
+                              <AlertTriangle className="h-4 w-4 mr-1 text-yellow-600" />
+                              Disputed
+                            </>
+                          ) : (
+                            "Dispute"
+                          )}
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant={order.status === 'delivered' ? 'default' : 'secondary'}
+                          onClick={() => handleStatusToggle(order)}
+                        >
+                          {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
+                          {order.status === 'pending' ? 'Pending' : 'Delivered'}
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
