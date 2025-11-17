@@ -7,6 +7,8 @@ export interface Order {
   unit: string;
   vendor_id?: string;
   product_id?: string;
+  order_date?: string;
+  status?: string;
 }
 
 export interface DateOrders {

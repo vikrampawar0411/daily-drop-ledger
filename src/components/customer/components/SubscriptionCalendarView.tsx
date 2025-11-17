@@ -93,6 +93,10 @@ const SubscriptionCalendarView = ({
           onSelect={handleDateSelect}
           className={cn("rounded-md border pointer-events-auto")}
           modifiers={{
+            today: (date) => {
+              const today = new Date();
+              return date.toDateString() === today.toDateString();
+            },
             pauseFrom: pauseFromDate ? [pauseFromDate] : [],
             pauseUntil: pauseUntilDate ? [pauseUntilDate] : [],
             pauseRange: pauseFromDate && pauseUntilDate ? {
@@ -104,57 +108,68 @@ const SubscriptionCalendarView = ({
             futureOrder: (date) => hasOrdersOnDate(date) && isOrderInFuture(date)
           }}
           modifiersStyles={{
+            today: {
+              boxShadow: '0 0 0 3px hsl(var(--primary)) inset',
+              fontWeight: '700'
+            },
             pauseFrom: {
-              backgroundColor: '#fef3c7',
-              color: '#92400e',
-              fontWeight: 'normal',
-              border: '2px solid #f59e0b'
+              backgroundColor: 'hsl(48 96% 89%)',
+              color: 'hsl(36 45% 15%)',
+              fontWeight: '600',
+              border: '2px solid hsl(38 92% 50%)'
             },
             pauseUntil: {
-              backgroundColor: '#fef3c7',
-              color: '#92400e',
-              fontWeight: 'normal',
-              border: '2px solid #f59e0b'
+              backgroundColor: 'hsl(48 96% 89%)',
+              color: 'hsl(36 45% 15%)',
+              fontWeight: '600',
+              border: '2px solid hsl(38 92% 50%)'
             },
             pauseRange: {
-              backgroundColor: '#fef9e7',
-              color: '#92400e',
+              backgroundColor: 'hsl(48 100% 96%)',
+              color: 'hsl(36 45% 15%)',
               fontWeight: 'normal'
             },
             deliveredOrder: {
-              backgroundColor: '#86efac',
-              color: '#166534',
-              fontWeight: 'normal'
+              backgroundColor: 'hsl(142 76% 73%)',
+              color: 'hsl(142 76% 20%)',
+              fontWeight: '600',
+              border: '2px solid hsl(142 71% 45%)'
             },
             pendingOrder: {
-              backgroundColor: '#fbbf24',
-              color: '#78350f',
-              fontWeight: 'normal'
+              backgroundColor: 'hsl(38 92% 56%)',
+              color: 'hsl(36 55% 15%)',
+              fontWeight: '600',
+              border: '2px solid hsl(38 92% 50%)'
             },
             futureOrder: {
-              backgroundColor: '#93c5fd',
-              color: '#1e3a8a',
-              fontWeight: 'normal'
+              backgroundColor: 'hsl(213 97% 78%)',
+              color: 'hsl(221 83% 33%)',
+              fontWeight: '500',
+              border: '2px solid hsl(217 91% 60%)'
             }
           }}
           disabled={(date) => isBefore(date, today)}
         />
-        <div className="mt-4 space-y-2 text-sm">
+        <div className="mt-4 space-y-2 text-sm text-muted-foreground">
           <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-[#86efac] border border-[#166534] rounded"></div>
-            <span>Delivered orders (past)</span>
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(142 76% 73%)', border: '2px solid hsl(142 71% 45%)' }}></div>
+            <span className="font-medium">Delivered orders (past)</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-[#fbbf24] border border-[#78350f] rounded"></div>
-            <span>Pending orders (action needed)</span>
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(38 92% 56%)', border: '2px solid hsl(38 92% 50%)' }}></div>
+            <span className="font-medium">Pending orders (action needed)</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-[#93c5fd] border border-[#1e3a8a] rounded"></div>
-            <span>Future orders (scheduled)</span>
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(213 97% 78%)', border: '2px solid hsl(217 91% 60%)' }}></div>
+            <span className="font-medium">Future orders (scheduled)</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-[#fef3c7] border-2 border-[#f59e0b] rounded"></div>
-            <span>Selected pause dates</span>
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(48 96% 89%)', border: '2px solid hsl(38 92% 50%)' }}></div>
+            <span className="font-medium">Selected pause dates</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 rounded bg-background" style={{ border: '4px solid hsl(var(--primary))' }}></div>
+            <span className="font-medium">Today</span>
           </div>
         </div>
       </CardContent>

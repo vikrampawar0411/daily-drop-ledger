@@ -29,7 +29,10 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
           onSelect={onSelectDate}
           className={cn("rounded-md border pointer-events-auto")}
           modifiers={{
-            hasOrders: (date) => hasOrdersOnDate(date),
+            today: (date) => {
+              const today = new Date();
+              return date.toDateString() === today.toDateString();
+            },
             deliveredOrder: (date) => {
               const dateStr = date.toISOString().split('T')[0];
               const orders = getOrdersForDate(date);
@@ -56,40 +59,46 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
             }
           }}
           modifiersStyles={{
-            hasOrders: {
-              backgroundColor: '#dbeafe',
-              color: '#1e40af',
-              fontWeight: 'normal'
+            today: {
+              boxShadow: '0 0 0 3px hsl(var(--primary)) inset',
+              fontWeight: '700'
             },
             deliveredOrder: {
-              backgroundColor: '#86efac',
-              color: '#166534',
-              fontWeight: 'normal'
+              backgroundColor: 'hsl(142 76% 73%)',
+              color: 'hsl(142 76% 20%)',
+              fontWeight: '600',
+              border: '2px solid hsl(142 71% 45%)'
             },
             pendingOrder: {
-              backgroundColor: '#fbbf24',
-              color: '#78350f',
-              fontWeight: 'normal'
+              backgroundColor: 'hsl(38 92% 56%)',
+              color: 'hsl(36 55% 15%)',
+              fontWeight: '600',
+              border: '2px solid hsl(38 92% 50%)'
             },
             futureOrder: {
-              backgroundColor: '#93c5fd',
-              color: '#1e3a8a',
-              fontWeight: 'normal'
+              backgroundColor: 'hsl(213 97% 78%)',
+              color: 'hsl(221 83% 33%)',
+              fontWeight: '500',
+              border: '2px solid hsl(217 91% 60%)'
             }
           }}
         />
-        <div className="mt-4 space-y-2 text-sm text-gray-600">
+        <div className="mt-4 space-y-2 text-sm text-muted-foreground">
           <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-[#86efac] border border-[#166534] rounded"></div>
-            <span>Delivered orders</span>
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(142 76% 73%)', border: '2px solid hsl(142 71% 45%)' }}></div>
+            <span className="font-medium">Delivered orders</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-[#fbbf24] border border-[#78350f] rounded"></div>
-            <span>Pending orders (action needed)</span>
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(38 92% 56%)', border: '2px solid hsl(38 92% 50%)' }}></div>
+            <span className="font-medium">Pending orders (action needed)</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-[#93c5fd] border border-[#1e3a8a] rounded"></div>
-            <span>Future orders (scheduled)</span>
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(213 97% 78%)', border: '2px solid hsl(217 91% 60%)' }}></div>
+            <span className="font-medium">Future orders (scheduled)</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 rounded bg-background" style={{ border: '4px solid hsl(var(--primary))' }}></div>
+            <span className="font-medium">Today</span>
           </div>
         </div>
       </CardContent>
