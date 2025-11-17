@@ -142,10 +142,11 @@ const SubscriptionCalendarView = ({
               border: '2px solid hsl(38 92% 50%)'
             },
             futureOrder: {
-              backgroundColor: 'hsl(213 97% 78%)',
-              color: 'hsl(221 83% 33%)',
-              fontWeight: '500',
-              border: '2px solid hsl(217 91% 60%)'
+              backgroundColor: 'hsl(214 95% 93%)',
+              color: 'hsl(213 97% 70%)',
+              fontWeight: '400',
+              border: '1px solid hsl(213 97% 78%)',
+              opacity: 0.7
             }
           }}
           disabled={(date) => isBefore(date, today)}
@@ -160,8 +161,8 @@ const SubscriptionCalendarView = ({
             <span className="font-medium">Pending orders (action needed)</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(213 97% 78%)', border: '2px solid hsl(217 91% 60%)' }}></div>
-            <span className="font-medium">Future orders (scheduled)</span>
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(214 95% 93%)', border: '1px solid hsl(213 97% 78%)', opacity: 0.7 }}></div>
+            <span className="font-medium text-gray-500">Future orders (lighter color)</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(48 96% 89%)', border: '2px solid hsl(38 92% 50%)' }}></div>
