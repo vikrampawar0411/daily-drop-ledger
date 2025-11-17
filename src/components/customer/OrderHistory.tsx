@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Filter, Download, Calendar as CalendarIcon, CheckCircle, Clock, XCircle, AlertTriangle, FileDown, Edit, ChevronDown, ChevronUp, MoreVertical, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 import { useOrders } from "@/hooks/useOrders";
 import { format } from "date-fns";
 import * as XLSX from 'xlsx';
@@ -25,6 +27,7 @@ interface OrderHistoryProps {
 }
 
 const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistoryProps) => {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVendor, setSelectedVendor] = useState(initialVendorFilter || "all");
   const [selectedStatus, setSelectedStatus] = useState(initialStatusFilter || "all");
@@ -48,6 +51,14 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
   const [editFormData, setEditFormData] = useState({
     quantity: 0,
     product_id: '',
+    order_date: '',
+  });
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [bulkUpdateDialogOpen, setBulkUpdateDialogOpen] = useState(false);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [bulkEditDialogOpen, setBulkEditDialogOpen] = useState(false);
+  const [bulkEditFormData, setBulkEditFormData] = useState({
+    quantity: 0,
     order_date: '',
   });
   const { orders, loading, raiseDispute, updateOrderStatus, deleteOrder, updateOrder } = useOrders();
@@ -137,6 +148,83 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
       setEditingOrder(null);
     } catch (error) {
       console.error("Failed to update order:", error);
+    }
+  };
+
+  const toggleOrderSelection = (orderId: string) => {
+    setSelectedOrderIds(prev => 
+      prev.includes(orderId) 
+        ? prev.filter(id => id !== orderId)
+        : [...prev, orderId]
+    );
+  };
+
+  const toggleAllOrders = () => {
+    const pendingOrders = filteredOrders.filter(o => o.status === 'pending');
+    if (selectedOrderIds.length === pendingOrders.length && pendingOrders.length > 0) {
+      setSelectedOrderIds([]);
+    } else {
+      setSelectedOrderIds(pendingOrders.map(o => o.id));
+    }
+  };
+
+  const handleBulkStatusUpdate = async () => {
+    if (selectedOrderIds.length === 0) return;
+
+    try {
+      const updatePromises = selectedOrderIds.map(orderId => 
+        updateOrderStatus(orderId, 'delivered', new Date().toISOString())
+      );
+      
+      await Promise.all(updatePromises);
+      
+      setSelectedOrderIds([]);
+      setBulkUpdateDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to update orders:", error);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedOrderIds.length === 0) return;
+
+    try {
+      const deletePromises = selectedOrderIds.map(orderId => deleteOrder(orderId));
+      await Promise.all(deletePromises);
+      
+      setSelectedOrderIds([]);
+      setBulkDeleteDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to delete orders:", error);
+    }
+  };
+
+  const handleBulkModify = async () => {
+    if (selectedOrderIds.length === 0) return;
+
+    try {
+      const updatePromises = selectedOrderIds.map(orderId => {
+        const order = filteredOrders.find(o => o.id === orderId);
+        if (!order) return Promise.resolve();
+        
+        const updates: any = {};
+        if (bulkEditFormData.quantity > 0) {
+          updates.quantity = bulkEditFormData.quantity;
+          updates.total_amount = bulkEditFormData.quantity * order.product.price;
+        }
+        if (bulkEditFormData.order_date) {
+          updates.order_date = bulkEditFormData.order_date;
+        }
+        
+        return updateOrder(orderId, updates);
+      });
+      
+      await Promise.all(updatePromises);
+      
+      setSelectedOrderIds([]);
+      setBulkEditDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to modify orders:", error);
     }
   };
 
@@ -523,8 +611,14 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
         <CardContent className="pt-6">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader>
+                <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox 
+                        checked={selectedOrderIds.length === filteredOrders.filter(o => o.status === 'pending').length && filteredOrders.filter(o => o.status === 'pending').length > 0}
+                        onCheckedChange={toggleAllOrders}
+                      />
+                    </TableHead>
                     <TableHead className="cursor-pointer" onClick={() => handleSort('order_date')}>
                       Day {sortColumn === 'order_date' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </TableHead>
@@ -831,46 +925,114 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
               Modify order details below
             </DialogDescription>
           </DialogHeader>
-          {editingOrder && (
-            <div className="space-y-4">
-              <div>
-                <Label>Order Date</Label>
-                <Input
-                  type="date"
-                  value={editFormData.order_date}
-                  onChange={(e) => setEditFormData({...editFormData, order_date: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label>Quantity</Label>
-                <Input
-                  type="number"
-                  value={editFormData.quantity}
-                  onChange={(e) => setEditFormData({...editFormData, quantity: Number(e.target.value)})}
-                  min="0.1"
-                  step="0.1"
-                />
-              </div>
-              <div>
-                <Label>Product</Label>
-                <div className="text-sm text-muted-foreground">
-                  {editingOrder.product.name} (₹{editingOrder.price_per_unit}/{editingOrder.unit})
-                </div>
-              </div>
-              <div>
-                <Label>Total Amount</Label>
-                <div className="text-lg font-semibold">
-                  ₹{(editFormData.quantity * editingOrder.price_per_unit).toFixed(2)}
-                </div>
-              </div>
+          <div className="space-y-4">
+            <div>
+              <Label>Order Date</Label>
+              <Input
+                type="date"
+                value={editFormData.order_date}
+                onChange={(e) => setEditFormData({...editFormData, order_date: e.target.value})}
+              />
             </div>
-          )}
+            <div>
+              <Label>Quantity</Label>
+              <Input
+                type="number"
+                value={editFormData.quantity}
+                onChange={(e) => setEditFormData({...editFormData, quantity: Number(e.target.value)})}
+              />
+            </div>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleUpdateOrder}>
               Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Status Update Dialog */}
+      <AlertDialog open={bulkUpdateDialogOpen} onOpenChange={setBulkUpdateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark Orders as Delivered</AlertDialogTitle>
+            <AlertDialogDescription>
+              Mark {selectedOrderIds.length} order(s) as delivered?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkStatusUpdate}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Dialog */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Multiple Orders</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {selectedOrderIds.length} order(s)? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleBulkDelete} 
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Modify Dialog */}
+      <Dialog open={bulkEditDialogOpen} onOpenChange={setBulkEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modify Multiple Orders</DialogTitle>
+            <DialogDescription>
+              Update quantity and/or date for {selectedOrderIds.length} selected order(s)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>New Quantity (leave 0 to keep unchanged)</Label>
+              <Input
+                type="number"
+                min="0"
+                value={bulkEditFormData.quantity}
+                onChange={(e) => setBulkEditFormData({
+                  ...bulkEditFormData, 
+                  quantity: Number(e.target.value)
+                })}
+              />
+            </div>
+            <div>
+              <Label>New Order Date (leave empty to keep unchanged)</Label>
+              <Input
+                type="date"
+                value={bulkEditFormData.order_date}
+                onChange={(e) => setBulkEditFormData({
+                  ...bulkEditFormData, 
+                  order_date: e.target.value
+                })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleBulkModify}>
+              Update {selectedOrderIds.length} Orders
             </Button>
           </DialogFooter>
         </DialogContent>

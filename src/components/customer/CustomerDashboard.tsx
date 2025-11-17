@@ -67,6 +67,12 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     product_id: '',
     order_date: '',
   });
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [bulkEditDialogOpen, setBulkEditDialogOpen] = useState(false);
+  const [bulkEditFormData, setBulkEditFormData] = useState({
+    quantity: 0,
+    order_date: '',
+  });
 
   const handleOrderClick = (order: any) => {
     setSelectedOrder(order);
@@ -272,6 +278,83 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       setEditingOrder(null);
     } catch (error) {
       console.error("Failed to update order:", error);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedOrderIds.length === 0) {
+      toast({
+        title: "No orders selected",
+        description: "Please select orders to delete",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const deletePromises = selectedOrderIds.map(orderId => deleteOrder(orderId));
+      await Promise.all(deletePromises);
+      
+      toast({
+        title: "Success",
+        description: `${selectedOrderIds.length} order(s) deleted successfully`,
+      });
+      
+      setSelectedOrderIds([]);
+      setBulkDeleteDialogOpen(false);
+      await refetch();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete orders",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBulkModify = async () => {
+    if (selectedOrderIds.length === 0) {
+      toast({
+        title: "No orders selected",
+        description: "Please select orders to modify",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const updatePromises = selectedOrderIds.map(orderId => {
+        const order = monthlyStats.orders.find(o => o.id === orderId);
+        if (!order) return Promise.resolve();
+        
+      const updates: any = {};
+        if (bulkEditFormData.quantity > 0) {
+          updates.quantity = bulkEditFormData.quantity;
+          updates.total_amount = bulkEditFormData.quantity * Number(order.product.price);
+        }
+        if (bulkEditFormData.order_date) {
+          updates.order_date = bulkEditFormData.order_date;
+        }
+        
+        return updateOrder(orderId, updates);
+      });
+      
+      await Promise.all(updatePromises);
+      
+      toast({
+        title: "Success",
+        description: `${selectedOrderIds.length} order(s) modified successfully`,
+      });
+      
+      setSelectedOrderIds([]);
+      setBulkEditDialogOpen(false);
+      await refetch();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to modify orders",
+        variant: "destructive",
+      });
     }
   };
 
@@ -1101,40 +1184,24 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               Modify order details below
             </DialogDescription>
           </DialogHeader>
-          {editingOrder && (
-            <div className="space-y-4">
-              <div>
-                <Label>Order Date</Label>
-                <Input
-                  type="date"
-                  value={editFormData.order_date}
-                  onChange={(e) => setEditFormData({...editFormData, order_date: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label>Quantity</Label>
-                <Input
-                  type="number"
-                  value={editFormData.quantity}
-                  onChange={(e) => setEditFormData({...editFormData, quantity: Number(e.target.value)})}
-                  min="0.1"
-                  step="0.1"
-                />
-              </div>
-              <div>
-                <Label>Product</Label>
-                <div className="text-sm text-muted-foreground">
-                  {editingOrder.product.name} (₹{editingOrder.price_per_unit}/{editingOrder.unit})
-                </div>
-              </div>
-              <div>
-                <Label>Total Amount</Label>
-                <div className="text-lg font-semibold">
-                  ₹{(editFormData.quantity * editingOrder.price_per_unit).toFixed(2)}
-                </div>
-              </div>
+          <div className="space-y-4">
+            <div>
+              <Label>Order Date</Label>
+              <Input
+                type="date"
+                value={editFormData.order_date}
+                onChange={(e) => setEditFormData({...editFormData, order_date: e.target.value})}
+              />
             </div>
-          )}
+            <div>
+              <Label>Quantity</Label>
+              <Input
+                type="number"
+                value={editFormData.quantity}
+                onChange={(e) => setEditFormData({...editFormData, quantity: Number(e.target.value)})}
+              />
+            </div>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Cancel
@@ -1146,6 +1213,71 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
         </DialogContent>
       </Dialog>
 
+      {/* Bulk Delete Dialog */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Multiple Orders</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {selectedOrderIds.length} order(s)? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleBulkDelete} 
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Modify Dialog */}
+      <Dialog open={bulkEditDialogOpen} onOpenChange={setBulkEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modify Multiple Orders</DialogTitle>
+            <DialogDescription>
+              Update quantity and/or date for {selectedOrderIds.length} selected order(s)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>New Quantity (leave 0 to keep unchanged)</Label>
+              <Input
+                type="number"
+                min="0"
+                value={bulkEditFormData.quantity}
+                onChange={(e) => setBulkEditFormData({
+                  ...bulkEditFormData, 
+                  quantity: Number(e.target.value)
+                })}
+              />
+            </div>
+            <div>
+              <Label>New Order Date (leave empty to keep unchanged)</Label>
+              <Input
+                type="date"
+                value={bulkEditFormData.order_date}
+                onChange={(e) => setBulkEditFormData({
+                  ...bulkEditFormData, 
+                  order_date: e.target.value
+                })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleBulkModify}>
+              Update {selectedOrderIds.length} Orders
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
