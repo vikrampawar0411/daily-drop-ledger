@@ -43,7 +43,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   });
-  const [selectedVendor, setSelectedVendor] = useState<string>('all');
+  const [selectedVendor, setSelectedVendor] = useState<string>(() => {
+    const savedVendor = localStorage.getItem('lastSelectedVendor');
+    return savedVendor || 'all';
+  });
   const [orderDetailsDialogOpen, setOrderDetailsDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [tableExpanded, setTableExpanded] = useState(true);
@@ -386,6 +389,12 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
 
     loadCustomerData();
   }, [user]);
+
+  useEffect(() => {
+    if (selectedVendor && selectedVendor !== 'all') {
+      localStorage.setItem('lastSelectedVendor', selectedVendor);
+    }
+  }, [selectedVendor]);
 
   const monthOptions = useMemo(() => {
     const options = [];
