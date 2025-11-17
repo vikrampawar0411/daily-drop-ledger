@@ -228,18 +228,61 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
   };
 
   const exportToExcel = () => {
-    const excelData = subscriptionOrders.map(order => ({
-      Date: format(new Date(order.order_date), 'yyyy-MM-dd'),
-      Vendor: order.vendor.name,
-      Product: order.product.name,
-      Quantity: order.quantity,
-      Unit: order.unit,
-      'Price per Unit': Number(order.total_amount) / Number(order.quantity),
-      'Total Amount': order.total_amount,
-      Status: order.status
-    }));
+    // Prepare order data rows
+    const orderRows = subscriptionOrders.map(order => [
+      format(new Date(order.order_date), 'yyyy-MM-dd'),
+      order.vendor.name,
+      order.product.name,
+      order.quantity,
+      order.unit,
+      Number(order.total_amount) / Number(order.quantity),
+      order.total_amount,
+      order.status
+    ]);
+
+    // Header row
+    const headerRow = ['Date', 'Vendor', 'Product', 'Quantity', 'Unit', 'Price/Unit', 'Total', 'Status'];
     
-    const ws = XLSX.utils.json_to_sheet(excelData);
+    const summaryStartRow = orderRows.length + 4;
+    const orderDataEndRow = orderRows.length + 1;
+    
+    // Get unique statuses
+    const statuses = [...new Set(subscriptionOrders.map(o => o.status))];
+    
+    // Summary rows with formulas
+    const summaryRows = statuses.map((status, idx) => [
+      status.toUpperCase(),
+      { f: `COUNTIF(H2:H${orderDataEndRow},"${status}")` },
+      { f: `SUMIF(H2:H${orderDataEndRow},"${status}",G2:G${orderDataEndRow})` },
+      { f: `IF(B${summaryStartRow + idx + 1}=0,0,C${summaryStartRow + idx + 1}/B${summaryStartRow + idx + 1})` }
+    ]);
+    
+    // Grand total
+    const grandTotalRow = [
+      'GRAND TOTAL',
+      { f: `COUNTA(H2:H${orderDataEndRow})` },
+      { f: `SUM(G2:G${orderDataEndRow})` },
+      { f: `C${summaryStartRow + statuses.length + 1}/B${summaryStartRow + statuses.length + 1}` }
+    ];
+    
+    const allData = [
+      headerRow,
+      ...orderRows,
+      [],
+      [],
+      ['STATUS SUMMARY'],
+      ['Status', 'Order Count', 'Total Amount (₹)', 'Avg Order Value (₹)'],
+      ...summaryRows,
+      grandTotalRow
+    ];
+    
+    const ws = XLSX.utils.aoa_to_sheet(allData);
+    
+    ws['!cols'] = [
+      { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 10 },
+      { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 12 }
+    ];
+    
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Subscription Orders");
     XLSX.writeFile(wb, `subscription_orders_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);

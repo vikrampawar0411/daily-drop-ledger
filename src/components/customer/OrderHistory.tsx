@@ -438,19 +438,64 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
   };
 
   const exportToExcel = () => {
-    const excelData = filteredOrders.map(order => ({
-      'Order ID': order.id.slice(0, 8),
-      'Date': new Date(order.order_date).toLocaleDateString(),
-      'Vendor': order.vendor.name,
-      'Product': order.product.name,
-      'Quantity': `${order.quantity} ${order.unit}`,
-      'Price/Unit': order.product.price,
-      'Total': order.total_amount,
-      'Status': order.status,
-      'Delivered At': order.delivered_at ? format(new Date(order.delivered_at), "PPp") : '-',
-    }));
+    // Prepare order data rows
+    const orderRows = filteredOrders.map(order => [
+      order.id.slice(0, 8),
+      new Date(order.order_date).toLocaleDateString(),
+      order.vendor.name,
+      order.product.name,
+      order.quantity,
+      order.unit,
+      order.product.price,
+      order.total_amount,
+      order.status,
+      order.delivered_at ? format(new Date(order.delivered_at), "PPp") : '-'
+    ]);
+
+    // Header row
+    const headerRow = ['Order ID', 'Date', 'Vendor', 'Product', 'Quantity', 'Unit', 'Price/Unit', 'Total', 'Status', 'Delivered At'];
     
-    const ws = XLSX.utils.json_to_sheet(excelData);
+    const summaryStartRow = orderRows.length + 4;
+    const orderDataEndRow = orderRows.length + 1;
+    
+    // Get unique statuses
+    const statuses = [...new Set(filteredOrders.map(o => o.status))];
+    
+    // Summary rows with formulas
+    const summaryRows = statuses.map((status, idx) => [
+      status.toUpperCase(),
+      { f: `COUNTIF(I2:I${orderDataEndRow},"${status}")` },
+      { f: `SUMIF(I2:I${orderDataEndRow},"${status}",H2:H${orderDataEndRow})` },
+      { f: `ROUND(B${summaryStartRow + idx + 1}/${orderDataEndRow - 1}*100,1)&"%"` }
+    ]);
+    
+    // Grand total
+    const grandTotalRow = [
+      'GRAND TOTAL',
+      { f: `COUNTA(I2:I${orderDataEndRow})` },
+      { f: `SUM(H2:H${orderDataEndRow})` },
+      '100%'
+    ];
+    
+    const allData = [
+      headerRow,
+      ...orderRows,
+      [],
+      [],
+      ['STATUS SUMMARY'],
+      ['Status', 'Order Count', 'Total Amount (₹)', 'Percentage'],
+      ...summaryRows,
+      grandTotalRow
+    ];
+    
+    const ws = XLSX.utils.aoa_to_sheet(allData);
+    
+    ws['!cols'] = [
+      { wch: 10 }, { wch: 12 }, { wch: 20 }, { wch: 20 },
+      { wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
+      { wch: 12 }, { wch: 20 }
+    ];
+    
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Order History');
     XLSX.writeFile(wb, `order-history-${new Date().toISOString().split('T')[0]}.xlsx`);
