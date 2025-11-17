@@ -57,6 +57,10 @@ export const useOrders = () => {
           id: order.id,
           vendor: order.vendor?.name || "Unknown",
           product: order.product?.name || "Unknown",
+          vendor_id: order.vendor_id,
+          product_id: order.product_id,
+          order_date: order.order_date,
+          status: order.status,
           quantity: parseFloat(order.quantity),
           unit: order.unit,
         });

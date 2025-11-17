@@ -368,6 +368,10 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
               className="rounded-md border pointer-events-auto"
               modifiers={{
                 selected: (date) => selectedDates.some(d => d.toDateString() === date.toDateString()),
+                today: (date) => {
+                  const today = new Date();
+                  return date.toDateString() === today.toDateString();
+                },
                 hasOrders: (date) => {
                   // Always show green for ANY dates with existing orders
                   const anyOrders = hasAnyOrdersOnDate ? hasAnyOrdersOnDate(date) : false;
@@ -377,32 +381,42 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
                 }
               }}
               modifiersStyles={{
+                today: {
+                  boxShadow: '0 0 0 3px hsl(var(--primary)) inset',
+                  fontWeight: '700'
+                },
                 selected: {
-                  backgroundColor: '#3b82f6',
-                  color: '#ffffff',
-                  fontWeight: 'bold',
-                  borderRadius: '4px'
+                  backgroundColor: 'hsl(217 91% 60%)',
+                  color: 'hsl(0 0% 100%)',
+                  fontWeight: '600',
+                  borderRadius: '4px',
+                  border: '2px solid hsl(221 83% 53%)'
                 },
                 hasOrders: {
-                  backgroundColor: '#22c55e',
-                  color: '#ffffff',
-                  fontWeight: 'bold',
-                  borderRadius: '4px'
+                  backgroundColor: 'hsl(142 76% 73%)',
+                  color: 'hsl(142 76% 20%)',
+                  fontWeight: '500',
+                  borderRadius: '4px',
+                  border: '2px solid hsl(142 71% 45%)'
                 }
               }}
             />
             <div className="mt-2 space-y-2">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 Click dates to select/deselect • Hold Shift + Click to select range
               </p>
-              <div className="flex flex-col gap-1 text-xs text-gray-600">
+              <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                 <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 bg-blue-500 rounded"></div>
+                  <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(217 91% 60%)', border: '2px solid hsl(221 83% 53%)' }}></div>
                   <span>Selected dates</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 bg-green-500 rounded"></div>
+                  <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(142 76% 73%)', border: '2px solid hsl(142 71% 45%)' }}></div>
                   <span>Dates with existing orders</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 rounded bg-background" style={{ border: '4px solid hsl(var(--primary))' }}></div>
+                  <span>Today</span>
                 </div>
               </div>
             </div>
