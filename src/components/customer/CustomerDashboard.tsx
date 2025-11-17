@@ -788,10 +788,20 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                 </CollapsibleTrigger>
                 <div className="flex gap-2">
                   {selectedOrderIds.length > 0 && (
-                    <Button onClick={() => setBulkUpdateDialogOpen(true)} className="bg-green-600 hover:bg-green-700">
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Mark {selectedOrderIds.length} as Delivered
-                    </Button>
+                    <>
+                      <Button onClick={() => setBulkUpdateDialogOpen(true)} className="bg-green-600 hover:bg-green-700" size="sm">
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Mark {selectedOrderIds.length} as Delivered
+                      </Button>
+                      <Button onClick={() => setBulkEditDialogOpen(true)} variant="outline" size="sm">
+                        <Edit className="h-4 w-4 mr-2" />
+                        Modify {selectedOrderIds.length}
+                      </Button>
+                      <Button onClick={() => setBulkDeleteDialogOpen(true)} variant="destructive" size="sm">
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete {selectedOrderIds.length}
+                      </Button>
+                    </>
                   )}
                   {monthlyStats.orders.length > 0 && (
                     <DropdownMenu>
