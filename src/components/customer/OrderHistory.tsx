@@ -772,7 +772,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                                                 <MoreVertical className="h-4 w-4" />
                                               </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
+                                             <DropdownMenuContent align="end">
                                               <DropdownMenuItem onClick={() => handleEditOrder(order)}>
                                                 <Edit className="h-4 w-4 mr-2" />
                                                 Edit Order
@@ -787,6 +787,22 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                                                 <Trash2 className="h-4 w-4 mr-2" />
                                                 Delete Order
                                               </DropdownMenuItem>
+                                              {order.updated_by_user_id && 
+                                               order.customer?.user_id && 
+                                               order.updated_by_user_id !== order.customer.user_id && 
+                                               !order.dispute_raised && (
+                                                <DropdownMenuItem 
+                                                  onClick={() => {
+                                                    setSelectedOrderId(order.id);
+                                                    setDisputeReason("");
+                                                    setDisputeDialogOpen(true);
+                                                  }}
+                                                  className="text-yellow-600"
+                                                >
+                                                  <AlertTriangle className="h-4 w-4 mr-2" />
+                                                  Raise Dispute
+                                                </DropdownMenuItem>
+                                              )}
                                             </DropdownMenuContent>
                                           </DropdownMenu>
                                         )}
@@ -932,6 +948,20 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                 <div className="bg-green-50 rounded-lg p-3">
                   <Label className="text-sm text-green-800">Delivered at:</Label>
                   <div className="text-green-600">{format(new Date(selectedOrder.delivered_at), "PPp")}</div>
+                </div>
+              )}
+
+              {selectedOrder.updated_by_user_id && selectedOrder.updated_by && (
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <Label className="text-sm text-blue-800">Status Last Updated By:</Label>
+                  <div className="text-blue-600">
+                    {selectedOrder.updated_by.name || 'Unknown'} ({selectedOrder.updated_by.user_type})
+                  </div>
+                  {selectedOrder.delivered_at && (
+                    <div className="text-xs text-blue-500 mt-1">
+                      at {format(new Date(selectedOrder.delivered_at), "PPp")}
+                    </div>
+                  )}
                 </div>
               )}
               {selectedOrder.dispute_raised && (

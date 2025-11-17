@@ -37,6 +37,11 @@ export interface OrderWithDetails {
     category: string;
     price: number;
   };
+  updated_by?: {
+    id: string;
+    name: string | null;
+    user_type: string;
+  } | null;
 }
 
 export const useOrders = () => {
@@ -62,7 +67,8 @@ export const useOrders = () => {
           *,
           customer:customers(id, name, address, phone, area_id, society_id, wing_number, user_id),
           vendor:vendors(id, name, category),
-          product:products(id, name, category, price)
+          product:products(id, name, category, price),
+          updated_by:profiles!orders_updated_by_user_id_fkey(id, name, user_type)
         `);
 
       // Filter based on user role
@@ -122,6 +128,7 @@ export const useOrders = () => {
         customer: Array.isArray(order.customer) ? order.customer[0] : order.customer,
         vendor: Array.isArray(order.vendor) ? order.vendor[0] : order.vendor,
         product: Array.isArray(order.product) ? order.product[0] : order.product,
+        updated_by: Array.isArray(order.updated_by) ? order.updated_by[0] : order.updated_by,
       })) || [];
 
       setOrders(transformedData);
