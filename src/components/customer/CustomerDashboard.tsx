@@ -179,8 +179,8 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       order.product.name,
       order.quantity,
       order.unit,
-      Number(order.product.price).toFixed(2),
-      Number(order.total_amount).toFixed(2),
+      Number(order.product.price),
+      Number(order.total_amount),
       order.status
     ]);
 
@@ -192,8 +192,8 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     const orderDataEndRow = titleRowCount + orderRows.length + 1; // Last data row
     const statusSummaryTextRow = titleRowCount + orderRows.length + 3;
     const summaryHeaderRow = titleRowCount + orderRows.length + 4;
-    const summaryDataStartRow = titleRowCount + orderRows.length + 5;
-    const summaryDataEndRow = titleRowCount + orderRows.length + 4 + statuses.length;
+    const summaryDataStartRow = titleRowCount + orderRows.length + 6;
+    const summaryDataEndRow = titleRowCount + orderRows.length + 5 + statuses.length;
     const grandTotalRowNum = titleRowCount + orderRows.length + 5 + statuses.length;
     
     // Summary rows with formulas
@@ -224,10 +224,22 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     
     const ws = XLSX.utils.aoa_to_sheet(allData);
     
-    ws['!cols'] = [
-      { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 10 },
-      { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 12 }
-    ];
+    // Auto-size columns based on content
+    const calculateColumnWidth = (data: any[][], colIndex: number): number => {
+      let maxWidth = 10;
+      data.forEach(row => {
+        if (row[colIndex] !== undefined && row[colIndex] !== null) {
+          const cellValue = String(row[colIndex]);
+          maxWidth = Math.max(maxWidth, cellValue.length);
+        }
+      });
+      return Math.min(maxWidth + 2, 50);
+    };
+    
+    const numColumns = headerRow.length;
+    ws['!cols'] = Array.from({ length: numColumns }, (_, i) => ({
+      wch: calculateColumnWidth(allData, i)
+    }));
     
     // Add borders and styling to all cells
     const solidBorder = { style: 'thin', color: { rgb: '000000' } };
@@ -316,11 +328,11 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
           topBorder = dottedBorder;
           bottomBorder = dottedBorder;
           cell.s.font = { sz: 11 };
-    } else if (isGrandTotal) {
-      // No borders for grand total row
-      cell.s.font = { bold: true, sz: 11 };
-      continue;
-    }
+        } else if (isGrandTotal) {
+          topBorder = dottedBorder;
+          bottomBorder = solidBorder;
+          cell.s.font = { bold: true, sz: 11 };
+        }
         
         cell.s.border = {
           top: topBorder,
@@ -329,25 +341,44 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
           right: rightBorder
         };
       }
-    }
+      }
+      
+      // Apply number format to Price/Unit (column F, index 5) and Amount (column G, index 6)
+      for (let row = firstDataRow; row <= lastDataRow; row++) {
+        const priceCell = ws[XLSX.utils.encode_cell({ r: row, c: 5 })];
+        const amountCell = ws[XLSX.utils.encode_cell({ r: row, c: 6 })];
+        
+        if (priceCell) {
+          if (!priceCell.s) priceCell.s = {};
+          priceCell.t = 'n';
+          priceCell.z = '0.00';
+        }
+        
+        if (amountCell) {
+          if (!amountCell.s) amountCell.s = {};
+          amountCell.t = 'n';
+          amountCell.z = '0.00';
+        }
+      }
+      
+      // Apply number format to summary table amount column (column C, index 2)
+      for (let row = firstSummaryDataRow; row <= grandTotalRowNum; row++) {
+        const summaryCountCell = ws[XLSX.utils.encode_cell({ r: row, c: 1 })];
+        const summaryAmountCell = ws[XLSX.utils.encode_cell({ r: row, c: 2 })];
+        
+        if (summaryCountCell && summaryCountCell.v !== undefined) {
+          if (!summaryCountCell.s) summaryCountCell.s = {};
+          summaryCountCell.t = 'n';
+        }
+        
+        if (summaryAmountCell && summaryAmountCell.v !== undefined) {
+          if (!summaryAmountCell.s) summaryAmountCell.s = {};
+          summaryAmountCell.t = 'n';
+          summaryAmountCell.z = '0.00';
+        }
+      }
 
-    // Apply number format to Price/Unit (column F, index 5) and Amount (column G, index 6)
-    for (let row = firstDataRow; row <= lastDataRow; row++) {
-      const priceCell = ws[XLSX.utils.encode_cell({ r: row, c: 5 })];
-      const amountCell = ws[XLSX.utils.encode_cell({ r: row, c: 6 })];
-      
-      if (priceCell) {
-        if (!priceCell.s) priceCell.s = {};
-        priceCell.z = '0.00';
-      }
-      
-      if (amountCell) {
-        if (!amountCell.s) amountCell.s = {};
-        amountCell.z = '0.00';
-      }
-    }
-    
-    const wb = XLSX.utils.book_new();
+      const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Orders');
     XLSX.writeFile(wb, `orders-${selectedMonth}-with-summary.xlsx`);
   };

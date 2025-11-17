@@ -113,7 +113,7 @@ const AdminOrderHistory = () => {
       order.product.name,
       order.quantity,
       order.unit,
-      Number(order.total_amount).toFixed(2),
+      Number(order.total_amount),
       order.status
     ]);
 
@@ -272,9 +272,37 @@ const AdminOrderHistory = () => {
         if (!totalCell.s) totalCell.s = {};
         totalCell.z = '0.00';
       }
-    }
-    
-    const wb = XLSX.utils.book_new();
+      }
+      
+      // Apply number format to Total (column H, index 7)
+      for (let row = firstDataRow; row <= lastDataRow; row++) {
+        const totalCell = ws[XLSX.utils.encode_cell({ r: row, c: 7 })];
+        
+        if (totalCell) {
+          if (!totalCell.s) totalCell.s = {};
+          totalCell.t = 'n';
+          totalCell.z = '0.00';
+        }
+      }
+      
+      // Apply number format to summary table amount column (column C, index 2)
+      for (let row = firstSummaryDataRow; row <= grandTotalRowNum; row++) {
+        const summaryCountCell = ws[XLSX.utils.encode_cell({ r: row, c: 1 })];
+        const summaryAmountCell = ws[XLSX.utils.encode_cell({ r: row, c: 2 })];
+        
+        if (summaryCountCell && summaryCountCell.v !== undefined) {
+          if (!summaryCountCell.s) summaryCountCell.s = {};
+          summaryCountCell.t = 'n';
+        }
+        
+        if (summaryAmountCell && summaryAmountCell.v !== undefined) {
+          if (!summaryAmountCell.s) summaryAmountCell.s = {};
+          summaryAmountCell.t = 'n';
+          summaryAmountCell.z = '0.00';
+        }
+      }
+
+      const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'All Orders');
     XLSX.writeFile(wb, `orders-with-summary-${new Date().toISOString().split('T')[0]}.xlsx`);
   };
