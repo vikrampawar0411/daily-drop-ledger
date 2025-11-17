@@ -30,11 +30,7 @@ interface OrderHistoryProps {
 const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistoryProps) => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedVendor, setSelectedVendor] = useState(() => {
-    if (initialVendorFilter) return initialVendorFilter;
-    const savedVendor = localStorage.getItem('lastSelectedVendor');
-    return savedVendor || 'all';
-  });
+  const [selectedVendor, setSelectedVendor] = useState('');
   const [selectedStatus, setSelectedStatus] = useState(initialStatusFilter || "all");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
@@ -89,8 +85,8 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
   }, [initialVendorFilter, initialStatusFilter]);
 
   useEffect(() => {
-    if (selectedVendor && selectedVendor !== 'all') {
-      localStorage.setItem('lastSelectedVendor', selectedVendor);
+    if (selectedVendor) {
+      localStorage.setItem('lastSelectedVendorHistory', selectedVendor);
     }
   }, [selectedVendor]);
 
@@ -245,6 +241,15 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
 
   const statuses = ["pending", "delivered", "cancelled"];
 
+  // Set default vendor after vendors are loaded
+  useEffect(() => {
+    if (vendors.length > 0 && !selectedVendor && !initialVendorFilter) {
+      const savedVendor = localStorage.getItem('lastSelectedVendorHistory');
+      const validVendor = savedVendor && vendors.find(v => v === savedVendor);
+      setSelectedVendor(validVendor ? savedVendor : vendors[0]);
+    }
+  }, [vendors, selectedVendor, initialVendorFilter]);
+
   const handleSort = (column: string) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -259,7 +264,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
       const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            order.vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            order.product.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesVendor = selectedVendor === "all" || order.vendor.name === selectedVendor;
+      const matchesVendor = !selectedVendor || order.vendor.name === selectedVendor;
       const matchesStatus = selectedStatus === "all" || order.status === selectedStatus;
       
       // Date range filter
@@ -548,12 +553,6 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
             <div className="space-y-2">
               <Label className="text-sm font-medium">Filter by Vendor</Label>
               <RadioGroup value={selectedVendor} onValueChange={setSelectedVendor} className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="all" id="history-vendor-all" />
-                  <Label htmlFor="history-vendor-all" className="cursor-pointer font-normal">
-                    All Vendors
-                  </Label>
-                </div>
                 {vendors.map(vendor => (
                   <div key={vendor} className="flex items-center space-x-2">
                     <RadioGroupItem value={vendor} id={`history-vendor-${vendor}`} />
