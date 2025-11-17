@@ -44,10 +44,16 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   });
-  const [selectedVendor, setSelectedVendor] = useState<string>(() => {
-    const savedVendor = localStorage.getItem('lastSelectedVendor');
-    return savedVendor || 'all';
-  });
+  const [selectedVendor, setSelectedVendor] = useState<string>('');
+
+  // Set initial vendor after vendors load
+  useEffect(() => {
+    if (vendors.length > 0 && !selectedVendor) {
+      const savedVendor = localStorage.getItem('lastSelectedVendor');
+      const validVendor = savedVendor && vendors.find(v => v.id === savedVendor);
+      setSelectedVendor(validVendor ? savedVendor : vendors[0].id);
+    }
+  }, [vendors, selectedVendor]);
   const [orderDetailsDialogOpen, setOrderDetailsDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [tableExpanded, setTableExpanded] = useState(true);
@@ -392,7 +398,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   }, [user]);
 
   useEffect(() => {
-    if (selectedVendor && selectedVendor !== 'all') {
+    if (selectedVendor) {
       localStorage.setItem('lastSelectedVendor', selectedVendor);
     }
   }, [selectedVendor]);
@@ -426,7 +432,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     const monthOrders = orders.filter(o => {
       const orderDate = new Date(o.order_date);
       const matchesDate = orderDate >= firstDay && orderDate <= lastDay;
-      const matchesVendor = selectedVendor === 'all' || o.vendor.id === selectedVendor;
+      const matchesVendor = !selectedVendor || o.vendor.id === selectedVendor;
       // Exclude cancelled orders
       return matchesDate && matchesVendor && o.status !== 'cancelled';
     });
@@ -675,25 +681,19 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                 </div>
               </div>
             </div>
-            <div className="space-y-3">
-              <Label>Filter by Vendor</Label>
-              <RadioGroup value={selectedVendor} onValueChange={setSelectedVendor} className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="all" id="vendor-all" />
-                  <Label htmlFor="vendor-all" className="cursor-pointer font-normal">
-                    All Vendors
-                  </Label>
-                </div>
-                {vendors.map((vendor) => (
-                  <div key={vendor.id} className="flex items-center space-x-2">
-                    <RadioGroupItem value={vendor.id} id={`vendor-${vendor.id}`} />
-                    <Label htmlFor={`vendor-${vendor.id}`} className="cursor-pointer font-normal">
-                      {vendor.name}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
-            </div>
+        <div className="space-y-3">
+          <Label>Filter by Vendor</Label>
+          <RadioGroup value={selectedVendor} onValueChange={setSelectedVendor} className="space-y-2">
+            {vendors.map((vendor) => (
+              <div key={vendor.id} className="flex items-center space-x-2">
+                <RadioGroupItem value={vendor.id} id={`vendor-${vendor.id}`} />
+                <Label htmlFor={`vendor-${vendor.id}`} className="cursor-pointer font-normal">
+                  {vendor.name}
+                </Label>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
           </div>
         </CardHeader>
         <CardContent>
