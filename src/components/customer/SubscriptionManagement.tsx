@@ -323,9 +323,9 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
         if (row < titleRowCount) {
           if (row === 0) {
             cell.s.font = { bold: true, sz: 16 };
-            cell.s.alignment = { horizontal: 'center' };
+            cell.s.alignment = { horizontal: 'left' };
           } else if (row >= 1 && row <= 4) {
-            cell.s.font = { bold: true, sz: 12 };
+            cell.s.font = { sz: 11 };
           }
           continue;
         }
@@ -387,11 +387,11 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
           topBorder = dottedBorder;
           bottomBorder = dottedBorder;
           cell.s.font = { sz: 11 };
-        } else if (isGrandTotal) {
-          topBorder = dottedBorder;
-          bottomBorder = solidBorder;
-          cell.s.font = { bold: true, sz: 11 };
-        }
+    } else if (isGrandTotal) {
+      // No borders for grand total row
+      cell.s.font = { bold: true, sz: 11 };
+      continue;
+    }
         
         cell.s.border = {
           top: topBorder,
@@ -399,6 +399,22 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
           left: leftBorder,
           right: rightBorder
         };
+      }
+    }
+
+    // Apply number format to Price/Unit (column F, index 5) and Amount (column G, index 6)
+    for (let row = firstDataRow; row <= lastDataRow; row++) {
+      const priceCell = ws[XLSX.utils.encode_cell({ r: row, c: 5 })];
+      const amountCell = ws[XLSX.utils.encode_cell({ r: row, c: 6 })];
+      
+      if (priceCell) {
+        if (!priceCell.s) priceCell.s = {};
+        priceCell.z = '0.00';
+      }
+      
+      if (amountCell) {
+        if (!amountCell.s) amountCell.s = {};
+        amountCell.z = '0.00';
       }
     }
     
