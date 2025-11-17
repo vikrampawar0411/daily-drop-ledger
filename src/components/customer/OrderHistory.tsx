@@ -34,8 +34,10 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
   const [disputeReason, setDisputeReason] = useState("");
   const [modifyOrderDialogOpen, setModifyOrderDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
-  const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
+    const currentMonth = format(new Date(), 'MMMM yyyy');
+    return new Set([currentMonth]);
+  });
   const [sortColumn, setSortColumn] = useState<string>('order_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const { orders, loading, raiseDispute, updateOrderStatus } = useOrders();
@@ -158,26 +160,16 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
   }, [orders, searchTerm, selectedVendor, selectedStatus, startDate, endDate, sortColumn, sortDirection]);
 
   const groupedOrders = useMemo(() => {
-    const groups: Record<string, Record<string, any[]>> = {};
+    const groups: Record<string, any[]> = {};
     
     filteredOrders.forEach(order => {
       const orderDate = new Date(order.order_date);
       const monthKey = format(orderDate, 'MMMM yyyy');
-      const weekNumber = Math.ceil(orderDate.getDate() / 7);
-      const weekKey = `Week ${weekNumber}`;
       
       if (!groups[monthKey]) {
-        groups[monthKey] = {};
-        // Expand current month by default
-        const currentMonth = format(new Date(), 'MMMM yyyy');
-        if (monthKey === currentMonth) {
-          setExpandedMonths(prev => new Set(prev).add(monthKey));
-        }
+        groups[monthKey] = [];
       }
-      if (!groups[monthKey][weekKey]) {
-        groups[monthKey][weekKey] = [];
-      }
-      groups[monthKey][weekKey].push(order);
+      groups[monthKey].push(order);
     });
     
     return groups;
@@ -190,18 +182,6 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
         newSet.delete(month);
       } else {
         newSet.add(month);
-      }
-      return newSet;
-    });
-  };
-
-  const toggleWeek = (monthWeekKey: string) => {
-    setExpandedWeeks(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(monthWeekKey)) {
-        newSet.delete(monthWeekKey);
-      } else {
-        newSet.add(monthWeekKey);
       }
       return newSet;
     });
@@ -518,9 +498,9 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
               <TableBody>
                 {Object.keys(groupedOrders).length > 0 ? (
                   <>
-                    {Object.entries(groupedOrders).map(([month, weeks]) => (
-                      <>
-                        <TableRow key={month} className="bg-muted/50">
+                    {Object.entries(groupedOrders).map(([month, monthOrders]) => (
+                      <React.Fragment key={month}>
+                        <TableRow className="bg-muted/50">
                           <TableCell colSpan={8}>
                             <Button
                               variant="ghost"
@@ -533,23 +513,8 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                             </Button>
                           </TableCell>
                         </TableRow>
-                        {expandedMonths.has(month) && Object.entries(weeks).map(([week, weekOrders]) => (
-                          <>
-                            <TableRow key={`${month}-${week}`} className="bg-muted/30">
-                              <TableCell colSpan={8}>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => toggleWeek(`${month}-${week}`)}
-                                  className="w-full justify-start pl-8 font-medium"
-                                >
-                                  {expandedWeeks.has(`${month}-${week}`) ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
-                                  {week}
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                            {expandedWeeks.has(`${month}-${week}`) && (weekOrders as any[]).map((order: any) => (
-                              <TableRow 
+                        {expandedMonths.has(month) && (monthOrders as any[]).map((order: any) => (
+                          <TableRow
                                 key={order.id} 
                                 className="cursor-pointer hover:bg-muted/50"
                                 onClick={() => handleModifyOrder(order)}
@@ -601,10 +566,8 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                                   )}
                                 </TableCell>
                               </TableRow>
-                            ))}
-                          </>
                         ))}
-                      </>
+                      </React.Fragment>
                     ))}
                     {/* Summary Row */}
                     <TableRow className="border-t-2 border-gray-300 bg-gray-50 font-bold">

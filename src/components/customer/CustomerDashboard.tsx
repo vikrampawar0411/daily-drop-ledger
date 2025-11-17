@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, ShoppingCart, Calendar, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock, Download, FileDown, ChevronDown, ChevronUp } from "lucide-react";
+import { Users, ShoppingCart, Calendar, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock, Download, FileDown, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VendorOrderTabs } from "./components/VendorOrderTabs";
 import { useOrders } from "@/hooks/useOrders";
@@ -50,8 +50,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
   const [disputeOrderId, setDisputeOrderId] = useState<string | null>(null);
   const [disputeReason, setDisputeReason] = useState("");
-  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
-  const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
+    const currentMonth = format(new Date(), 'MMMM yyyy');
+    return new Set([currentMonth]);
+  });
   const [sortColumn, setSortColumn] = useState<string>('order_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -345,26 +347,16 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   }, [orders, selectedMonth, selectedVendors, sortColumn, sortDirection]);
 
   const groupedOrders = useMemo(() => {
-    const groups: Record<string, Record<string, any[]>> = {};
+    const groups: Record<string, any[]> = {};
     
     monthlyStats.orders.forEach(order => {
       const orderDate = new Date(order.order_date);
       const monthKey = format(orderDate, 'MMMM yyyy');
-      const weekNumber = Math.ceil(orderDate.getDate() / 7);
-      const weekKey = `Week ${weekNumber}`;
       
       if (!groups[monthKey]) {
-        groups[monthKey] = {};
-        // Expand current month by default
-        const currentMonth = format(new Date(), 'MMMM yyyy');
-        if (monthKey === currentMonth) {
-          setExpandedMonths(prev => new Set(prev).add(monthKey));
-        }
+        groups[monthKey] = [];
       }
-      if (!groups[monthKey][weekKey]) {
-        groups[monthKey][weekKey] = [];
-      }
-      groups[monthKey][weekKey].push(order);
+      groups[monthKey].push(order);
     });
     
     return groups;
@@ -377,18 +369,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
         newSet.delete(month);
       } else {
         newSet.add(month);
-      }
-      return newSet;
-    });
-  };
-
-  const toggleWeek = (monthWeekKey: string) => {
-    setExpandedWeeks(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(monthWeekKey)) {
-        newSet.delete(monthWeekKey);
-      } else {
-        newSet.add(monthWeekKey);
       }
       return newSet;
     });
@@ -734,9 +714,9 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                     </TableHeader>
                     <TableBody>
                       {Object.keys(groupedOrders).length > 0 ? (
-                        Object.entries(groupedOrders).map(([month, weeks]) => (
-                          <>
-                            <TableRow key={month} className="bg-muted/50">
+                        Object.entries(groupedOrders).map(([month, monthOrders]) => (
+                          <React.Fragment key={month}>
+                            <TableRow className="bg-muted/50">
                               <TableCell colSpan={8}>
                                 <Button
                                   variant="ghost"
@@ -749,85 +729,80 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                 </Button>
                               </TableCell>
                             </TableRow>
-                            {expandedMonths.has(month) && Object.entries(weeks).map(([week, weekOrders]) => (
-                              <>
-                                <TableRow key={`${month}-${week}`} className="bg-muted/30">
-                                  <TableCell colSpan={8}>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => toggleWeek(`${month}-${week}`)}
-                                      className="w-full justify-start pl-8 font-medium"
-                                    >
-                                      {expandedWeeks.has(`${month}-${week}`) ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
-                                      {week}
-                                    </Button>
+                            {expandedMonths.has(month) && (monthOrders as any[]).map((order: any) => {
+                              const orderDate = new Date(order.order_date);
+                              const isSunday = orderDate.getDay() === 0;
+                              const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                              const dayName = days[orderDate.getDay()];
+                              
+                              return (
+                                <TableRow 
+                                  key={order.id} 
+                                  className="cursor-pointer hover:bg-muted/50"
+                                >
+                                  <TableCell onClick={(e) => e.stopPropagation()}>
+                                    {order.status === 'pending' && (
+                                      <Checkbox 
+                                        checked={selectedOrderIds.includes(order.id)}
+                                        onCheckedChange={() => toggleOrderSelection(order.id)}
+                                      />
+                                    )}
+                                  </TableCell>
+                                  <TableCell 
+                                    className={`font-semibold ${isSunday ? 'text-red-700' : ''}`}
+                                    onClick={() => handleOrderClick(order)}
+                                  >
+                                    {dayName}
+                                  </TableCell>
+                                  <TableCell onClick={() => handleOrderClick(order)}>{orderDate.toLocaleDateString()}</TableCell>
+                                  <TableCell onClick={() => handleOrderClick(order)}>
+                                    {order.vendor.name}
+                                  </TableCell>
+                                  <TableCell onClick={() => handleOrderClick(order)}>
+                                    {order.product.name}
+                                  </TableCell>
+                                  <TableCell onClick={() => handleOrderClick(order)}>
+                                    {order.quantity} {order.unit}
+                                  </TableCell>
+                                  <TableCell onClick={() => handleOrderClick(order)} className="font-semibold">
+                                    ₹{order.total_amount}
+                                  </TableCell>
+                                  <TableCell onClick={(e) => e.stopPropagation()}>
+                                    {order.updated_by_user_id && order.customer?.user_id && order.updated_by_user_id !== order.customer.user_id ? (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setDisputeOrderId(order.id);
+                                          setDisputeReason("");
+                                          setDisputeDialogOpen(true);
+                                        }}
+                                        disabled={order.dispute_raised}
+                                      >
+                                        {order.dispute_raised ? (
+                                          <>
+                                            <AlertTriangle className="h-4 w-4 mr-1 text-yellow-600" />
+                                            Disputed
+                                          </>
+                                        ) : (
+                                          "Dispute"
+                                        )}
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant={order.status === 'delivered' ? 'default' : 'secondary'}
+                                        onClick={() => handleStatusToggle(order)}
+                                      >
+                                        {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
+                                        {order.status === 'pending' ? 'Pending' : 'Delivered'}
+                                      </Button>
+                                    )}
                                   </TableCell>
                                 </TableRow>
-                                {expandedWeeks.has(`${month}-${week}`) && (weekOrders as any[]).map((order: any) => {
-                                  const orderDate = new Date(order.order_date);
-                                  const isSunday = orderDate.getDay() === 0;
-                                  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                                  const dayName = days[orderDate.getDay()];
-                                  
-                                  return (
-                                    <TableRow 
-                                      key={order.id} 
-                                      className="cursor-pointer hover:bg-muted/50"
-                                    >
-                                      <TableCell onClick={(e) => e.stopPropagation()}>
-                                        {order.status === 'pending' && (
-                                          <Checkbox 
-                                            checked={selectedOrderIds.includes(order.id)}
-                                            onCheckedChange={() => toggleOrderSelection(order.id)}
-                                          />
-                                        )}
-                                      </TableCell>
-                                      <TableCell 
-                                        className={`font-semibold ${isSunday ? 'text-red-700' : ''}`}
-                                        onClick={() => handleOrderClick(order)}
-                                      >
-                                        {dayName}
-                                      </TableCell>
-                                      <TableCell onClick={() => handleOrderClick(order)}>{orderDate.toLocaleDateString()}</TableCell>
-                                      <TableCell onClick={() => handleOrderClick(order)}>
-                                        {order.vendor.name}
-                                      </TableCell>
-                                      <TableCell onClick={() => handleOrderClick(order)}>
-                                        {order.product.name}
-                                      </TableCell>
-                                      <TableCell onClick={() => handleOrderClick(order)}>{order.quantity} {order.unit}</TableCell>
-                                      <TableCell className="font-semibold" onClick={() => handleOrderClick(order)}>₹{order.total_amount}</TableCell>
-                                      <TableCell onClick={(e) => e.stopPropagation()}>
-                                        {order.updated_by_user_id && order.customer?.user_id && order.updated_by_user_id !== order.customer.user_id ? (
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => {
-                                              setDisputeOrderId(order.id);
-                                              setDisputeDialogOpen(true);
-                                            }}
-                                            disabled={order.dispute_raised}
-                                          >
-                                            {order.dispute_raised ? 'Disputed' : 'Dispute'}
-                                          </Button>
-                                        ) : (
-                                          <Button
-                                            size="sm"
-                                            variant={order.status === 'delivered' ? 'default' : 'secondary'}
-                                            onClick={() => handleStatusToggle(order)}
-                                          >
-                                            {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
-                                            {order.status === 'pending' ? 'Pending' : 'Delivered'}
-                                          </Button>
-                                        )}
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })}
-                              </>
-                            ))}
-                          </>
+                              );
+                            })}
+                          </React.Fragment>
                         ))
                       ) : (
                         <TableRow>
