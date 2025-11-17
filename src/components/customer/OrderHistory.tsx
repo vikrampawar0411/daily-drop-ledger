@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -544,17 +545,25 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                 className="pl-10"
               />
             </div>
-            <Select value={selectedVendor} onValueChange={setSelectedVendor}>
-              <SelectTrigger>
-                <SelectValue placeholder="All vendors" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Vendors</SelectItem>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Filter by Vendor</Label>
+              <RadioGroup value={selectedVendor} onValueChange={setSelectedVendor} className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="all" id="history-vendor-all" />
+                  <Label htmlFor="history-vendor-all" className="cursor-pointer font-normal">
+                    All Vendors
+                  </Label>
+                </div>
                 {vendors.map(vendor => (
-                  <SelectItem key={vendor} value={vendor}>{vendor}</SelectItem>
+                  <div key={vendor} className="flex items-center space-x-2">
+                    <RadioGroupItem value={vendor} id={`history-vendor-${vendor}`} />
+                    <Label htmlFor={`history-vendor-${vendor}`} className="cursor-pointer font-normal">
+                      {vendor}
+                    </Label>
+                  </div>
                 ))}
-              </SelectContent>
-            </Select>
+              </RadioGroup>
+            </div>
             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
               <SelectTrigger>
                 <SelectValue placeholder="All statuses" />

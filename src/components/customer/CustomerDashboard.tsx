@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Users, ShoppingCart, Calendar, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock, Download, FileDown, ChevronDown, ChevronUp, AlertTriangle, MoreVertical, Edit, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { VendorOrderTabs } from "./components/VendorOrderTabs";
 import { useOrders } from "@/hooks/useOrders";
 import { useVendors } from "@/hooks/useVendors";
@@ -674,21 +675,24 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                 </div>
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label>Filter by Vendor</Label>
-              <Select value={selectedVendor} onValueChange={setSelectedVendor}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select vendor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Vendors</SelectItem>
-                  {vendors.map((vendor) => (
-                    <SelectItem key={vendor.id} value={vendor.id}>
+              <RadioGroup value={selectedVendor} onValueChange={setSelectedVendor} className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="all" id="vendor-all" />
+                  <Label htmlFor="vendor-all" className="cursor-pointer font-normal">
+                    All Vendors
+                  </Label>
+                </div>
+                {vendors.map((vendor) => (
+                  <div key={vendor.id} className="flex items-center space-x-2">
+                    <RadioGroupItem value={vendor.id} id={`vendor-${vendor.id}`} />
+                    <Label htmlFor={`vendor-${vendor.id}`} className="cursor-pointer font-normal">
                       {vendor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
             </div>
           </div>
         </CardHeader>

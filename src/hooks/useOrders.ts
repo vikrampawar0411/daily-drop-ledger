@@ -68,7 +68,7 @@ export const useOrders = () => {
           customer:customers(id, name, address, phone, area_id, society_id, wing_number, user_id),
           vendor:vendors(id, name, category),
           product:products(id, name, category, price),
-          updated_by:profiles!orders_updated_by_user_id_fkey(id, name, user_type)
+          updated_by:profiles(id, name, user_type)
         `);
 
       // Filter based on user role
