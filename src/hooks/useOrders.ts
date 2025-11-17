@@ -214,11 +214,69 @@ export const useOrders = () => {
     }
   };
 
+  const deleteOrder = async (orderId: string) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .delete()
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Order deleted successfully",
+      });
+      
+      await fetchOrders();
+    } catch (error: any) {
+      toast({
+        title: "Error deleting order",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const updateOrder = async (orderId: string, updates: {
+    quantity?: number;
+    product_id?: string;
+    order_date?: string;
+    price_per_unit?: number;
+    total_amount?: number;
+  }) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update(updates)
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Order updated successfully",
+      });
+      
+      await fetchOrders();
+    } catch (error: any) {
+      toast({
+        title: "Error updating order",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   return {
     orders,
     loading,
     updateOrderStatus,
     raiseDispute,
+    deleteOrder,
+    updateOrder,
     refetch: fetchOrders,
   };
 };

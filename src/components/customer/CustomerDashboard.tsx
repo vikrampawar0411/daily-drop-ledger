@@ -2,7 +2,8 @@ import { useMemo, useState, useEffect } from "react";
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, ShoppingCart, Calendar, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock, Download, FileDown, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Users, ShoppingCart, Calendar, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock, Download, FileDown, ChevronDown, ChevronUp, AlertTriangle, MoreVertical, Edit, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VendorOrderTabs } from "./components/VendorOrderTabs";
 import { useOrders } from "@/hooks/useOrders";
@@ -16,6 +17,7 @@ import { CheckCircle, XCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,7 +32,7 @@ interface CustomerDashboardProps {
 
 const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   const { user } = useAuth();
-  const { orders, loading: ordersLoading, updateOrderStatus, raiseDispute, refetch } = useOrders();
+  const { orders, loading: ordersLoading, updateOrderStatus, raiseDispute, deleteOrder, updateOrder, refetch } = useOrders();
   const { vendors, loading: vendorsLoading } = useVendors();
   const { toast } = useToast();
   const [customerName, setCustomerName] = useState("");
@@ -56,6 +58,15 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   });
   const [sortColumn, setSortColumn] = useState<string>('order_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<any>(null);
+  const [editFormData, setEditFormData] = useState({
+    quantity: 0,
+    product_id: '',
+    order_date: '',
+  });
 
   const handleOrderClick = (order: any) => {
     setSelectedOrder(order);
@@ -217,6 +228,50 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       setSelectedOrderIds([]);
     } else {
       setSelectedOrderIds(pendingOrders.map(o => o.id));
+    }
+  };
+
+  const handleEditOrder = (order: any) => {
+    setEditingOrder(order);
+    setEditFormData({
+      quantity: order.quantity,
+      product_id: order.product.id,
+      order_date: order.order_date,
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!deleteOrderId) return;
+    
+    try {
+      await deleteOrder(deleteOrderId);
+      setDeleteDialogOpen(false);
+      setDeleteOrderId(null);
+    } catch (error) {
+      console.error("Failed to delete order:", error);
+    }
+  };
+
+  const handleUpdateOrder = async () => {
+    if (!editingOrder) return;
+    
+    try {
+      const pricePerUnit = editingOrder.price_per_unit;
+      const totalAmount = editFormData.quantity * pricePerUnit;
+      
+      await updateOrder(editingOrder.id, {
+        quantity: editFormData.quantity,
+        product_id: editFormData.product_id,
+        order_date: editFormData.order_date,
+        price_per_unit: pricePerUnit,
+        total_amount: totalAmount,
+      });
+      
+      setEditDialogOpen(false);
+      setEditingOrder(null);
+    } catch (error) {
+      console.error("Failed to update order:", error);
     }
   };
 
@@ -710,6 +765,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                         <TableHead className="cursor-pointer" onClick={() => handleSort('status')}>
                           Status {sortColumn === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
                         </TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -717,7 +773,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                         Object.entries(groupedOrders).map(([month, monthOrders]) => (
                           <React.Fragment key={month}>
                             <TableRow className="bg-muted/50">
-                              <TableCell colSpan={8}>
+                              <TableCell colSpan={9}>
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -768,35 +824,64 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                     ₹{order.total_amount}
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
-                                    {order.updated_by_user_id && order.customer?.user_id && order.updated_by_user_id !== order.customer.user_id ? (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                          setDisputeOrderId(order.id);
-                                          setDisputeReason("");
-                                          setDisputeDialogOpen(true);
-                                        }}
-                                        disabled={order.dispute_raised}
-                                      >
-                                        {order.dispute_raised ? (
-                                          <>
-                                            <AlertTriangle className="h-4 w-4 mr-1 text-yellow-600" />
-                                            Disputed
-                                          </>
-                                        ) : (
-                                          "Dispute"
-                                        )}
-                                      </Button>
-                                    ) : (
-                                      <Button
-                                        size="sm"
-                                        variant={order.status === 'delivered' ? 'default' : 'secondary'}
-                                        onClick={() => handleStatusToggle(order)}
-                                      >
-                                        {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
-                                        {order.status === 'pending' ? 'Pending' : 'Delivered'}
-                                      </Button>
+                                    <div className="flex items-center gap-2">
+                                      {order.updated_by_user_id && order.customer?.user_id && order.updated_by_user_id !== order.customer.user_id ? (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => {
+                                            setDisputeOrderId(order.id);
+                                            setDisputeReason("");
+                                            setDisputeDialogOpen(true);
+                                          }}
+                                          disabled={order.dispute_raised}
+                                        >
+                                          {order.dispute_raised ? (
+                                            <>
+                                              <AlertTriangle className="h-4 w-4 mr-1 text-yellow-600" />
+                                              Disputed
+                                            </>
+                                          ) : (
+                                            "Dispute"
+                                          )}
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          size="sm"
+                                          variant={order.status === 'delivered' ? 'default' : 'secondary'}
+                                          onClick={() => handleStatusToggle(order)}
+                                        >
+                                          {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
+                                          {order.status === 'pending' ? 'Pending' : 'Delivered'}
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell onClick={(e) => e.stopPropagation()}>
+                                    {order.status === 'pending' && (
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="sm">
+                                            <MoreVertical className="h-4 w-4" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                          <DropdownMenuItem onClick={() => handleEditOrder(order)}>
+                                            <Edit className="h-4 w-4 mr-2" />
+                                            Edit Order
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem 
+                                            onClick={() => {
+                                              setDeleteOrderId(order.id);
+                                              setDeleteDialogOpen(true);
+                                            }}
+                                            className="text-red-600"
+                                          >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete Order
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
                                     )}
                                   </TableCell>
                                 </TableRow>
@@ -984,6 +1069,78 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               }}
             >
               Submit Dispute
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this order? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteOrder} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Order Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Order</DialogTitle>
+            <DialogDescription>
+              Modify order details below
+            </DialogDescription>
+          </DialogHeader>
+          {editingOrder && (
+            <div className="space-y-4">
+              <div>
+                <Label>Order Date</Label>
+                <Input
+                  type="date"
+                  value={editFormData.order_date}
+                  onChange={(e) => setEditFormData({...editFormData, order_date: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label>Quantity</Label>
+                <Input
+                  type="number"
+                  value={editFormData.quantity}
+                  onChange={(e) => setEditFormData({...editFormData, quantity: Number(e.target.value)})}
+                  min="0.1"
+                  step="0.1"
+                />
+              </div>
+              <div>
+                <Label>Product</Label>
+                <div className="text-sm text-muted-foreground">
+                  {editingOrder.product.name} (₹{editingOrder.price_per_unit}/{editingOrder.unit})
+                </div>
+              </div>
+              <div>
+                <Label>Total Amount</Label>
+                <div className="text-lg font-semibold">
+                  ₹{(editFormData.quantity * editingOrder.price_per_unit).toFixed(2)}
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateOrder}>
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
