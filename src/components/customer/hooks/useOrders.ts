@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { format } from "date-fns";
 import type { DateOrders, Order } from "../types/order";
 
 export const useOrders = () => {
@@ -90,17 +91,17 @@ export const useOrders = () => {
   }, [user]);
 
   const getOrdersForDate = (date: Date): Order[] => {
-    const dateString = date.toISOString().split('T')[0];
+    const dateString = format(date, 'yyyy-MM-dd');
     return orders.find(order => order.date === dateString)?.orders || [];
   };
 
   const hasOrdersOnDate = (date: Date): boolean => {
-    const dateString = date.toISOString().split('T')[0];
+    const dateString = format(date, 'yyyy-MM-dd');
     return orders.some(order => order.date === dateString);
   };
 
   const addOrder = async (date: Date, order: Omit<Order, 'id'>): Promise<void> => {
-    const dateString = date.toISOString().split('T')[0];
+    const dateString = format(date, 'yyyy-MM-dd');
     
     try {
       // Get customer ID - either from logged-in user or guest

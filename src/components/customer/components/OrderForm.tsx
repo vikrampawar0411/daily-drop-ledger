@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface OrderFormProps {
   selectedDate: Date | undefined;
@@ -315,15 +316,11 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
   // Get orders for selected product on calendar
   const hasOrdersOnDate = (date: Date) => {
     if (!selectedVendor || !selectedProduct) return false;
-    // Create a date string in YYYY-MM-DD format for consistent comparison
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = format(date, 'yyyy-MM-dd');
     const orders = allOrders(date);
     return orders.some(order => {
       if (!order.order_date) return false;
-      const orderDate = new Date(order.order_date);
-      if (isNaN(orderDate.getTime())) return false; // Check if date is valid
-      const orderDateStr = orderDate.toISOString().split('T')[0];
-      return orderDateStr === dateStr && order.vendor === selectedVendor && order.product === selectedProduct;
+      return order.order_date === dateStr && order.vendor === selectedVendor && order.product === selectedProduct;
     });
   };
 
@@ -539,8 +536,8 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
                     return date.toDateString() === today.toDateString();
                   },
                   dragSelected: (date) => {
-                    const dateStr = date.toISOString().split('T')[0];
-                    return dragSelectedDates.some(d => d.toISOString().split('T')[0] === dateStr);
+                    const dateStr = format(date, 'yyyy-MM-dd');
+                    return dragSelectedDates.some(d => format(d, 'yyyy-MM-dd') === dateStr);
                   },
                   deliveredOrder: (date) => {
                     const orders = getOrdersForDate(date);
@@ -553,8 +550,8 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
                       o.vendor === selectedVendor && o.product === selectedProduct);
                   },
                   futureOrder: (date) => {
-                    const dateStr = date.toISOString().split('T')[0];
-                    const today = new Date().toISOString().split('T')[0];
+                    const dateStr = format(date, 'yyyy-MM-dd');
+                    const today = format(new Date(), 'yyyy-MM-dd');
                     const orders = getOrdersForDate(date);
                     return dateStr > today && 
                       orders.some(o => o.vendor === selectedVendor && o.product === selectedProduct);

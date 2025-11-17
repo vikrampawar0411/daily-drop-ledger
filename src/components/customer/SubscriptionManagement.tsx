@@ -36,6 +36,9 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
   const { vendorProducts } = useVendorProducts();
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
+  const [resumeDialogOpen, setResumeDialogOpen] = useState(false);
+  const [resumeDate, setResumeDate] = useState<Date | undefined>(undefined);
+  const [showCancelled, setShowCancelled] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState("active");
   const [selectedVendorFilter, setSelectedVendorFilter] = useState("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -480,8 +483,8 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
       try {
         await pauseSubscription(
           selectedSubscription,
-          pauseFromDate.toISOString().split('T')[0],
-          pauseUntilDate.toISOString().split('T')[0]
+          format(pauseFromDate, 'yyyy-MM-dd'),
+          format(pauseUntilDate, 'yyyy-MM-dd')
         );
         setPauseDialogOpen(false);
         setSelectedSubscription(null);
@@ -489,6 +492,37 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
         setPauseUntilDate(undefined);
       } catch (error) {
         console.error('Error pausing subscription:', error);
+      }
+    }
+  };
+  
+  const handleResume = (subscriptionId: string) => {
+    setSelectedSubscription(subscriptionId);
+    setResumeDate(new Date());
+    setResumeDialogOpen(true);
+  };
+
+  const handleResumeConfirm = async () => {
+    if (selectedSubscription && resumeDate) {
+      try {
+        await supabase
+          .from('subscriptions')
+          .update({
+            status: 'active',
+            start_date: format(resumeDate, 'yyyy-MM-dd'),
+            paused_from: null,
+            paused_until: null
+          })
+          .eq('id', selectedSubscription);
+        
+        setResumeDialogOpen(false);
+        setSelectedSubscription(null);
+        setResumeDate(undefined);
+        
+        // Refresh subscriptions
+        window.location.reload();
+      } catch (error) {
+        console.error('Error resuming subscription:', error);
       }
     }
   };
@@ -609,9 +643,30 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
         </Card>
       ) : (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Subscriptions</h3>
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Subscriptions</h3>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCancelled(!showCancelled)}
+            >
+              {showCancelled ? (
+                <>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Hide Cancelled
+                </>
+              ) : (
+                <>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Show Cancelled ({subscriptions.filter(s => s.status === 'cancelled').length})
+                </>
+              )}
+            </Button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {subscriptions.map((subscription) => (
+            {subscriptions
+              .filter(sub => showCancelled || sub.status !== 'cancelled')
+              .map((subscription) => (
               <Card key={subscription.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
@@ -646,30 +701,39 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
                   <span className="font-medium">Frequency:</span>
                   <div className="text-muted-foreground">{getFrequencyLabel(subscription.frequency)}</div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="text-sm space-y-2">
                   <div>
-                    <span className="font-medium">Started:</span>
+                    <span className="font-medium">Originally Started:</span>
                     <div className="text-muted-foreground">
-                      {new Date(subscription.start_date).toLocaleDateString()}
+                      {format(new Date(subscription.original_start_date || subscription.start_date), 'MMM dd, yyyy')}
                     </div>
                   </div>
+
+                  {subscription.status === "paused" && subscription.paused_from && subscription.paused_until && (
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-200 dark:border-yellow-800">
+                      <span className="font-medium text-yellow-800 dark:text-yellow-200">Paused Period:</span>
+                      <div className="text-yellow-700 dark:text-yellow-300 text-sm">
+                        From: {format(new Date(subscription.paused_from), 'MMM dd, yyyy')}<br/>
+                        Until: {format(new Date(subscription.paused_until), 'MMM dd, yyyy')}
+                      </div>
+                    </div>
+                  )}
+
+                  {subscription.status === "active" && subscription.paused_from && (
+                    <div className="text-xs text-muted-foreground">
+                      Last resumed: {format(new Date(subscription.start_date), 'MMM dd, yyyy')}
+                    </div>
+                  )}
+
                   {subscription.end_date && (
                     <div>
-                      <span className="font-medium">Ends:</span>
+                      <span className="font-medium">Ended:</span>
                       <div className="text-muted-foreground">
-                        {new Date(subscription.end_date).toLocaleDateString()}
+                        {format(new Date(subscription.end_date), 'MMM dd, yyyy')}
                       </div>
                     </div>
                   )}
                 </div>
-                {subscription.status === "paused" && subscription.paused_from && subscription.paused_until && (
-                  <div className="text-sm bg-yellow-50 p-2 rounded">
-                    <span className="font-medium">Paused:</span>
-                    <div className="text-muted-foreground">
-                      {new Date(subscription.paused_from).toLocaleDateString()} - {new Date(subscription.paused_until).toLocaleDateString()}
-                    </div>
-                  </div>
-                )}
                 <div className="flex flex-col gap-2 pt-2">
                   <div className="flex space-x-2">
                     {subscription.status === "active" && (
@@ -686,8 +750,8 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
                     {subscription.status === "paused" && (
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={() => resumeSubscription(subscription.id)}
+                        variant="default"
+                        onClick={() => handleResume(subscription.id)}
                         className="flex-1"
                       >
                         <Play className="h-4 w-4 mr-2" />
@@ -1193,23 +1257,145 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
 
       {/* Pause Subscription Dialog */}
       <Dialog open={pauseDialogOpen} onOpenChange={setPauseDialogOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Pause Subscription</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Select the period during which you want to pause deliveries
+            </p>
           </DialogHeader>
-          <div className="space-y-4">
-            <SubscriptionCalendarView
-              pauseFromDate={pauseFromDate}
-              pauseUntilDate={pauseUntilDate}
-              onSelectPauseFrom={setPauseFromDate}
-              onSelectPauseUntil={setPauseUntilDate}
-              orders={allOrders}
-            />
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Pause From</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !pauseFromDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {pauseFromDate ? format(pauseFromDate, "PPP") : "Select start date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={pauseFromDate}
+                    onSelect={setPauseFromDate}
+                    disabled={(date) => date < new Date()}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div>
+              <Label>Pause Until</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !pauseUntilDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {pauseUntilDate ? format(pauseUntilDate, "PPP") : "Select end date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={pauseUntilDate}
+                    onSelect={setPauseUntilDate}
+                    disabled={(date) => !pauseFromDate || date <= pauseFromDate}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {pauseFromDate && pauseUntilDate && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded text-sm">
+                <p className="font-medium">Pause Duration:</p>
+                <p className="text-muted-foreground">
+                  {Math.ceil((pauseUntilDate.getTime() - pauseFromDate.getTime()) / (1000 * 60 * 60 * 24))} days
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPauseDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handlePauseConfirm} disabled={!pauseFromDate || !pauseUntilDate}>
-              Confirm Pause
+            <Button variant="outline" onClick={() => setPauseDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handlePauseConfirm}
+              disabled={!pauseFromDate || !pauseUntilDate}
+            >
+              <Pause className="h-4 w-4 mr-2" />
+              Pause Subscription
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Resume Subscription Dialog */}
+      <Dialog open={resumeDialogOpen} onOpenChange={setResumeDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Resume Subscription</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Select when you want to resume deliveries
+            </p>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Resume From</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !resumeDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {resumeDate ? format(resumeDate, "PPP") : "Select resume date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={resumeDate}
+                    onSelect={setResumeDate}
+                    disabled={(date) => date < new Date()}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              <p className="text-xs text-muted-foreground mt-2">
+                Deliveries will resume from this date onwards
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResumeDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleResumeConfirm}
+              disabled={!resumeDate}
+            >
+              <Play className="h-4 w-4 mr-2" />
+              Resume Subscription
             </Button>
           </DialogFooter>
         </DialogContent>
