@@ -43,7 +43,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   });
-  const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
+  const [selectedVendor, setSelectedVendor] = useState<string>('all');
   const [orderDetailsDialogOpen, setOrderDetailsDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [tableExpanded, setTableExpanded] = useState(true);
@@ -416,7 +416,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     const monthOrders = orders.filter(o => {
       const orderDate = new Date(o.order_date);
       const matchesDate = orderDate >= firstDay && orderDate <= lastDay;
-      const matchesVendor = selectedVendors.length === 0 || selectedVendors.includes(o.vendor.id);
+      const matchesVendor = selectedVendor === 'all' || o.vendor.id === selectedVendor;
       // Exclude cancelled orders
       return matchesDate && matchesVendor && o.status !== 'cancelled';
     });
@@ -482,7 +482,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       forecastedBill: Math.round(forecastedBill),
       orders: sortedOrders
     };
-  }, [orders, selectedMonth, selectedVendors, sortColumn, sortDirection]);
+  }, [orders, selectedMonth, selectedVendor, sortColumn, sortDirection]);
 
   const groupedOrders = useMemo(() => {
     const groups: Record<string, any[]> = {};
@@ -666,39 +666,20 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Filter by Vendor (Multi-select)</Label>
-              <div className="flex flex-wrap gap-2">
-                {vendors.map((vendor) => (
-                  <div key={vendor.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={vendor.id}
-                      checked={selectedVendors.includes(vendor.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedVendors([...selectedVendors, vendor.id]);
-                        } else {
-                          setSelectedVendors(selectedVendors.filter(id => id !== vendor.id));
-                        }
-                      }}
-                    />
-                    <label
-                      htmlFor={vendor.id}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                    >
+              <Label>Filter by Vendor</Label>
+              <Select value={selectedVendor} onValueChange={setSelectedVendor}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select vendor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Vendors</SelectItem>
+                  {vendors.map((vendor) => (
+                    <SelectItem key={vendor.id} value={vendor.id}>
                       {vendor.name}
-                    </label>
-                  </div>
-                ))}
-              </div>
-              {selectedVendors.length > 0 && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setSelectedVendors([])}
-                >
-                  Clear Vendor Filter
-                </Button>
-              )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
@@ -959,21 +940,37 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                           </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                          <DropdownMenuItem onClick={() => handleEditOrder(order)}>
-                                            <Edit className="h-4 w-4 mr-2" />
-                                            Edit Order
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem 
-                                            onClick={() => {
-                                              setDeleteOrderId(order.id);
-                                              setDeleteDialogOpen(true);
-                                            }}
-                                            className="text-red-600"
-                                          >
-                                            <Trash2 className="h-4 w-4 mr-2" />
-                                            Delete Order
-                                          </DropdownMenuItem>
-                                        </DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => handleEditOrder(order)}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Order
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      setDeleteOrderId(order.id);
+                      setDeleteDialogOpen(true);
+                    }}
+                    className="text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Order
+                  </DropdownMenuItem>
+                  {order.updated_by_user_id && 
+                   order.customer?.user_id && 
+                   order.updated_by_user_id !== order.customer.user_id && 
+                   !order.dispute_raised && (
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        setDisputeOrderId(order.id);
+                        setDisputeReason("");
+                        setDisputeDialogOpen(true);
+                      }}
+                      className="text-yellow-600"
+                    >
+                      <AlertTriangle className="h-4 w-4 mr-2" />
+                      Raise Dispute
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
                                       </DropdownMenu>
                                     )}
                                   </TableCell>
@@ -1076,6 +1073,21 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                   <div className="text-green-600">{format(new Date(selectedOrder.delivered_at), "PPp")}</div>
                 </div>
               )}
+
+              {selectedOrder.updated_by_user_id && selectedOrder.updated_by && (
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <Label className="text-sm text-blue-800">Status Last Updated By:</Label>
+                  <div className="text-blue-600">
+                    {selectedOrder.updated_by.name || 'Unknown'} ({selectedOrder.updated_by.user_type})
+                  </div>
+                  {selectedOrder.delivered_at && (
+                    <div className="text-xs text-blue-500 mt-1">
+                      at {format(new Date(selectedOrder.delivered_at), "PPp")}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {selectedOrder.dispute_raised && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                   <Label className="text-sm text-red-800">Dispute Raised:</Label>
