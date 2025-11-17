@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, ShoppingCart, Calendar, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock, Download, FileDown, ChevronDown, ChevronUp } from "lucide-react";
@@ -29,7 +30,7 @@ interface CustomerDashboardProps {
 
 const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   const { user } = useAuth();
-  const { orders, loading: ordersLoading, updateOrderStatus, raiseDispute } = useOrders();
+  const { orders, loading: ordersLoading, updateOrderStatus, raiseDispute, refetch } = useOrders();
   const { vendors, loading: vendorsLoading } = useVendors();
   const { toast } = useToast();
   const [customerName, setCustomerName] = useState("");
@@ -49,6 +50,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
   const [disputeOrderId, setDisputeOrderId] = useState<string | null>(null);
   const [disputeReason, setDisputeReason] = useState("");
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+  const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
+  const [sortColumn, setSortColumn] = useState<string>('order_date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const handleOrderClick = (order: any) => {
     setSelectedOrder(order);
@@ -148,6 +153,16 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     XLSX.writeFile(wb, `orders-${selectedMonth}.xlsx`);
   };
 
+  const handleStatusToggle = async (order: any) => {
+    try {
+      const newStatus = order.status === 'pending' ? 'delivered' : 'pending';
+      await updateOrderStatus(order.id, newStatus, newStatus === 'delivered' ? new Date().toISOString() : undefined);
+      await refetch();
+    } catch (error) {
+      console.error("Failed to update order status:", error);
+    }
+  };
+
   const handleBulkStatusUpdate = async () => {
     if (selectedOrderIds.length === 0) {
       toast({
@@ -159,15 +174,9 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     }
 
     try {
-      // Update all selected orders to delivered without showing individual toasts
+      // Update all selected orders to delivered
       const updatePromises = selectedOrderIds.map(orderId => 
-        supabase
-          .from('orders')
-          .update({ 
-            status: 'delivered',
-            delivered_at: new Date().toISOString()
-          })
-          .eq('id', orderId)
+        updateOrderStatus(orderId, 'delivered', new Date().toISOString())
       );
       
       await Promise.all(updatePromises);
@@ -182,7 +191,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       setBulkUpdateDialogOpen(false);
       
       // Refresh orders list
-      window.location.reload();
+      await refetch();
     } catch (error) {
       toast({
         title: "Error",
@@ -250,6 +259,15 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     return options;
   }, []);
 
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
   const monthlyStats = useMemo(() => {
     const [year, month] = selectedMonth.split('-').map(Number);
     const firstDay = new Date(year, month - 1, 1);
@@ -261,6 +279,47 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       const matchesVendor = selectedVendors.length === 0 || selectedVendors.includes(o.vendor.id);
       // Exclude cancelled orders
       return matchesDate && matchesVendor && o.status !== 'cancelled';
+    });
+    
+    // Sort orders based on selected column
+    const sortedOrders = [...monthOrders].sort((a, b) => {
+      let aVal: any, bVal: any;
+      
+      switch (sortColumn) {
+        case 'order_date':
+          aVal = new Date(a.order_date).getTime();
+          bVal = new Date(b.order_date).getTime();
+          break;
+        case 'vendor':
+          aVal = a.vendor.name.toLowerCase();
+          bVal = b.vendor.name.toLowerCase();
+          break;
+        case 'product':
+          aVal = a.product.name.toLowerCase();
+          bVal = b.product.name.toLowerCase();
+          break;
+        case 'quantity':
+          aVal = Number(a.quantity);
+          bVal = Number(b.quantity);
+          break;
+        case 'total_amount':
+          aVal = Number(a.total_amount);
+          bVal = Number(b.total_amount);
+          break;
+        case 'status':
+          aVal = a.status.toLowerCase();
+          bVal = b.status.toLowerCase();
+          break;
+        default:
+          aVal = new Date(a.order_date).getTime();
+          bVal = new Date(b.order_date).getTime();
+      }
+      
+      if (sortDirection === 'asc') {
+        return aVal > bVal ? 1 : -1;
+      } else {
+        return aVal < bVal ? 1 : -1;
+      }
     });
     
     const totalOrders = monthOrders.length;
@@ -281,9 +340,59 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       scheduledOrders,
       deliveredSpend: Math.round(deliveredSpend),
       forecastedBill: Math.round(forecastedBill),
-      orders: monthOrders.sort((a, b) => new Date(a.order_date).getTime() - new Date(b.order_date).getTime())
+      orders: sortedOrders
     };
-  }, [orders, selectedMonth, selectedVendors]);
+  }, [orders, selectedMonth, selectedVendors, sortColumn, sortDirection]);
+
+  const groupedOrders = useMemo(() => {
+    const groups: Record<string, Record<string, any[]>> = {};
+    
+    monthlyStats.orders.forEach(order => {
+      const orderDate = new Date(order.order_date);
+      const monthKey = format(orderDate, 'MMMM yyyy');
+      const weekNumber = Math.ceil(orderDate.getDate() / 7);
+      const weekKey = `Week ${weekNumber}`;
+      
+      if (!groups[monthKey]) {
+        groups[monthKey] = {};
+        // Expand current month by default
+        const currentMonth = format(new Date(), 'MMMM yyyy');
+        if (monthKey === currentMonth) {
+          setExpandedMonths(prev => new Set(prev).add(monthKey));
+        }
+      }
+      if (!groups[monthKey][weekKey]) {
+        groups[monthKey][weekKey] = [];
+      }
+      groups[monthKey][weekKey].push(order);
+    });
+    
+    return groups;
+  }, [monthlyStats.orders]);
+
+  const toggleMonth = (month: string) => {
+    setExpandedMonths(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(month)) {
+        newSet.delete(month);
+      } else {
+        newSet.add(month);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleWeek = (monthWeekKey: string) => {
+    setExpandedWeeks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(monthWeekKey)) {
+        newSet.delete(monthWeekKey);
+      } else {
+        newSet.add(monthWeekKey);
+      }
+      return newSet;
+    });
+  };
 
   const customerStats = useMemo(() => {
     const today = new Date();
@@ -600,100 +709,126 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                             onCheckedChange={toggleAllOrders}
                           />
                         </TableHead>
-                        <TableHead>Day</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Vendor</TableHead>
-                        <TableHead>Product</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Total</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => handleSort('order_date')}>
+                          Day {sortColumn === 'order_date' && (sortDirection === 'asc' ? '↑' : '↓')}
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => handleSort('order_date')}>
+                          Date {sortColumn === 'order_date' && (sortDirection === 'asc' ? '↑' : '↓')}
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => handleSort('vendor')}>
+                          Vendor {sortColumn === 'vendor' && (sortDirection === 'asc' ? '↑' : '↓')}
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => handleSort('product')}>
+                          Product {sortColumn === 'product' && (sortDirection === 'asc' ? '↑' : '↓')}
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => handleSort('quantity')}>
+                          Quantity {sortColumn === 'quantity' && (sortDirection === 'asc' ? '↑' : '↓')}
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => handleSort('total_amount')}>
+                          Total {sortColumn === 'total_amount' && (sortDirection === 'asc' ? '↑' : '↓')}
+                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => handleSort('status')}>
+                          Status {sortColumn === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {monthlyStats.orders.length > 0 ? (
-                        monthlyStats.orders.map((order) => {
-                          const orderDate = new Date(order.order_date);
-                          const isSunday = orderDate.getDay() === 0;
-                          const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                          const dayName = days[orderDate.getDay()];
-                          
-                          return (
-                            <TableRow 
-                              key={order.id} 
-                              className="cursor-pointer hover:bg-muted/50"
-                            >
-                              <TableCell onClick={(e) => e.stopPropagation()}>
-                                {order.status === 'pending' && (
-                                  <Checkbox 
-                                    checked={selectedOrderIds.includes(order.id)}
-                                    onCheckedChange={() => toggleOrderSelection(order.id)}
-                                  />
-                                )}
-                              </TableCell>
-                              <TableCell 
-                                className={`font-semibold ${isSunday ? 'text-red-700' : ''}`}
-                                onClick={() => handleOrderClick(order)}
-                              >
-                                {dayName}
-                              </TableCell>
-                              <TableCell onClick={() => handleOrderClick(order)}>{orderDate.toLocaleDateString()}</TableCell>
-                              <TableCell onClick={() => handleOrderClick(order)}>
-                                {order.vendor.name}
-                              </TableCell>
-                              <TableCell onClick={() => handleOrderClick(order)}>
-                                {order.product.name}
-                              </TableCell>
-                              <TableCell onClick={() => handleOrderClick(order)}>{order.quantity} {order.unit}</TableCell>
-                              <TableCell className="font-semibold" onClick={() => handleOrderClick(order)}>₹{order.total_amount}</TableCell>
-                              <TableCell onClick={(e) => e.stopPropagation()}>
-                                {order.status === 'delivered' && order.updated_by_user_id && order.customer?.user_id && order.updated_by_user_id !== order.customer.user_id ? (
-                                  // Delivered by vendor - show dispute button
-                                  <div className="flex items-center gap-2">
-                                    <Badge className={cn(getStatusColor(order.status))}>
-                                      {getStatusIcon(order.status)}
-                                      <span className="ml-1 capitalize">{order.status}</span>
-                                    </Badge>
-                                    {!order.dispute_raised && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="text-xs h-7"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setDisputeOrderId(order.id);
-                                          setDisputeDialogOpen(true);
-                                        }}
-                                      >
-                                        Dispute
-                                      </Button>
-                                    )}
-                                    {order.dispute_raised && (
-                                      <Badge variant="destructive" className="text-xs">
-                                        Disputed
-                                      </Badge>
-                                    )}
-                                  </div>
-                                ) : (
-                                  // Allow customer to toggle status
-                                  <Badge 
-                                    className={cn(getStatusColor(order.status), "cursor-pointer hover:opacity-80")}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (order.status === 'pending') {
-                                        updateOrderStatus(order.id, 'delivered', new Date().toISOString());
-                                      } else if (order.status === 'delivered') {
-                                        updateOrderStatus(order.id, 'pending');
-                                      }
-                                    }}
-                                  >
-                                    {getStatusIcon(order.status)}
-                                    <span className="ml-1 capitalize">{order.status}</span>
-                                  </Badge>
-                                )}
+                      {Object.keys(groupedOrders).length > 0 ? (
+                        Object.entries(groupedOrders).map(([month, weeks]) => (
+                          <>
+                            <TableRow key={month} className="bg-muted/50">
+                              <TableCell colSpan={8}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleMonth(month)}
+                                  className="w-full justify-start font-semibold"
+                                >
+                                  {expandedMonths.has(month) ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
+                                  {month}
+                                </Button>
                               </TableCell>
                             </TableRow>
-                          );
-                        })
+                            {expandedMonths.has(month) && Object.entries(weeks).map(([week, weekOrders]) => (
+                              <>
+                                <TableRow key={`${month}-${week}`} className="bg-muted/30">
+                                  <TableCell colSpan={8}>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => toggleWeek(`${month}-${week}`)}
+                                      className="w-full justify-start pl-8 font-medium"
+                                    >
+                                      {expandedWeeks.has(`${month}-${week}`) ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
+                                      {week}
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                                {expandedWeeks.has(`${month}-${week}`) && (weekOrders as any[]).map((order: any) => {
+                                  const orderDate = new Date(order.order_date);
+                                  const isSunday = orderDate.getDay() === 0;
+                                  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                                  const dayName = days[orderDate.getDay()];
+                                  
+                                  return (
+                                    <TableRow 
+                                      key={order.id} 
+                                      className="cursor-pointer hover:bg-muted/50"
+                                    >
+                                      <TableCell onClick={(e) => e.stopPropagation()}>
+                                        {order.status === 'pending' && (
+                                          <Checkbox 
+                                            checked={selectedOrderIds.includes(order.id)}
+                                            onCheckedChange={() => toggleOrderSelection(order.id)}
+                                          />
+                                        )}
+                                      </TableCell>
+                                      <TableCell 
+                                        className={`font-semibold ${isSunday ? 'text-red-700' : ''}`}
+                                        onClick={() => handleOrderClick(order)}
+                                      >
+                                        {dayName}
+                                      </TableCell>
+                                      <TableCell onClick={() => handleOrderClick(order)}>{orderDate.toLocaleDateString()}</TableCell>
+                                      <TableCell onClick={() => handleOrderClick(order)}>
+                                        {order.vendor.name}
+                                      </TableCell>
+                                      <TableCell onClick={() => handleOrderClick(order)}>
+                                        {order.product.name}
+                                      </TableCell>
+                                      <TableCell onClick={() => handleOrderClick(order)}>{order.quantity} {order.unit}</TableCell>
+                                      <TableCell className="font-semibold" onClick={() => handleOrderClick(order)}>₹{order.total_amount}</TableCell>
+                                      <TableCell onClick={(e) => e.stopPropagation()}>
+                                        {order.updated_by_user_id && order.customer?.user_id && order.updated_by_user_id !== order.customer.user_id ? (
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => {
+                                              setDisputeOrderId(order.id);
+                                              setDisputeDialogOpen(true);
+                                            }}
+                                            disabled={order.dispute_raised}
+                                          >
+                                            {order.dispute_raised ? 'Disputed' : 'Dispute'}
+                                          </Button>
+                                        ) : (
+                                          <Button
+                                            size="sm"
+                                            variant={order.status === 'delivered' ? 'default' : 'secondary'}
+                                            onClick={() => handleStatusToggle(order)}
+                                          >
+                                            {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
+                                            {order.status === 'pending' ? 'Pending' : 'Delivered'}
+                                          </Button>
+                                        )}
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </>
+                            ))}
+                          </>
+                        ))
                       ) : (
                         <TableRow>
                           <TableCell colSpan={8} className="text-center py-8 text-gray-500">

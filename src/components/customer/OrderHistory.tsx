@@ -1,5 +1,6 @@
 
 import { useState, useMemo, useEffect } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Filter, Download, Calendar as CalendarIcon, CheckCircle, Clock, XCircle, AlertTriangle, FileDown, Edit } from "lucide-react";
+import { Search, Filter, Download, Calendar as CalendarIcon, CheckCircle, Clock, XCircle, AlertTriangle, FileDown, Edit, ChevronDown, ChevronUp } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
 import { format } from "date-fns";
 import * as XLSX from 'xlsx';
@@ -33,6 +34,10 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
   const [disputeReason, setDisputeReason] = useState("");
   const [modifyOrderDialogOpen, setModifyOrderDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+  const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
+  const [sortColumn, setSortColumn] = useState<string>('order_date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const { orders, loading, raiseDispute, updateOrderStatus } = useOrders();
 
   // Hash function to generate consistent colors for vendor-product combinations
@@ -85,8 +90,17 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
 
   const statuses = ["pending", "delivered", "cancelled"];
 
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
   const filteredOrders = useMemo(() => {
-    return orders.filter(order => {
+    const filtered = orders.filter(order => {
       const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            order.vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            order.product.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -99,8 +113,99 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
       const matchesEndDate = !endDate || orderDate <= endDate;
       
       return matchesSearch && matchesVendor && matchesStatus && matchesStartDate && matchesEndDate;
-    }).sort((a, b) => new Date(a.order_date).getTime() - new Date(b.order_date).getTime());
-  }, [orders, searchTerm, selectedVendor, selectedStatus, startDate, endDate]);
+    });
+
+    // Sort filtered orders
+    return filtered.sort((a, b) => {
+      let aVal: any, bVal: any;
+      
+      switch (sortColumn) {
+        case 'order_date':
+          aVal = new Date(a.order_date).getTime();
+          bVal = new Date(b.order_date).getTime();
+          break;
+        case 'vendor':
+          aVal = a.vendor.name.toLowerCase();
+          bVal = b.vendor.name.toLowerCase();
+          break;
+        case 'product':
+          aVal = a.product.name.toLowerCase();
+          bVal = b.product.name.toLowerCase();
+          break;
+        case 'quantity':
+          aVal = Number(a.quantity);
+          bVal = Number(b.quantity);
+          break;
+        case 'total_amount':
+          aVal = Number(a.total_amount);
+          bVal = Number(b.total_amount);
+          break;
+        case 'status':
+          aVal = a.status.toLowerCase();
+          bVal = b.status.toLowerCase();
+          break;
+        default:
+          aVal = new Date(a.order_date).getTime();
+          bVal = new Date(b.order_date).getTime();
+      }
+      
+      if (sortDirection === 'asc') {
+        return aVal > bVal ? 1 : -1;
+      } else {
+        return aVal < bVal ? 1 : -1;
+      }
+    });
+  }, [orders, searchTerm, selectedVendor, selectedStatus, startDate, endDate, sortColumn, sortDirection]);
+
+  const groupedOrders = useMemo(() => {
+    const groups: Record<string, Record<string, any[]>> = {};
+    
+    filteredOrders.forEach(order => {
+      const orderDate = new Date(order.order_date);
+      const monthKey = format(orderDate, 'MMMM yyyy');
+      const weekNumber = Math.ceil(orderDate.getDate() / 7);
+      const weekKey = `Week ${weekNumber}`;
+      
+      if (!groups[monthKey]) {
+        groups[monthKey] = {};
+        // Expand current month by default
+        const currentMonth = format(new Date(), 'MMMM yyyy');
+        if (monthKey === currentMonth) {
+          setExpandedMonths(prev => new Set(prev).add(monthKey));
+        }
+      }
+      if (!groups[monthKey][weekKey]) {
+        groups[monthKey][weekKey] = [];
+      }
+      groups[monthKey][weekKey].push(order);
+    });
+    
+    return groups;
+  }, [filteredOrders]);
+
+  const toggleMonth = (month: string) => {
+    setExpandedMonths(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(month)) {
+        newSet.delete(month);
+      } else {
+        newSet.add(month);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleWeek = (monthWeekKey: string) => {
+    setExpandedWeeks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(monthWeekKey)) {
+        newSet.delete(monthWeekKey);
+      } else {
+        newSet.add(monthWeekKey);
+      }
+      return newSet;
+    });
+  };
 
   const getDayName = (dateString: string) => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -386,74 +491,122 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
             <Table>
               <TableHeader>
                   <TableRow>
-                    <TableHead>Day</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Vendor</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead className="cursor-pointer" onClick={() => handleSort('order_date')}>
+                      Day {sortColumn === 'order_date' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </TableHead>
+                    <TableHead className="cursor-pointer" onClick={() => handleSort('order_date')}>
+                      Date {sortColumn === 'order_date' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </TableHead>
+                    <TableHead className="cursor-pointer" onClick={() => handleSort('vendor')}>
+                      Vendor {sortColumn === 'vendor' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </TableHead>
+                    <TableHead className="cursor-pointer" onClick={() => handleSort('product')}>
+                      Product {sortColumn === 'product' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </TableHead>
+                    <TableHead className="cursor-pointer" onClick={() => handleSort('quantity')}>
+                      Quantity {sortColumn === 'quantity' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </TableHead>
+                    <TableHead className="cursor-pointer" onClick={() => handleSort('total_amount')}>
+                      Total {sortColumn === 'total_amount' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </TableHead>
+                    <TableHead className="cursor-pointer" onClick={() => handleSort('status')}>
+                      Status {sortColumn === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredOrders.map((order) => (
-                  <TableRow 
-                    key={order.id} 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleModifyOrder(order)}
-                  >
-                    <TableCell className={`font-semibold ${isSunday(order.order_date) ? 'text-red-700' : ''}`}>
-                      {getDayName(order.order_date)}
-                    </TableCell>
-                    <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      {order.vendor.name}
-                    </TableCell>
-                    <TableCell>
-                      {order.product.name}
-                    </TableCell>
-                    <TableCell>{order.quantity} {order.unit}</TableCell>
-                    <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(order.status)}>
-                        {getStatusIcon(order.status)}
-                        <span className="ml-1 capitalize">{order.status}</span>
-                      </Badge>
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      {order.updated_by_user_id && order.customer?.user_id && order.updated_by_user_id !== order.customer.user_id ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRaiseDispute(order.id)}
-                          disabled={order.dispute_raised}
-                        >
-                          {order.dispute_raised ? (
-                            <>
-                              <AlertTriangle className="h-4 w-4 mr-1 text-yellow-600" />
-                              Disputed
-                            </>
-                          ) : (
-                            "Dispute"
-                          )}
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant={order.status === 'delivered' ? 'default' : 'secondary'}
-                          onClick={() => handleStatusToggle(order)}
-                        >
-                          {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
-                          {order.status === 'pending' ? 'Pending' : 'Delivered'}
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {/* Summary Row */}
-                {filteredOrders.length > 0 && (
+                {Object.keys(groupedOrders).length > 0 ? (
                   <>
+                    {Object.entries(groupedOrders).map(([month, weeks]) => (
+                      <>
+                        <TableRow key={month} className="bg-muted/50">
+                          <TableCell colSpan={8}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleMonth(month)}
+                              className="w-full justify-start font-semibold"
+                            >
+                              {expandedMonths.has(month) ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
+                              {month}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {expandedMonths.has(month) && Object.entries(weeks).map(([week, weekOrders]) => (
+                          <>
+                            <TableRow key={`${month}-${week}`} className="bg-muted/30">
+                              <TableCell colSpan={8}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleWeek(`${month}-${week}`)}
+                                  className="w-full justify-start pl-8 font-medium"
+                                >
+                                  {expandedWeeks.has(`${month}-${week}`) ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
+                                  {week}
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                            {expandedWeeks.has(`${month}-${week}`) && (weekOrders as any[]).map((order: any) => (
+                              <TableRow 
+                                key={order.id} 
+                                className="cursor-pointer hover:bg-muted/50"
+                                onClick={() => handleModifyOrder(order)}
+                              >
+                                <TableCell className={`font-semibold ${isSunday(order.order_date) ? 'text-red-700' : ''}`}>
+                                  {getDayName(order.order_date)}
+                                </TableCell>
+                                <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
+                                <TableCell>
+                                  {order.vendor.name}
+                                </TableCell>
+                                <TableCell>
+                                  {order.product.name}
+                                </TableCell>
+                                <TableCell>{order.quantity} {order.unit}</TableCell>
+                                <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
+                                <TableCell>
+                                  <Badge className={getStatusColor(order.status)}>
+                                    {getStatusIcon(order.status)}
+                                    <span className="ml-1 capitalize">{order.status}</span>
+                                  </Badge>
+                                </TableCell>
+                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                  {order.updated_by_user_id && order.customer?.user_id && order.updated_by_user_id !== order.customer.user_id ? (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleRaiseDispute(order.id)}
+                                      disabled={order.dispute_raised}
+                                    >
+                                      {order.dispute_raised ? (
+                                        <>
+                                          <AlertTriangle className="h-4 w-4 mr-1 text-yellow-600" />
+                                          Disputed
+                                        </>
+                                      ) : (
+                                        "Dispute"
+                                      )}
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant={order.status === 'delivered' ? 'default' : 'secondary'}
+                                      onClick={() => handleStatusToggle(order)}
+                                    >
+                                      {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
+                                      {order.status === 'pending' ? 'Pending' : 'Delivered'}
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </>
+                        ))}
+                      </>
+                    ))}
+                    {/* Summary Row */}
                     <TableRow className="border-t-2 border-gray-300 bg-gray-50 font-bold">
                       <TableCell colSpan={4} className="text-right">TOTAL (All Orders):</TableCell>
                       <TableCell>{orderSummary.totalQuantity}</TableCell>
@@ -481,6 +634,12 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                       </TableRow>
                     )}
                   </>
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                      No orders found matching your criteria
+                    </TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>
