@@ -151,35 +151,64 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   };
 
   const exportToExcel = () => {
-    const excelData = monthlyStats.orders.map(order => ({
-      'Date': new Date(order.order_date).toLocaleDateString(),
-      'Vendor': order.vendor.name,
-      'Product': order.product.name,
-      'Quantity': order.quantity,
-      'Unit': order.unit,
-      'Amount': order.total_amount,
-      'Status': order.status,
-    }));
+    // Prepare order data rows
+    const orderRows = monthlyStats.orders.map(order => [
+      new Date(order.order_date).toLocaleDateString(),
+      order.vendor.name,
+      order.product.name,
+      order.quantity,
+      order.unit,
+      order.product.price,
+      order.total_amount,
+      order.status
+    ]);
+
+    // Header row
+    const headerRow = ['Date', 'Vendor', 'Product', 'Quantity', 'Unit', 'Price/Unit', 'Amount', 'Status'];
     
-    // Calculate totals
-    const totalQuantity = monthlyStats.orders.reduce((sum, o) => sum + Number(o.quantity), 0);
-    const totalAmount = monthlyStats.orders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+    const summaryStartRow = orderRows.length + 4;
+    const orderDataEndRow = orderRows.length + 1;
     
-    // Add summary row
-    excelData.push({
-      'Date': '',
-      'Vendor': '',
-      'Product': '',
-      'Quantity': totalQuantity,
-      'Unit': '',
-      'Amount': totalAmount,
-      'Status': 'TOTAL'
-    });
+    // Get unique statuses
+    const statuses = [...new Set(monthlyStats.orders.map(o => o.status))];
     
-    const ws = XLSX.utils.json_to_sheet(excelData);
+    // Summary rows with formulas
+    const summaryRows = statuses.map((status, idx) => [
+      status.toUpperCase(),
+      { f: `COUNTIF(H2:H${orderDataEndRow},"${status}")` },
+      { f: `SUMIF(H2:H${orderDataEndRow},"${status}",G2:G${orderDataEndRow})` },
+      { f: `IF(B${summaryStartRow + idx + 1}=0,0,C${summaryStartRow + idx + 1}/B${summaryStartRow + idx + 1})` }
+    ]);
+    
+    // Grand total
+    const grandTotalRow = [
+      'GRAND TOTAL',
+      { f: `SUM(B${summaryStartRow + 1}:B${summaryStartRow + statuses.length})` },
+      { f: `SUM(C${summaryStartRow + 1}:C${summaryStartRow + statuses.length})` },
+      { f: `C${summaryStartRow + statuses.length + 1}/B${summaryStartRow + statuses.length + 1}` }
+    ];
+    
+    const allData = [
+      headerRow,
+      ...orderRows,
+      [],
+      [],
+      ['STATUS SUMMARY'],
+      ['Status', 'Order Count', 'Total Amount (₹)', 'Avg Order Value (₹)'],
+      ...summaryRows,
+      grandTotalRow
+    ];
+    
+    const ws = XLSX.utils.aoa_to_sheet(allData);
+    
+    ws['!cols'] = [
+      { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 10 },
+      { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 12 }
+    ];
+    
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Orders');
-    XLSX.writeFile(wb, `orders-${selectedMonth}.xlsx`);
+    XLSX.writeFile(wb, `orders-${selectedMonth}-with-summary.xlsx`);
   };
 
   const handleStatusToggle = async (order: any) => {
