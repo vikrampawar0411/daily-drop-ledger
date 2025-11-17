@@ -29,7 +29,11 @@ interface OrderHistoryProps {
 const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistoryProps) => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedVendor, setSelectedVendor] = useState(initialVendorFilter || "all");
+  const [selectedVendor, setSelectedVendor] = useState(() => {
+    if (initialVendorFilter) return initialVendorFilter;
+    const savedVendor = localStorage.getItem('lastSelectedVendor');
+    return savedVendor || 'all';
+  });
   const [selectedStatus, setSelectedStatus] = useState(initialStatusFilter || "all");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
@@ -82,6 +86,12 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
     if (initialVendorFilter) setSelectedVendor(initialVendorFilter);
     if (initialStatusFilter) setSelectedStatus(initialStatusFilter);
   }, [initialVendorFilter, initialStatusFilter]);
+
+  useEffect(() => {
+    if (selectedVendor && selectedVendor !== 'all') {
+      localStorage.setItem('lastSelectedVendor', selectedVendor);
+    }
+  }, [selectedVendor]);
 
   const handleRaiseDispute = (orderId: string) => {
     setSelectedOrderId(orderId);
