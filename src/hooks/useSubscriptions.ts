@@ -13,6 +13,7 @@ export interface Subscription {
   price_per_unit: number;
   frequency: string;
   start_date: string;
+  original_start_date: string;
   end_date: string | null;
   status: string;
   paused_from: string | null;
@@ -80,11 +81,14 @@ export const useSubscriptions = () => {
     fetchSubscriptions();
   }, [user]);
 
-  const createSubscription = async (subscription: Omit<Subscription, "id" | "created_at" | "updated_at">) => {
+  const createSubscription = async (subscription: Omit<Subscription, "id" | "created_at" | "updated_at" | "original_start_date">) => {
     try {
       const { data, error } = await supabase
         .from("subscriptions")
-        .insert([subscription])
+        .insert([{
+          ...subscription,
+          original_start_date: subscription.start_date
+        }])
         .select()
         .single();
 

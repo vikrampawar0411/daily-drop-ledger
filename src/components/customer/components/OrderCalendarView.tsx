@@ -1,6 +1,7 @@
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface Order {
   id: string;
@@ -34,26 +35,26 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
               return date.toDateString() === today.toDateString();
             },
             deliveredOrder: (date) => {
-              const dateStr = date.toISOString().split('T')[0];
+              const dateStr = format(date, 'yyyy-MM-dd');
               const orders = getOrdersForDate(date);
               return orders.some(o => 
                 o.order_date && 
-                new Date(o.order_date).toISOString().split('T')[0] === dateStr && 
+                o.order_date === dateStr && 
                 o.status === 'delivered'
               );
             },
             pendingOrder: (date) => {
-              const dateStr = date.toISOString().split('T')[0];
+              const dateStr = format(date, 'yyyy-MM-dd');
               const orders = getOrdersForDate(date);
               return orders.some(o => 
                 o.order_date && 
-                new Date(o.order_date).toISOString().split('T')[0] === dateStr && 
+                o.order_date === dateStr && 
                 o.status === 'pending'
               );
             },
             futureOrder: (date) => {
-              const dateStr = date.toISOString().split('T')[0];
-              const today = new Date().toISOString().split('T')[0];
+              const dateStr = format(date, 'yyyy-MM-dd');
+              const today = format(new Date(), 'yyyy-MM-dd');
               const orders = getOrdersForDate(date);
               return dateStr > today && orders.length > 0;
             }

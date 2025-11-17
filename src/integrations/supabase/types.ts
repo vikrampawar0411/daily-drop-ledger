@@ -547,6 +547,7 @@ export type Database = {
           end_date: string | null
           frequency: string
           id: string
+          original_start_date: string
           paused_from: string | null
           paused_until: string | null
           price_per_unit: number
@@ -565,6 +566,7 @@ export type Database = {
           end_date?: string | null
           frequency?: string
           id?: string
+          original_start_date: string
           paused_from?: string | null
           paused_until?: string | null
           price_per_unit: number
@@ -583,6 +585,7 @@ export type Database = {
           end_date?: string | null
           frequency?: string
           id?: string
+          original_start_date?: string
           paused_from?: string | null
           paused_until?: string | null
           price_per_unit?: number
