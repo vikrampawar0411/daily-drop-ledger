@@ -139,6 +139,7 @@ const OrderCalendar = ({ filterVendorId = "", filterProductId = "", onClearFilte
         }}
         filterVendorId={filterVendorId}
         filterProductId={filterProductId}
+        refetch={refetch}
       />
     </div>
   );

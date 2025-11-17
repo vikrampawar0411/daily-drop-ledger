@@ -11,20 +11,22 @@ import { CustomerDetailsDialog } from "../CustomerDetailsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 
 interface OrderFormProps {
   selectedDate: Date | undefined;
   vendors: Vendor[];
-  onPlaceOrder: (vendor: string, product: string, quantity: number, dates: Date[]) => void;
+  onPlaceOrder: (vendor: string, product: string, quantity: number, dates: Date[]) => Promise<void>;
   onCancel: () => void;
   allOrders: (date: Date) => any[];
-  onDeleteOrder: (orderId: string) => void;
+  onDeleteOrder: (orderId: string) => Promise<void>;
   hasAnyOrdersOnDate?: (date: Date) => boolean;
   filterVendorId?: string;
   filterProductId?: string;
+  refetch: () => Promise<void>;
 }
 
-const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, onDeleteOrder, hasAnyOrdersOnDate, filterVendorId = "", filterProductId = "" }: OrderFormProps) => {
+const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, onDeleteOrder, hasAnyOrdersOnDate, filterVendorId = "", filterProductId = "", refetch }: OrderFormProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [selectedVendor, setSelectedVendor] = useState("");
@@ -35,6 +37,9 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
   const [pendingOrderData, setPendingOrderData] = useState<any>(null);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [isLoadingCustomer, setIsLoadingCustomer] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartDate, setDragStartDate] = useState<Date | null>(null);
+  const [dragSelectedDates, setDragSelectedDates] = useState<Date[]>([]);
 
   const selectedVendorData = vendors.find(v => v.name === selectedVendor);
 
@@ -107,46 +112,201 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
     initCustomer();
   }, [user]);
 
-  const handleDateSelect = (date: Date | undefined, modifiers?: any, e?: any) => {
-    if (!date) return;
-    
-    // Check if shift key is pressed for range selection
-    if (e?.shiftKey && selectedDates.length > 0) {
-      const lastDate = selectedDates[selectedDates.length - 1];
-      const startDate = lastDate < date ? lastDate : date;
-      const endDate = lastDate < date ? date : lastDate;
-      
-      // Generate all dates in the range
-      const datesInRange: Date[] = [];
-      const currentDate = new Date(startDate);
-      
-      while (currentDate <= endDate) {
-        datesInRange.push(new Date(currentDate));
-        currentDate.setDate(currentDate.getDate() + 1);
+  const handleDateSelect = async (date: Date | undefined, modifiers?: any, e?: any) => {
+    if (!date || !selectedVendor || !selectedProduct || quantity <= 0) {
+      if (!selectedVendor || !selectedProduct) {
+        toast({
+          title: "Please select vendor and product first",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
+
+    // Check if order already exists for this date
+    const existingOrders = getOrdersForDate(date);
+    const existingOrder = existingOrders.find(
+      o => o.vendor === selectedVendor && o.product === selectedProduct
+    );
+
+    if (existingOrder) {
+      // Check if order is delivered - prevent deletion
+      if (existingOrder.status === 'delivered') {
+        toast({
+          title: "Cannot remove delivered order",
+          description: "Delivered orders cannot be modified from the calendar",
+          variant: "destructive",
+        });
+        return;
       }
       
-      // Add dates that aren't already selected
-      setSelectedDates(prev => {
-        const newDates = [...prev];
-        datesInRange.forEach(d => {
-          if (!newDates.some(existing => existing.toDateString() === d.toDateString())) {
-            newDates.push(d);
-          }
+      // Check customer details before deletion
+      const isComplete = await checkCustomerDetailsComplete();
+      if (!isComplete) {
+        setPendingOrderData({
+          vendor: selectedVendor,
+          product: selectedProduct,
+          quantity,
+          dates: [date]
         });
-        return newDates.sort((a, b) => a.getTime() - b.getTime());
+        setShowCustomerDialog(true);
+        return;
+      }
+
+      // Order exists and not delivered → Remove it
+      await onDeleteOrder(existingOrder.id);
+      await refetch();
+      toast({
+        title: "Order removed",
+        description: `Removed order for ${date.toLocaleDateString()}`,
       });
     } else {
-      // Normal single date toggle
-      setSelectedDates(prev => {
-        const dateExists = prev.some(d => d.toDateString() === date.toDateString());
-        if (dateExists) {
-          return prev.filter(d => d.toDateString() !== date.toDateString());
-        } else {
-          return [...prev, date].sort((a, b) => a.getTime() - b.getTime());
-        }
+      // Check customer details before placing order
+      const isComplete = await checkCustomerDetailsComplete();
+      if (!isComplete) {
+        setPendingOrderData({
+          vendor: selectedVendor,
+          product: selectedProduct,
+          quantity,
+          dates: [date]
+        });
+        setShowCustomerDialog(true);
+        return;
+      }
+      
+      // No order → Place it
+      await onPlaceOrder(selectedVendor, selectedProduct, quantity, [date]);
+      await refetch();
+      toast({
+        title: "Order placed",
+        description: `Order scheduled for ${date.toLocaleDateString()}`,
       });
     }
   };
+
+  // Helper function to get all dates in range
+  const getDatesInRange = (start: Date, end: Date): Date[] => {
+    const dates: Date[] = [];
+    const startDate = start < end ? start : end;
+    const endDate = start < end ? end : start;
+    
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      dates.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    return dates;
+  };
+
+  // Mouse event handlers (desktop)
+  const handleMouseDown = (date: Date) => {
+    if (!selectedVendor || !selectedProduct) return;
+    
+    setIsDragging(true);
+    setDragStartDate(date);
+    setDragSelectedDates([date]);
+  };
+
+  const handleMouseEnter = (date: Date) => {
+    if (!isDragging || !dragStartDate) return;
+    
+    // Calculate all dates between start and current
+    const datesInRange = getDatesInRange(dragStartDate, date);
+    setDragSelectedDates(datesInRange);
+  };
+
+  const handleMouseUp = async () => {
+    if (!isDragging || dragSelectedDates.length === 0) {
+      setIsDragging(false);
+      return;
+    }
+
+    // Check customer details
+    const isComplete = await checkCustomerDetailsComplete();
+    if (!isComplete) {
+      setPendingOrderData({
+        vendor: selectedVendor,
+        product: selectedProduct,
+        quantity,
+        dates: dragSelectedDates
+      });
+      setShowCustomerDialog(true);
+      setIsDragging(false);
+      setDragSelectedDates([]);
+      return;
+    }
+
+    // Place orders for all selected dates
+    for (const date of dragSelectedDates) {
+      const existingOrders = getOrdersForDate(date);
+      const existingOrder = existingOrders.find(
+        o => o.vendor === selectedVendor && o.product === selectedProduct
+      );
+      
+      if (!existingOrder) {
+        await onPlaceOrder(selectedVendor, selectedProduct, quantity, [date]);
+      }
+    }
+
+    await refetch();
+    
+    toast({
+      title: "Orders placed",
+      description: `Placed orders for ${dragSelectedDates.length} date${dragSelectedDates.length > 1 ? 's' : ''}`,
+    });
+
+    // Reset drag state
+    setIsDragging(false);
+    setDragStartDate(null);
+    setDragSelectedDates([]);
+  };
+
+  // Touch event handlers (mobile)
+  const handleTouchStart = (date: Date, e: React.TouchEvent) => {
+    e.preventDefault();
+    handleMouseDown(date);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    
+    const touch = e.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    
+    if (element && element.getAttribute('data-date')) {
+      const dateStr = element.getAttribute('data-date');
+      const date = new Date(dateStr!);
+      handleMouseEnter(date);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    handleMouseUp();
+  };
+
+  // Add global mouse up listener
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDragging) {
+        handleMouseUp();
+      }
+    };
+    
+    const handleGlobalTouchEnd = () => {
+      if (isDragging) {
+        handleMouseUp();
+      }
+    };
+
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    document.addEventListener('touchend', handleGlobalTouchEnd);
+    
+    return () => {
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      document.removeEventListener('touchend', handleGlobalTouchEnd);
+    };
+  }, [isDragging, dragSelectedDates, selectedVendor, selectedProduct, quantity]);
 
   const removeDate = (dateToRemove: Date) => {
     setSelectedDates(prev => prev.filter(d => d.toDateString() !== dateToRemove.toDateString()));
@@ -360,64 +520,98 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Select Dates</label>
-            <Calendar
-              mode="single"
-              selected={undefined}
-              onDayClick={handleDateSelect}
-              className="rounded-md border pointer-events-auto"
-              modifiers={{
-                selected: (date) => selectedDates.some(d => d.toDateString() === date.toDateString()),
-                today: (date) => {
-                  const today = new Date();
-                  return date.toDateString() === today.toDateString();
-                },
-                hasOrders: (date) => {
-                  // Always show green for ANY dates with existing orders
-                  const anyOrders = hasAnyOrdersOnDate ? hasAnyOrdersOnDate(date) : false;
-                  // Don't show green if date is already selected (blue takes priority)
-                  const isSelected = selectedDates.some(d => d.toDateString() === date.toDateString());
-                  return anyOrders && !isSelected;
-                }
-              }}
-              modifiersStyles={{
-                today: {
-                  boxShadow: '0 0 0 3px hsl(var(--primary)) inset',
-                  fontWeight: '700'
-                },
-                selected: {
-                  backgroundColor: 'hsl(217 91% 60%)',
-                  color: 'hsl(0 0% 100%)',
-                  fontWeight: '600',
-                  borderRadius: '4px',
-                  border: '2px solid hsl(221 83% 53%)'
-                },
-                hasOrders: {
-                  backgroundColor: 'hsl(142 76% 73%)',
-                  color: 'hsl(142 76% 20%)',
-                  fontWeight: '500',
-                  borderRadius: '4px',
-                  border: '2px solid hsl(142 71% 45%)'
-                }
-              }}
-            />
+            <label className="block text-sm font-medium mb-2">
+              Select Dates
+            </label>
+            <div 
+              onMouseUp={handleMouseUp}
+              onTouchEnd={handleTouchEnd}
+              style={{ userSelect: 'none' }}
+            >
+              <Calendar
+                mode="single"
+                selected={undefined}
+                onSelect={undefined}
+                className={cn("rounded-md border pointer-events-auto")}
+                modifiers={{
+                  today: (date) => {
+                    const today = new Date();
+                    return date.toDateString() === today.toDateString();
+                  },
+                  dragSelected: (date) => {
+                    const dateStr = date.toISOString().split('T')[0];
+                    return dragSelectedDates.some(d => d.toISOString().split('T')[0] === dateStr);
+                  },
+                  deliveredOrder: (date) => {
+                    const orders = getOrdersForDate(date);
+                    return orders.some(o => o.status === 'delivered' && 
+                      o.vendor === selectedVendor && o.product === selectedProduct);
+                  },
+                  pendingOrder: (date) => {
+                    const orders = getOrdersForDate(date);
+                    return orders.some(o => o.status === 'pending' && 
+                      o.vendor === selectedVendor && o.product === selectedProduct);
+                  },
+                  futureOrder: (date) => {
+                    const dateStr = date.toISOString().split('T')[0];
+                    const today = new Date().toISOString().split('T')[0];
+                    const orders = getOrdersForDate(date);
+                    return dateStr > today && 
+                      orders.some(o => o.vendor === selectedVendor && o.product === selectedProduct);
+                  }
+                }}
+                modifiersStyles={{
+                  today: {
+                    boxShadow: '0 0 0 3px hsl(var(--primary)) inset',
+                    fontWeight: '700'
+                  },
+                  dragSelected: {
+                    boxShadow: '0 0 0 2px hsl(217 91% 60%) inset',
+                    backgroundColor: 'hsl(217 91% 90%)'
+                  },
+                  deliveredOrder: {
+                    backgroundColor: 'hsl(142 76% 73%)',
+                    color: 'hsl(142 76% 20%)',
+                    fontWeight: '600',
+                    border: '2px solid hsl(142 71% 45%)'
+                  },
+                  pendingOrder: {
+                    backgroundColor: 'hsl(38 92% 56%)',
+                    color: 'hsl(36 55% 15%)',
+                    fontWeight: '600',
+                    border: '2px solid hsl(38 92% 50%)'
+                  },
+                  futureOrder: {
+                    backgroundColor: 'hsl(214 95% 93%)',
+                    color: 'hsl(213 97% 70%)',
+                    fontWeight: '400',
+                    border: '1px solid hsl(213 97% 78%)',
+                    opacity: 0.7
+                  }
+                }}
+                onDayClick={handleDateSelect}
+              />
+            </div>
             <div className="mt-2 space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Click dates to select/deselect • Hold Shift + Click to select range
+              <p className="text-sm text-muted-foreground mb-3">
+                <strong>Click</strong> to place/remove single order<br/>
+                <strong>Note:</strong> Delivered orders cannot be removed
               </p>
-              <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(217 91% 60%)', border: '2px solid hsl(221 83% 53%)' }}></div>
-                  <span>Selected dates</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(142 76% 73%)', border: '2px solid hsl(142 71% 45%)' }}></div>
-                  <span>Dates with existing orders</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 rounded bg-background" style={{ border: '4px solid hsl(var(--primary))' }}></div>
-                  <span>Today</span>
-                </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(142 76% 73%)', border: '2px solid hsl(142 71% 45%)' }}></div>
+                <span className="font-medium">Delivered orders</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(38 92% 56%)', border: '2px solid hsl(38 92% 50%)' }}></div>
+                <span className="font-medium">Pending orders (action needed)</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(214 95% 93%)', border: '1px solid hsl(213 97% 78%)', opacity: 0.7 }}></div>
+                <span className="font-medium text-gray-500">Future orders (lighter color)</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded bg-background" style={{ border: '4px solid hsl(var(--primary))' }}></div>
+                <span className="font-medium">Today</span>
               </div>
             </div>
           </div>
