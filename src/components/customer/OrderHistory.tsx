@@ -605,6 +605,51 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
         </CardContent>
       </Card>
 
+      {/* Bulk Actions Section */}
+      {selectedOrderIds.length > 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                {selectedOrderIds.length} order(s) selected
+              </p>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => setBulkUpdateDialogOpen(true)} 
+                  className="bg-green-600 hover:bg-green-700"
+                  size="sm"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Mark as Delivered
+                </Button>
+                <Button 
+                  onClick={() => setBulkEditDialogOpen(true)} 
+                  variant="outline"
+                  size="sm"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Modify Orders
+                </Button>
+                <Button 
+                  onClick={() => setBulkDeleteDialogOpen(true)} 
+                  variant="destructive"
+                  size="sm"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Orders
+                </Button>
+                <Button 
+                  onClick={() => setSelectedOrderIds([])} 
+                  variant="ghost"
+                  size="sm"
+                >
+                  Clear Selection
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Orders Table */}
       <Card>
@@ -649,7 +694,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                     {Object.entries(groupedOrders).map(([month, monthOrders]) => (
                       <React.Fragment key={month}>
                         <TableRow className="bg-muted/50">
-                          <TableCell colSpan={8}>
+                          <TableCell colSpan={9}>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -664,9 +709,16 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                         {expandedMonths.has(month) && (monthOrders as any[]).map((order: any) => (
                           <TableRow
                                 key={order.id} 
-                                className="cursor-pointer hover:bg-muted/50"
-                                onClick={() => handleModifyOrder(order)}
+                                className="hover:bg-muted/50"
                               >
+                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                  {order.status === 'pending' && (
+                                    <Checkbox
+                                      checked={selectedOrderIds.includes(order.id)}
+                                      onCheckedChange={() => toggleOrderSelection(order.id)}
+                                    />
+                                  )}
+                                </TableCell>
                                 <TableCell className={`font-semibold ${isSunday(order.order_date) ? 'text-red-700' : ''}`}>
                                   {getDayName(order.order_date)}
                                 </TableCell>
