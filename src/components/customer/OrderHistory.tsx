@@ -488,18 +488,44 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
       grandTotalRow
     ];
     
-    const ws = XLSX.utils.aoa_to_sheet(allData);
-    
-    ws['!cols'] = [
-      { wch: 10 }, { wch: 12 }, { wch: 20 }, { wch: 20 },
-      { wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
-      { wch: 12 }, { wch: 20 }
-    ];
-    
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Order History');
-    XLSX.writeFile(wb, `order-history-${new Date().toISOString().split('T')[0]}.xlsx`);
-  };
+  const ws = XLSX.utils.aoa_to_sheet(allData);
+  
+  ws['!cols'] = [
+    { wch: 10 }, { wch: 12 }, { wch: 20 }, { wch: 20 },
+    { wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
+    { wch: 12 }, { wch: 20 }
+  ];
+  
+  // Add borders to all cells
+  const solidBorder = { style: 'thin', color: { rgb: '000000' } };
+  const dottedBorder = { style: 'dotted', color: { rgb: '000000' } };
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+  
+  for (let row = range.s.r; row <= range.e.r; row++) {
+    for (let col = range.s.c; col <= range.e.c; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+      const cell = ws[cellAddress];
+      
+      if (!cell) continue;
+      if (!cell.s) cell.s = {};
+      
+      const isHeaderRow = row === 0;
+      const isLastRow = row === range.e.r;
+      const isFirstDataRow = row === 1;
+      
+      cell.s.border = {
+        top: isHeaderRow || isFirstDataRow ? solidBorder : dottedBorder,
+        bottom: isHeaderRow || isLastRow ? solidBorder : dottedBorder,
+        left: solidBorder,
+        right: solidBorder
+      };
+    }
+  }
+  
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Order History');
+  XLSX.writeFile(wb, `order-history-${new Date().toISOString().split('T')[0]}.xlsx`);
+};
 
   const handleModifyOrder = (order: any) => {
     setSelectedOrder(order);
