@@ -25,7 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 
 interface CustomerDashboardProps {
   onNavigate?: (tab: string) => void;
@@ -173,19 +173,17 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     const statuses = [...new Set(monthlyStats.orders.map(o => o.status))];
     
     // Summary rows with formulas
-    const summaryRows = statuses.map((status, idx) => [
+    const summaryRows = statuses.map((status) => [
       status.toUpperCase(),
       { f: `COUNTIF(H2:H${orderDataEndRow},"${status}")` },
-      { f: `SUMIF(H2:H${orderDataEndRow},"${status}",G2:G${orderDataEndRow})` },
-      { f: `IF(B${summaryStartRow + idx + 1}=0,0,C${summaryStartRow + idx + 1}/B${summaryStartRow + idx + 1})` }
+      { f: `SUMIF(H2:H${orderDataEndRow},"${status}",G2:G${orderDataEndRow})` }
     ]);
     
     // Grand total
     const grandTotalRow = [
       'GRAND TOTAL',
       { f: `SUM(B${summaryStartRow + 1}:B${summaryStartRow + statuses.length})` },
-      { f: `SUM(C${summaryStartRow + 1}:C${summaryStartRow + statuses.length})` },
-      { f: `C${summaryStartRow + statuses.length + 1}/B${summaryStartRow + statuses.length + 1}` }
+      { f: `SUM(C${summaryStartRow + 1}:C${summaryStartRow + statuses.length})` }
     ];
     
     const allData = [
@@ -194,7 +192,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       [],
       [],
       ['STATUS SUMMARY'],
-      ['Status', 'Order Count', 'Total Amount (₹)', 'Avg Order Value (₹)'],
+      ['Status', 'Order Count', 'Total Amount (₹)'],
       ...summaryRows,
       grandTotalRow
     ];
@@ -205,6 +203,32 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 10 },
       { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 12 }
     ];
+    
+    // Add borders to all cells
+    const solidBorder = { style: 'thin', color: { rgb: '000000' } };
+    const dottedBorder = { style: 'dotted', color: { rgb: '000000' } };
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    
+    for (let row = range.s.r; row <= range.e.r; row++) {
+      for (let col = range.s.c; col <= range.e.c; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+        const cell = ws[cellAddress];
+        
+        if (!cell) continue;
+        if (!cell.s) cell.s = {};
+        
+        const isHeaderRow = row === 0;
+        const isLastRow = row === range.e.r;
+        const isFirstDataRow = row === 1;
+        
+        cell.s.border = {
+          top: isHeaderRow || isFirstDataRow ? solidBorder : dottedBorder,
+          bottom: isHeaderRow || isLastRow ? solidBorder : dottedBorder,
+          left: solidBorder,
+          right: solidBorder
+        };
+      }
+    }
     
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Orders');

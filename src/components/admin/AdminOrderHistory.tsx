@@ -9,7 +9,7 @@ import { Search, Download, FileDown } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useOrders } from "@/hooks/useOrders";
 import { format } from "date-fns";
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 
 const AdminOrderHistory = () => {
   const { orders, loading } = useOrders();
@@ -110,19 +110,17 @@ const AdminOrderHistory = () => {
     const statuses = [...new Set(filteredOrders.map(o => o.status))];
     
     // Summary rows with formulas
-    const summaryRows = statuses.map((status, idx) => [
+    const summaryRows = statuses.map((status) => [
       status.toUpperCase(),
       { f: `COUNTIF(I2:I${orderDataEndRow},"${status}")` },
-      { f: `SUMIF(I2:I${orderDataEndRow},"${status}",H2:H${orderDataEndRow})` },
-      { f: `IF(B${summaryStartRow + idx + 1}=0,0,C${summaryStartRow + idx + 1}/B${summaryStartRow + idx + 1})` }
+      { f: `SUMIF(I2:I${orderDataEndRow},"${status}",H2:H${orderDataEndRow})` }
     ]);
     
     // Grand total
     const grandTotalRow = [
       'GRAND TOTAL',
       { f: `COUNTA(I2:I${orderDataEndRow})` },
-      { f: `SUM(H2:H${orderDataEndRow})` },
-      { f: `C${summaryStartRow + statuses.length + 1}/B${summaryStartRow + statuses.length + 1}` }
+      { f: `SUM(H2:H${orderDataEndRow})` }
     ];
     
     const allData = [
@@ -131,7 +129,7 @@ const AdminOrderHistory = () => {
       [],
       [],
       ['STATUS SUMMARY'],
-      ['Status', 'Order Count', 'Total Amount (₹)', 'Avg Order Value (₹)'],
+      ['Status', 'Order Count', 'Total Amount (₹)'],
       ...summaryRows,
       grandTotalRow
     ];
@@ -142,6 +140,32 @@ const AdminOrderHistory = () => {
       { wch: 10 }, { wch: 12 }, { wch: 20 }, { wch: 20 },
       { wch: 20 }, { wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 12 }
     ];
+    
+    // Add borders to all cells
+    const solidBorder = { style: 'thin', color: { rgb: '000000' } };
+    const dottedBorder = { style: 'dotted', color: { rgb: '000000' } };
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    
+    for (let row = range.s.r; row <= range.e.r; row++) {
+      for (let col = range.s.c; col <= range.e.c; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+        const cell = ws[cellAddress];
+        
+        if (!cell) continue;
+        if (!cell.s) cell.s = {};
+        
+        const isHeaderRow = row === 0;
+        const isLastRow = row === range.e.r;
+        const isFirstDataRow = row === 1;
+        
+        cell.s.border = {
+          top: isHeaderRow || isFirstDataRow ? solidBorder : dottedBorder,
+          bottom: isHeaderRow || isLastRow ? solidBorder : dottedBorder,
+          left: solidBorder,
+          right: solidBorder
+        };
+      }
+    }
     
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'All Orders');

@@ -21,7 +21,7 @@ import { useVendorProducts } from "@/hooks/useVendorProducts";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import SubscriptionCalendarView from "./components/SubscriptionCalendarView";
 
 interface SubscriptionManagementProps {
@@ -250,19 +250,17 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
     const statuses = [...new Set(subscriptionOrders.map(o => o.status))];
     
     // Summary rows with formulas
-    const summaryRows = statuses.map((status, idx) => [
+    const summaryRows = statuses.map((status) => [
       status.toUpperCase(),
       { f: `COUNTIF(H2:H${orderDataEndRow},"${status}")` },
-      { f: `SUMIF(H2:H${orderDataEndRow},"${status}",G2:G${orderDataEndRow})` },
-      { f: `IF(B${summaryStartRow + idx + 1}=0,0,C${summaryStartRow + idx + 1}/B${summaryStartRow + idx + 1})` }
+      { f: `SUMIF(H2:H${orderDataEndRow},"${status}",G2:G${orderDataEndRow})` }
     ]);
     
     // Grand total
     const grandTotalRow = [
       'GRAND TOTAL',
       { f: `COUNTA(H2:H${orderDataEndRow})` },
-      { f: `SUM(G2:G${orderDataEndRow})` },
-      { f: `C${summaryStartRow + statuses.length + 1}/B${summaryStartRow + statuses.length + 1}` }
+      { f: `SUM(G2:G${orderDataEndRow})` }
     ];
     
     const allData = [
@@ -271,7 +269,7 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
       [],
       [],
       ['STATUS SUMMARY'],
-      ['Status', 'Order Count', 'Total Amount (₹)', 'Avg Order Value (₹)'],
+      ['Status', 'Order Count', 'Total Amount (₹)'],
       ...summaryRows,
       grandTotalRow
     ];
@@ -282,6 +280,32 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
       { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 10 },
       { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 12 }
     ];
+    
+    // Add borders to all cells
+    const solidBorder = { style: 'thin', color: { rgb: '000000' } };
+    const dottedBorder = { style: 'dotted', color: { rgb: '000000' } };
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    
+    for (let row = range.s.r; row <= range.e.r; row++) {
+      for (let col = range.s.c; col <= range.e.c; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+        const cell = ws[cellAddress];
+        
+        if (!cell) continue;
+        if (!cell.s) cell.s = {};
+        
+        const isHeaderRow = row === 0;
+        const isLastRow = row === range.e.r;
+        const isFirstDataRow = row === 1;
+        
+        cell.s.border = {
+          top: isHeaderRow || isFirstDataRow ? solidBorder : dottedBorder,
+          bottom: isHeaderRow || isLastRow ? solidBorder : dottedBorder,
+          left: solidBorder,
+          right: solidBorder
+        };
+      }
+    }
     
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Subscription Orders");
