@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { VendorOrderTabs } from "./components/VendorOrderTabs";
 import { useOrders } from "@/hooks/useOrders";
 import { useVendors } from "@/hooks/useVendors";
+import { useVendorProducts } from "@/hooks/useVendorProducts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -76,9 +77,11 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     quantity: 0,
     product_id: '',
     order_date: '',
+    vendor_id: '',
   });
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [bulkEditDialogOpen, setBulkEditDialogOpen] = useState(false);
+  const { vendorProducts, loading: vendorProductsLoading } = useVendorProducts(editFormData.vendor_id);
   const [bulkEditFormData, setBulkEditFormData] = useState({
     quantity: 0,
     order_date: '',
@@ -448,6 +451,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       quantity: order.quantity,
       product_id: order.product.id,
       order_date: order.order_date,
+      vendor_id: order.vendor.id,
     });
     setEditDialogOpen(true);
   };
@@ -468,7 +472,9 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     if (!editingOrder) return;
     
     try {
-      const pricePerUnit = editingOrder.price_per_unit;
+      // Get the selected vendor product to get the correct price
+      const selectedVendorProduct = vendorProducts.find(vp => vp.product_id === editFormData.product_id);
+      const pricePerUnit = selectedVendorProduct?.price_override || selectedVendorProduct?.product?.price || editingOrder.price_per_unit;
       const totalAmount = editFormData.quantity * pricePerUnit;
       
       await updateOrder(editingOrder.id, {
@@ -967,10 +973,12 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Mark {selectedOrderIds.length} as Delivered
                       </Button>
-                      <Button onClick={() => setBulkEditDialogOpen(true)} variant="outline" size="sm">
-                        <Edit className="h-4 w-4 mr-2" />
-                        Modify {selectedOrderIds.length}
-                      </Button>
+                      {selectedOrderIds.length === 1 && (
+                        <Button onClick={() => setBulkEditDialogOpen(true)} variant="outline" size="sm">
+                          <Edit className="h-4 w-4 mr-2" />
+                          Modify
+                        </Button>
+                      )}
                       <Button onClick={() => setBulkDeleteDialogOpen(true)} variant="destructive" size="sm">
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete {selectedOrderIds.length}
@@ -1054,9 +1062,15 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                             </TableRow>
                             {expandedMonths.has(month) && (monthOrders as any[]).map((order: any) => {
                               const orderDate = new Date(order.order_date);
+                              orderDate.setHours(0, 0, 0, 0);
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              const isPastDate = orderDate < today;
                               const isSunday = orderDate.getDay() === 0;
                               const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                               const dayName = days[orderDate.getDay()];
+                              const isVendorUpdated = order.updated_by_user_id && order.customer?.user_id && order.updated_by_user_id !== order.customer.user_id;
+                              const canModify = !isPastDate || (isPastDate && !isVendorUpdated);
                               
                               return (
                                 <TableRow 
@@ -1064,12 +1078,11 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                   className="cursor-pointer hover:bg-muted/50"
                                 >
                                   <TableCell onClick={(e) => e.stopPropagation()}>
-                                    {order.status === 'pending' && (
-                                      <Checkbox 
-                                        checked={selectedOrderIds.includes(order.id)}
-                                        onCheckedChange={() => toggleOrderSelection(order.id)}
-                                      />
-                                    )}
+                                    <Checkbox 
+                                      checked={selectedOrderIds.includes(order.id)}
+                                      onCheckedChange={() => toggleOrderSelection(order.id)}
+                                      disabled={order.status !== 'pending'}
+                                    />
                                   </TableCell>
                                   <TableCell 
                                     className={`font-semibold ${isSunday ? 'text-red-700' : ''}`}
@@ -1092,7 +1105,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
                                     <div className="flex items-center gap-2">
-                                      {order.updated_by_user_id && order.customer?.user_id && order.updated_by_user_id !== order.customer.user_id ? (
+                                      {isVendorUpdated ? (
                                         <Button
                                           size="sm"
                                           variant="outline"
@@ -1120,6 +1133,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                             : 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 text-amber-900 hover:from-amber-100 hover:to-amber-200'}
                                           variant="outline"
                                           onClick={() => handleStatusToggle(order)}
+                                          disabled={isPastDate && !canModify}
                                         >
                                           {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
                                           {order.status === 'pending' ? 'Pending' : 'Delivered'}
@@ -1128,7 +1142,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                     </div>
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
-                                    {order.status === 'pending' && (
+                                    {canModify ? (
                                       <div className="flex items-center gap-1">
                                         <Button 
                                           variant="ghost" 
@@ -1138,38 +1152,37 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                         >
                                           <Edit className="h-4 w-4" />
                                         </Button>
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm"
-                                          onClick={() => {
-                                            setDeleteOrderId(order.id);
-                                            setDeleteDialogOpen(true);
-                                          }}
-                                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                          title="Delete Order"
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                        {order.updated_by_user_id && 
-                                         order.customer?.user_id && 
-                                         order.updated_by_user_id !== order.customer.user_id && 
-                                         !order.dispute_raised && (
+                                        {!isPastDate && (
                                           <Button 
                                             variant="ghost" 
                                             size="sm"
                                             onClick={() => {
-                                              setDisputeOrderId(order.id);
-                                              setDisputeReason("");
-                                              setDisputeDialogOpen(true);
+                                              setDeleteOrderId(order.id);
+                                              setDeleteDialogOpen(true);
                                             }}
-                                            className="text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
-                                            title="Raise Dispute"
+                                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                            title="Delete Order"
                                           >
-                                            <AlertTriangle className="h-4 w-4" />
+                                            <Trash2 className="h-4 w-4" />
                                           </Button>
                                         )}
                                       </div>
-                                    )}
+                                    ) : isVendorUpdated && !order.dispute_raised ? (
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => {
+                                          setDisputeOrderId(order.id);
+                                          setDisputeReason("");
+                                          setDisputeDialogOpen(true);
+                                        }}
+                                        className="text-yellow-600 hover:text-yellow-700"
+                                        title="Raise Dispute"
+                                      >
+                                        <AlertTriangle className="h-4 w-4 mr-1" />
+                                        Raise Dispute
+                                      </Button>
+                                    ) : null}
                                   </TableCell>
                                 </TableRow>
                               );
@@ -1404,6 +1417,30 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <Label>Product</Label>
+              <Select
+                value={editFormData.product_id}
+                onValueChange={(value) => setEditFormData({...editFormData, product_id: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select product" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vendorProductsLoading ? (
+                    <SelectItem value="loading" disabled>Loading products...</SelectItem>
+                  ) : (
+                    vendorProducts
+                      .filter(vp => vp.is_active && vp.product)
+                      .map((vp) => (
+                        <SelectItem key={vp.product_id} value={vp.product_id}>
+                          {vp.product?.name} - ₹{vp.price_override || vp.product?.price}/{vp.product?.unit}
+                        </SelectItem>
+                      ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Order Date</Label>
               <Input
