@@ -86,11 +86,6 @@ const VendorManagement = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Vendor added successfully",
-      });
-
       setIsAddDialogOpen(false);
       setFormData({
         name: "",
@@ -159,11 +154,6 @@ const VendorManagement = () => {
         .eq('id', editingVendor.id);
 
       if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Vendor updated successfully",
-      });
 
       setIsEditDialogOpen(false);
       setEditingVendor(null);

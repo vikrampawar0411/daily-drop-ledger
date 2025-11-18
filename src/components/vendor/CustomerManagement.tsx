@@ -141,11 +141,6 @@ const CustomerManagement = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Customer added successfully",
-      });
-
       setIsAddDialogOpen(false);
       setFormData({
         name: "",

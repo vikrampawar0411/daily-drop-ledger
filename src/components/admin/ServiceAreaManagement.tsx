@@ -41,7 +41,6 @@ export const ServiceAreaManagement = () => {
       const { error } = await supabase.from("states").insert([stateForm]);
       if (error) throw error;
 
-      toast({ title: "Success", description: "State added successfully" });
       setStateForm({ name: "", description: "" });
       queryClient.invalidateQueries({ queryKey: ["states"] });
     } catch (error: any) {
@@ -53,7 +52,6 @@ export const ServiceAreaManagement = () => {
     try {
       const { error } = await supabase.from("states").delete().eq("id", id);
       if (error) throw error;
-      toast({ title: "Success", description: "State deleted successfully" });
       queryClient.invalidateQueries({ queryKey: ["states"] });
     } catch (error: any) {
       toast({ title: "Error deleting state", description: error.message, variant: "destructive" });
@@ -70,7 +68,6 @@ export const ServiceAreaManagement = () => {
       const { error } = await supabase.from("cities").insert([cityForm]);
       if (error) throw error;
 
-      toast({ title: "Success", description: "City added successfully" });
       setCityForm({ name: "", description: "", state_id: "" });
       queryClient.invalidateQueries({ queryKey: ["cities"] });
     } catch (error: any) {
@@ -82,7 +79,6 @@ export const ServiceAreaManagement = () => {
     try {
       const { error } = await supabase.from("cities").delete().eq("id", id);
       if (error) throw error;
-      toast({ title: "Success", description: "City deleted successfully" });
       queryClient.invalidateQueries({ queryKey: ["cities"] });
     } catch (error: any) {
       toast({ title: "Error deleting city", description: error.message, variant: "destructive" });
@@ -99,7 +95,6 @@ export const ServiceAreaManagement = () => {
       const { error } = await supabase.from("areas").insert([areaForm]);
       if (error) throw error;
 
-      toast({ title: "Success", description: "Area added successfully" });
       setAreaForm({ name: "", description: "", city_id: "" });
       queryClient.invalidateQueries({ queryKey: ["areas"] });
     } catch (error: any) {
@@ -111,7 +106,6 @@ export const ServiceAreaManagement = () => {
     try {
       const { error } = await supabase.from("areas").delete().eq("id", id);
       if (error) throw error;
-      toast({ title: "Success", description: "Area deleted successfully" });
       queryClient.invalidateQueries({ queryKey: ["areas"] });
     } catch (error: any) {
       toast({ title: "Error deleting area", description: error.message, variant: "destructive" });
@@ -128,7 +122,6 @@ export const ServiceAreaManagement = () => {
       const { error } = await supabase.from("societies").insert([societyForm]);
       if (error) throw error;
 
-      toast({ title: "Success", description: "Society added successfully" });
       setSocietyForm({ name: "", description: "", area_id: "", address: "" });
       queryClient.invalidateQueries({ queryKey: ["societies"] });
     } catch (error: any) {
@@ -154,7 +147,6 @@ export const ServiceAreaManagement = () => {
 
       if (error) throw error;
 
-      toast({ title: "Success", description: "Society updated successfully" });
       setShowEditDialog(false);
       setEditingSociety(null);
       queryClient.invalidateQueries({ queryKey: ["societies"] });
@@ -167,7 +159,6 @@ export const ServiceAreaManagement = () => {
     try {
       const { error } = await supabase.from("societies").delete().eq("id", id);
       if (error) throw error;
-      toast({ title: "Success", description: "Society deleted successfully" });
       queryClient.invalidateQueries({ queryKey: ["societies"] });
     } catch (error: any) {
       toast({ title: "Error deleting society", description: error.message, variant: "destructive" });

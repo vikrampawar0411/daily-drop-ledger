@@ -164,11 +164,6 @@ export const useOrders = () => {
         .eq("id", orderId);
 
       if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Order status updated",
-      });
       
       // Refetch to get updated data with user info
       await fetchOrders();

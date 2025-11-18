@@ -128,11 +128,6 @@ const ProductManagement = () => {
 
       if (updateError) throw updateError;
 
-      toast({
-        title: "Success",
-        description: "Product image uploaded successfully",
-      });
-
       setShowImageDialog(false);
       setSelectedProductForImage(null);
       
