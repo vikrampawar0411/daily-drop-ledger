@@ -23,6 +23,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -789,7 +790,8 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   }
 
   return (
-    <div className="space-y-6">
+    <TooltipProvider>
+      <div className="space-y-6">
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-lg p-6">
         {loadingWelcome ? (
@@ -1105,39 +1107,23 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
                                     <div className="flex items-center gap-2">
-                                      {isVendorUpdated ? (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => {
-                                            setDisputeOrderId(order.id);
-                                            setDisputeReason("");
-                                            setDisputeDialogOpen(true);
-                                          }}
-                                          disabled={order.dispute_raised}
-                                        >
-                                          {order.dispute_raised ? (
-                                            <>
-                                              <AlertTriangle className="h-4 w-4 mr-1 text-yellow-600" />
-                                              Disputed
-                                            </>
-                                          ) : (
-                                            "Dispute"
-                                          )}
-                                        </Button>
-                                      ) : (
-                                        <Button
-                                          size="sm"
-                                          className={order.status === 'delivered' 
-                                            ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 text-green-900 hover:from-green-100 hover:to-green-200' 
-                                            : 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 text-amber-900 hover:from-amber-100 hover:to-amber-200'}
-                                          variant="outline"
-                                          onClick={() => handleStatusToggle(order)}
-                                          disabled={isPastDate && !canModify}
-                                        >
-                                          {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
-                                          {order.status === 'pending' ? 'Pending' : 'Delivered'}
-                                        </Button>
+                                      <Button
+                                        size="sm"
+                                        className={order.status === 'delivered' 
+                                          ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 text-green-900 hover:from-green-100 hover:to-green-200' 
+                                          : 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 text-amber-900 hover:from-amber-100 hover:to-amber-200'}
+                                        variant="outline"
+                                        onClick={() => handleStatusToggle(order)}
+                                        disabled={isVendorUpdated || (isPastDate && !canModify)}
+                                      >
+                                        {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
+                                        {order.status === 'pending' ? 'Pending' : 'Delivered'}
+                                      </Button>
+                                      {order.dispute_raised && (
+                                        <span className="text-xs text-yellow-600 flex items-center gap-1">
+                                          <AlertTriangle className="h-3 w-3" />
+                                          Disputed
+                                        </span>
                                       )}
                                     </div>
                                   </TableCell>
@@ -1168,20 +1154,25 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                         )}
                                       </div>
                                     ) : isVendorUpdated && !order.dispute_raised ? (
-                                      <Button 
-                                        variant="outline" 
-                                        size="sm"
-                                        onClick={() => {
-                                          setDisputeOrderId(order.id);
-                                          setDisputeReason("");
-                                          setDisputeDialogOpen(true);
-                                        }}
-                                        className="text-yellow-600 hover:text-yellow-700"
-                                        title="Raise Dispute"
-                                      >
-                                        <AlertTriangle className="h-4 w-4 mr-1" />
-                                        Raise Dispute
-                                      </Button>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm"
+                                            onClick={() => {
+                                              setDisputeOrderId(order.id);
+                                              setDisputeReason("");
+                                              setDisputeDialogOpen(true);
+                                            }}
+                                            className="text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
+                                          >
+                                            <AlertTriangle className="h-4 w-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Raise Dispute</p>
+                                        </TooltipContent>
+                                      </Tooltip>
                                     ) : null}
                                   </TableCell>
                                 </TableRow>
@@ -1534,7 +1525,8 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 };
 
