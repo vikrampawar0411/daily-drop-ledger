@@ -1083,7 +1083,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                     <Checkbox 
                                       checked={selectedOrderIds.includes(order.id)}
                                       onCheckedChange={() => toggleOrderSelection(order.id)}
-                                      disabled={order.status !== 'pending'}
+                                      disabled={isVendorUpdated}
                                     />
                                   </TableCell>
                                   <TableCell 
@@ -1128,7 +1128,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                     </div>
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
-                                    {canModify ? (
+                                    {canModify && !(isPastDate && order.status === 'delivered') ? (
                                       <div className="flex items-center gap-1">
                                         <Button 
                                           variant="ghost" 
@@ -1138,7 +1138,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                         >
                                           <Edit className="h-4 w-4" />
                                         </Button>
-                                        {!isPastDate && (
+                                        {!(isPastDate && order.status === 'delivered') && (
                                           <Button 
                                             variant="ghost" 
                                             size="sm"
