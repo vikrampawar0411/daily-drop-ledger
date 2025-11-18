@@ -909,7 +909,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-900">{monthlyStats.totalOrders}</div>
-                <p className="text-xs text-blue-700">orders this month</p>
               </CardContent>
             </Card>
 
@@ -923,7 +922,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-900">{monthlyStats.deliveredOrders}</div>
-                <p className="text-xs text-green-700">completed deliveries</p>
               </CardContent>
             </Card>
 
@@ -932,12 +930,11 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               onClick={() => onNavigate?.('subscriptions')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-amber-900">Orders Scheduled</CardTitle>
+                <CardTitle className="text-sm font-medium text-amber-900">Pending Orders</CardTitle>
                 <Clock className="h-4 w-4 text-amber-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-amber-900">{monthlyStats.scheduledOrders}</div>
-                <p className="text-xs text-amber-700">pending deliveries</p>
               </CardContent>
             </Card>
 
@@ -946,12 +943,11 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               onClick={() => onNavigate?.('subscriptions')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-purple-900">Monthly Spend</CardTitle>
+                <CardTitle className="text-sm font-medium text-purple-900">Delivered Orders Bill</CardTitle>
                 <Package className="h-4 w-4 text-purple-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-purple-900">₹{monthlyStats.deliveredSpend}</div>
-                <p className="text-xs text-purple-700">on delivered orders</p>
               </CardContent>
             </Card>
 
@@ -960,12 +956,11 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               onClick={() => onNavigate?.('subscriptions')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-rose-900">Forecasted Bill</CardTitle>
+                <CardTitle className="text-sm font-medium text-rose-900">Pending Orders Bill</CardTitle>
                 <TrendingUp className="h-4 w-4 text-rose-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-rose-900">₹{monthlyStats.forecastedBill}</div>
-                <p className="text-xs text-rose-700">scheduled orders</p>
               </CardContent>
             </Card>
           </div>
@@ -1051,7 +1046,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                           Total {sortColumn === 'total_amount' && (sortDirection === 'asc' ? '↑' : '↓')}
                         </TableHead>
                         <TableHead className="cursor-pointer" onClick={() => handleSort('status')}>
-                          Status {sortColumn === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+                          Mark Status {sortColumn === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
                         </TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
@@ -1136,7 +1131,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                       ) : (
                                         <Button
                                           size="sm"
-                                          variant={order.status === 'delivered' ? 'default' : 'secondary'}
+                                          className={order.status === 'delivered' 
+                                            ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 text-green-900 hover:from-green-100 hover:to-green-200' 
+                                            : 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 text-amber-900 hover:from-amber-100 hover:to-amber-200'}
+                                          variant="outline"
                                           onClick={() => handleStatusToggle(order)}
                                         >
                                           {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
@@ -1147,45 +1145,46 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
                                     {order.status === 'pending' && (
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="sm">
-                                            <MoreVertical className="h-4 w-4" />
+                                      <div className="flex items-center gap-1">
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm"
+                                          onClick={() => handleEditOrder(order)}
+                                          title="Edit Order"
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm"
+                                          onClick={() => {
+                                            setDeleteOrderId(order.id);
+                                            setDeleteDialogOpen(true);
+                                          }}
+                                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                          title="Delete Order"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                        {order.updated_by_user_id && 
+                                         order.customer?.user_id && 
+                                         order.updated_by_user_id !== order.customer.user_id && 
+                                         !order.dispute_raised && (
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm"
+                                            onClick={() => {
+                                              setDisputeOrderId(order.id);
+                                              setDisputeReason("");
+                                              setDisputeDialogOpen(true);
+                                            }}
+                                            className="text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
+                                            title="Raise Dispute"
+                                          >
+                                            <AlertTriangle className="h-4 w-4" />
                                           </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleEditOrder(order)}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit Order
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => {
-                      setDeleteOrderId(order.id);
-                      setDeleteDialogOpen(true);
-                    }}
-                    className="text-red-600"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Order
-                  </DropdownMenuItem>
-                  {order.updated_by_user_id && 
-                   order.customer?.user_id && 
-                   order.updated_by_user_id !== order.customer.user_id && 
-                   !order.dispute_raised && (
-                    <DropdownMenuItem 
-                      onClick={() => {
-                        setDisputeOrderId(order.id);
-                        setDisputeReason("");
-                        setDisputeDialogOpen(true);
-                      }}
-                      className="text-yellow-600"
-                    >
-                      <AlertTriangle className="h-4 w-4 mr-2" />
-                      Raise Dispute
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-                                      </DropdownMenu>
+                                        )}
+                                      </div>
                                     )}
                                   </TableCell>
                                 </TableRow>
