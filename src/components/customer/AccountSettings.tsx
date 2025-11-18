@@ -66,11 +66,6 @@ const AccountSettings = () => {
         .eq('user_id', user.id);
 
       if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Account details updated successfully"
-      });
     } catch (error) {
       console.error("Error updating account:", error);
       toast({

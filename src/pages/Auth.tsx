@@ -263,11 +263,6 @@ const Auth = () => {
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Success",
-        description: "Account created! Please check your email to verify your account.",
-      });
       // Reset form
       setEmail('');
       setPassword('');
@@ -315,10 +310,6 @@ const Auth = () => {
         variant: "destructive",
       });
     } else {
-      toast({
-        title: "Success",
-        description: "Account created! Please check your email to verify your account.",
-      });
       // Reset form
       setEmail('');
       setPassword('');
