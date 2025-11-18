@@ -411,12 +411,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       
       await Promise.all(updatePromises);
       
-      // Show single consolidated success message
-      toast({
-        title: "Success",
-        description: `${selectedOrderIds.length} order(s) marked as delivered`,
-      });
-      
       setSelectedOrderIds([]);
       setBulkUpdateDialogOpen(false);
       
@@ -506,11 +500,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       const deletePromises = selectedOrderIds.map(orderId => deleteOrder(orderId));
       await Promise.all(deletePromises);
       
-      toast({
-        title: "Success",
-        description: `${selectedOrderIds.length} order(s) deleted successfully`,
-      });
-      
       setSelectedOrderIds([]);
       setBulkDeleteDialogOpen(false);
       await refetch();
@@ -551,11 +540,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       });
       
       await Promise.all(updatePromises);
-      
-      toast({
-        title: "Success",
-        description: `${selectedOrderIds.length} order(s) modified successfully`,
-      });
       
       setSelectedOrderIds([]);
       setBulkEditDialogOpen(false);
