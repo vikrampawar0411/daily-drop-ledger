@@ -115,10 +115,6 @@ const Auth = () => {
             .update({ user_id: user.id })
             .eq('id', recordByEmail.id);
 
-          toast({
-            title: "Welcome back!",
-            description: "Your account has been linked successfully.",
-          });
           navigate("/");
           setIsLoading(false);
           return;
@@ -135,10 +131,6 @@ const Auth = () => {
       }
     }
 
-    toast({
-      title: "Welcome back!",
-      description: "You have successfully signed in.",
-    });
     navigate("/");
     setIsLoading(false);
   };
