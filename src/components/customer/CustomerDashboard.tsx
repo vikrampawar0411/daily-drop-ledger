@@ -408,15 +408,34 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     }
 
     try {
-      // Update all selected orders to delivered
+      // Determine the target status based on current selection
+      const selectedOrders = monthlyStats.orders.filter(order => 
+        selectedOrderIds.includes(order.id)
+      );
+      
+      const allSelectedAreDelivered = selectedOrders.every(order => {
+        const isVendorUpdated = order.updated_by_user_id && 
+          order.customer?.user_id && 
+          order.updated_by_user_id !== order.customer.user_id;
+        return order.status === 'delivered' && !isVendorUpdated;
+      });
+      
+      const newStatus = allSelectedAreDelivered ? 'pending' : 'delivered';
+      
+      // Update all selected orders
       const updatePromises = selectedOrderIds.map(orderId => 
-        updateOrderStatus(orderId, 'delivered', new Date().toISOString())
+        updateOrderStatus(orderId, newStatus, newStatus === 'delivered' ? new Date().toISOString() : undefined)
       );
       
       await Promise.all(updatePromises);
       
       setSelectedOrderIds([]);
       setBulkUpdateDialogOpen(false);
+      
+      toast({
+        title: "Success",
+        description: `${selectedOrderIds.length} order(s) marked as ${newStatus}`,
+      });
       
       // Refresh orders list
       await refetch();
@@ -969,24 +988,58 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                   </Button>
                 </CollapsibleTrigger>
                 <div className="flex gap-2">
-                  {selectedOrderIds.length > 0 && (
-                    <>
-                      <Button onClick={() => setBulkUpdateDialogOpen(true)} className="bg-green-600 hover:bg-green-700" size="sm">
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Mark {selectedOrderIds.length} as Delivered
-                      </Button>
-                      {selectedOrderIds.length === 1 && (
-                        <Button onClick={() => setBulkEditDialogOpen(true)} variant="outline" size="sm">
-                          <Edit className="h-4 w-4 mr-2" />
-                          Modify
+                  {selectedOrderIds.length > 0 && (() => {
+                    // Calculate selected orders information for bulk actions
+                    const selectedOrders = monthlyStats.orders.filter(order => 
+                      selectedOrderIds.includes(order.id)
+                    );
+
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    const hasAnyPastDateSelected = selectedOrders.some(order => {
+                      const orderDate = new Date(order.order_date);
+                      orderDate.setHours(0, 0, 0, 0);
+                      return orderDate < today;
+                    });
+
+                    const allSelectedAreDelivered = selectedOrders.length > 0 && selectedOrders.every(order => {
+                      const isVendorUpdated = order.updated_by_user_id && 
+                        order.customer?.user_id && 
+                        order.updated_by_user_id !== order.customer.user_id;
+                      return order.status === 'delivered' && !isVendorUpdated;
+                    });
+
+                    const statusButtonText = allSelectedAreDelivered 
+                      ? `Mark ${selectedOrderIds.length} as Pending` 
+                      : `Mark ${selectedOrderIds.length} as Delivered`;
+
+                    const StatusIcon = allSelectedAreDelivered ? Clock : CheckCircle;
+                    const statusButtonClass = allSelectedAreDelivered 
+                      ? "bg-amber-600 hover:bg-amber-700" 
+                      : "bg-green-600 hover:bg-green-700";
+
+                    return (
+                      <>
+                        <Button onClick={() => setBulkUpdateDialogOpen(true)} className={statusButtonClass} size="sm">
+                          <StatusIcon className="h-4 w-4 mr-2" />
+                          {statusButtonText}
                         </Button>
-                      )}
-                      <Button onClick={() => setBulkDeleteDialogOpen(true)} variant="destructive" size="sm">
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete {selectedOrderIds.length}
-                      </Button>
-                    </>
-                  )}
+                        {selectedOrderIds.length === 1 && (
+                          <Button onClick={() => setBulkEditDialogOpen(true)} variant="outline" size="sm">
+                            <Edit className="h-4 w-4 mr-2" />
+                            Modify
+                          </Button>
+                        )}
+                        {!hasAnyPastDateSelected && (
+                          <Button onClick={() => setBulkDeleteDialogOpen(true)} variant="destructive" size="sm">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete {selectedOrderIds.length}
+                          </Button>
+                        )}
+                      </>
+                    );
+                  })()}
                   {monthlyStats.orders.length > 0 && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
