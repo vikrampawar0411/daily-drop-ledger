@@ -139,87 +139,56 @@ const Auth = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Hardcoded admin credentials
-    if (adminCredentials.username === 'admin@dailydropledger.com' && adminCredentials.password === 'Admin@123') {
-      try {
-        // Check if admin exists
-        const { data: adminExists } = await supabase.rpc('admin_exists');
+    try {
+      // Use proper Supabase authentication - no hardcoded credentials
+      const { error: signInError } = await signIn(
+        adminCredentials.username, 
+        adminCredentials.password
+      );
+      
+      if (signInError) {
+        toast({
+          title: "Authentication Failed",
+          description: signInError.message,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
 
-        if (!adminExists) {
-          // First time setup: create admin account
-          const { user: signUpUser, error: signUpError } = await signUp(
-            'admin@dailydropledger.com',
-            'Admin@123',
-            'admin' as any
-          );
+      // Verify admin role after successful authentication
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Check if user has admin role
+        const { data: isAdmin } = await supabase.rpc('has_role', {
+          _user_id: user.id,
+          _role: 'admin'
+        });
 
-          if (signUpError) {
-            toast({
-              title: "Admin Setup Failed",
-              description: signUpError.message,
-              variant: "destructive",
-            });
-            setIsLoading(false);
-            return;
-          }
-
-          if (signUpUser) {
-            // Bootstrap admin role
-            await supabase.rpc('bootstrap_admin', { admin_user_id: signUpUser.id });
-          }
-
+        if (!isAdmin) {
+          // Not an admin, sign them out
+          await supabase.auth.signOut();
           toast({
-            title: "Admin Account Created",
-            description: "Admin account is ready. Signing you in...",
+            title: "Access Denied",
+            description: "You do not have admin privileges",
+            variant: "destructive",
           });
-          
-          // Sign in immediately after creation
-          const { error: signInError } = await signIn('admin@dailydropledger.com', 'Admin@123');
-          
-          if (signInError) {
-            toast({
-              title: "Error",
-              description: signInError.message,
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "Welcome Admin!",
-              description: "You have successfully signed in.",
-            });
-            navigate("/");
-          }
           setIsLoading(false);
           return;
         }
 
-        // Admin exists, sign in normally
-        const { error: signInError } = await signIn('admin@dailydropledger.com', 'Admin@123');
-        
-        if (signInError) {
-          toast({
-            title: "Error",
-            description: signInError.message,
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Welcome Admin!",
-            description: "You have successfully signed in.",
-          });
-          navigate("/");
-        }
-      } catch (error: any) {
         toast({
-          title: "Error",
-          description: error.message || "An unexpected error occurred.",
-          variant: "destructive",
+          title: "Welcome Admin!",
+          description: "You have successfully signed in.",
         });
+
+        navigate("/");
       }
-    } else {
+    } catch (error: any) {
       toast({
-        title: "Invalid Credentials",
-        description: "Incorrect username or password.",
+        title: "Error",
+        description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
     }

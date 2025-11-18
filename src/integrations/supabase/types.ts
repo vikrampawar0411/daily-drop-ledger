@@ -102,7 +102,6 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
-          password: string | null
           phone: string
           product_id: string | null
           route: string | null
@@ -122,7 +121,6 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
-          password?: string | null
           phone: string
           product_id?: string | null
           route?: string | null
@@ -142,7 +140,6 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
-          password?: string | null
           phone?: string
           product_id?: string | null
           route?: string | null
@@ -756,7 +753,6 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
-          password: string | null
           phone: string | null
           product_id: string | null
           updated_at: string
@@ -773,7 +769,6 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
-          password?: string | null
           phone?: string | null
           product_id?: string | null
           updated_at?: string
@@ -790,7 +785,6 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
-          password?: string | null
           phone?: string | null
           product_id?: string | null
           updated_at?: string
