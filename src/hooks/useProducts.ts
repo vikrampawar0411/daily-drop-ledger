@@ -44,7 +44,7 @@ export const useProducts = () => {
     fetchProducts();
   }, []);
 
-  const addProduct = async (product: Omit<Product, "id" | "is_active">) => {
+  const addProduct = async (product: Omit<Product, "id">) => {
     try {
       const { data, error } = await supabase
         .from("products")

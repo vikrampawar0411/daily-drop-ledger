@@ -13,12 +13,10 @@ import { useProductRequests } from "@/hooks/useProductRequests";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 const PRODUCT_CATEGORIES = ["Milk", "Newspaper", "Grocery", "Vegetables", "Fruits", "Other"];
-const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 const ProductManagement = () => {
   const { products, loading: productsLoading } = useProducts();
@@ -39,9 +37,8 @@ const ProductManagement = () => {
     category: "",
     price: "",
     unit: "Nos",
-    availability: "",
     description: "",
-    selectedDays: [] as string[]
+    inStock: true
   });
 
   useEffect(() => {
@@ -74,17 +71,16 @@ const ProductManagement = () => {
   };
 
   const handleRequestProduct = async () => {
-    if (!newRequest.name || !newRequest.category || !newRequest.price || !newRequest.selectedDays.length || !vendorId || !user) {
+    if (!newRequest.name || !newRequest.category || !newRequest.price || !vendorId || !user) {
       toast({
         title: "Missing information",
-        description: "Please fill in all required fields and select at least one day",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      const availability = newRequest.selectedDays.join(", ");
       await createProductRequest({
         vendor_id: vendorId,
         requested_by_user_id: user.id,
@@ -92,7 +88,7 @@ const ProductManagement = () => {
         category: newRequest.category,
         price: parseFloat(newRequest.price),
         unit: newRequest.unit,
-        availability: availability,
+        availability: "Daily",
         description: newRequest.description || null,
       });
       setNewRequest({
@@ -100,9 +96,8 @@ const ProductManagement = () => {
         category: "",
         price: "",
         unit: "Nos",
-        availability: "",
         description: "",
-        selectedDays: []
+        inStock: true
       });
       setShowRequestDialog(false);
     } catch (error) {
@@ -110,14 +105,6 @@ const ProductManagement = () => {
     }
   };
 
-  const handleDayToggle = (day: string) => {
-    setNewRequest(prev => ({
-      ...prev,
-      selectedDays: prev.selectedDays.includes(day)
-        ? prev.selectedDays.filter(d => d !== day)
-        : [...prev.selectedDays, day]
-    }));
-  };
   
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0 || !selectedProductForImage) {
@@ -463,19 +450,19 @@ const ProductManagement = () => {
               </div>
             </div>
             <div>
-              <Label>Availability (Select Days) *</Label>
-              <div className="grid grid-cols-2 gap-3 mt-2">
-                {DAYS_OF_WEEK.map((day) => (
-                  <div key={day} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`request-${day}`}
-                      checked={newRequest.selectedDays.includes(day)}
-                      onCheckedChange={() => handleDayToggle(day)}
-                    />
-                    <Label htmlFor={`request-${day}`} className="cursor-pointer">{day}</Label>
-                  </div>
-                ))}
-              </div>
+              <Label htmlFor="stock-status-request">Stock Status *</Label>
+              <Select 
+                value={newRequest.inStock ? "in-stock" : "out-of-stock"} 
+                onValueChange={(value) => setNewRequest({ ...newRequest, inStock: value === "in-stock" })}
+              >
+                <SelectTrigger id="stock-status-request">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in-stock">In Stock</SelectItem>
+                  <SelectItem value="out-of-stock">Out of Stock</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="description">Description</Label>
@@ -491,7 +478,7 @@ const ProductManagement = () => {
             <Button variant="outline" onClick={() => setShowRequestDialog(false)}>Cancel</Button>
             <Button 
               onClick={handleRequestProduct}
-              disabled={!newRequest.name || !newRequest.category || !newRequest.price || !newRequest.unit || !newRequest.selectedDays.length}
+              disabled={!newRequest.name || !newRequest.category || !newRequest.price || !newRequest.unit}
             >
               Submit Request
             </Button>

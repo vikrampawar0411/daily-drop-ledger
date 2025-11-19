@@ -11,10 +11,8 @@ import { Plus, Package, Milk, Newspaper, Trash2, Upload, Image as ImageIcon } fr
 import { useProducts } from "@/hooks/useProducts";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Checkbox } from "@/components/ui/checkbox";
 
 const PRODUCT_CATEGORIES = ["Milk", "Newspaper", "Grocery", "Vegetables", "Fruits", "Other"];
-const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 const ProductManagement = () => {
   const { products, loading: productsLoading, addProduct, updateProduct } = useProducts();
@@ -29,31 +27,30 @@ const ProductManagement = () => {
     category: "",
     price: "",
     unit: "Nos",
-    availability: "",
     description: "",
-    selectedDays: [] as string[]
+    inStock: true
   });
 
   const handleAddProduct = async () => {
-    if (!newProduct.name || !newProduct.category || !newProduct.price || !newProduct.selectedDays.length) {
+    if (!newProduct.name || !newProduct.category || !newProduct.price) {
       toast({
         title: "Missing information",
-        description: "Please fill in all required fields and select at least one day",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      const availability = newProduct.selectedDays.join(", ");
       await addProduct({
         name: newProduct.name,
         category: newProduct.category,
         price: parseFloat(newProduct.price),
         unit: newProduct.unit,
-        availability: availability,
+        availability: "Daily",
         description: newProduct.description || null,
         status: "active",
+        is_active: newProduct.inStock,
         image_url: null
       });
 
@@ -62,9 +59,8 @@ const ProductManagement = () => {
         category: "",
         price: "",
         unit: "Nos",
-        availability: "",
         description: "",
-        selectedDays: []
+        inStock: true
       });
       setShowAddDialog(false);
     } catch (error) {
@@ -72,14 +68,6 @@ const ProductManagement = () => {
     }
   };
 
-  const handleDayToggle = (day: string) => {
-    setNewProduct(prev => ({
-      ...prev,
-      selectedDays: prev.selectedDays.includes(day)
-        ? prev.selectedDays.filter(d => d !== day)
-        : [...prev.selectedDays, day]
-    }));
-  };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0 || !selectedProductForImage) {
@@ -274,19 +262,19 @@ const ProductManagement = () => {
               </div>
             </div>
             <div>
-              <Label>Availability (Select Days) *</Label>
-              <div className="grid grid-cols-2 gap-3 mt-2">
-                {DAYS_OF_WEEK.map((day) => (
-                  <div key={day} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={day}
-                      checked={newProduct.selectedDays.includes(day)}
-                      onCheckedChange={() => handleDayToggle(day)}
-                    />
-                    <Label htmlFor={day} className="cursor-pointer">{day}</Label>
-                  </div>
-                ))}
-              </div>
+              <Label htmlFor="stock-status">Stock Status *</Label>
+              <Select 
+                value={newProduct.inStock ? "in-stock" : "out-of-stock"} 
+                onValueChange={(value) => setNewProduct({ ...newProduct, inStock: value === "in-stock" })}
+              >
+                <SelectTrigger id="stock-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in-stock">In Stock</SelectItem>
+                  <SelectItem value="out-of-stock">Out of Stock</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="description">Description</Label>
