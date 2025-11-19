@@ -24,7 +24,16 @@ export interface OrderWithDetails {
     area_id: string | null;
     society_id: string | null;
     wing_number: string | null;
+    flat_plot_house_number: string | null;
     user_id: string | null;
+    areas?: {
+      id: string;
+      name: string;
+    } | null;
+    societies?: {
+      id: string;
+      name: string;
+    } | null;
   };
   vendor: {
     id: string;
@@ -65,7 +74,19 @@ export const useOrders = () => {
         .from("orders")
         .select(`
           *,
-          customer:customers(id, name, address, phone, area_id, society_id, wing_number, user_id),
+          customer:customers(
+            id, 
+            name, 
+            address, 
+            phone, 
+            area_id, 
+            society_id, 
+            wing_number, 
+            flat_plot_house_number,
+            user_id,
+            areas:area_id(id, name),
+            societies:society_id(id, name)
+          ),
           vendor:vendors(id, name, category),
           product:products(id, name, category, price)
         `);
