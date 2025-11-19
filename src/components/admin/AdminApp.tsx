@@ -11,7 +11,7 @@ import VendorManagement from "./VendorManagement";
 import OrderManagement from "@/components/vendor/OrderManagement";
 import { ServiceAreaManagement } from "./ServiceAreaManagement";
 import AdminOrderHistory from "./AdminOrderHistory";
-import ProductManagement from "@/components/vendor/ProductManagement";
+import ProductManagement from "./ProductManagement";
 
 const AdminApp = () => {
   const navigate = useNavigate();
