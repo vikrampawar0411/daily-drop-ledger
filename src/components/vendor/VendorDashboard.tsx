@@ -463,8 +463,8 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
                                   </TableRow>
 
                                   {/* Flat Rows (individual orders) */}
-                                  {Array.from(wingData.flats.entries()).map(([flatNumber, orders]: [string, any]) =>
-                                    orders.map((order: any) => (
+                                  {Array.from(wingData.flats.entries()).map(([flatNumber, flatData]: [string, any]) =>
+                                    flatData.orders.map((order: any) => (
                                       <TableRow key={order.id} className="hover:bg-muted/50">
                                         <TableCell className="pl-24 text-sm">
                                           Flat: {flatNumber}
