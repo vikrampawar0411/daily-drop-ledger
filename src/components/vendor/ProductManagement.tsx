@@ -13,6 +13,12 @@ import { useProductRequests } from "@/hooks/useProductRequests";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+
+const PRODUCT_CATEGORIES = ["Milk", "Newspaper", "Grocery", "Vegetables", "Fruits", "Other"];
+const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 const ProductManagement = () => {
   const { products, loading: productsLoading } = useProducts();
@@ -32,9 +38,10 @@ const ProductManagement = () => {
     name: "",
     category: "",
     price: "",
-    unit: "",
-    availability: "Daily",
-    description: ""
+    unit: "Nos",
+    availability: "",
+    description: "",
+    selectedDays: [] as string[]
   });
 
   useEffect(() => {
@@ -67,31 +74,49 @@ const ProductManagement = () => {
   };
 
   const handleRequestProduct = async () => {
-    if (newRequest.name && newRequest.category && newRequest.price && vendorId && user) {
-      try {
-        await createProductRequest({
-          vendor_id: vendorId,
-          requested_by_user_id: user.id,
-          name: newRequest.name,
-          category: newRequest.category,
-          price: parseFloat(newRequest.price),
-          unit: newRequest.unit,
-          availability: newRequest.availability,
-          description: newRequest.description || null,
-        });
-        setNewRequest({
-          name: "",
-          category: "",
-          price: "",
-          unit: "",
-          availability: "Daily",
-          description: ""
-        });
-        setShowRequestDialog(false);
-      } catch (error) {
-        // Error handled by hook
-      }
+    if (!newRequest.name || !newRequest.category || !newRequest.price || !newRequest.selectedDays.length || !vendorId || !user) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all required fields and select at least one day",
+        variant: "destructive",
+      });
+      return;
     }
+
+    try {
+      const availability = newRequest.selectedDays.join(", ");
+      await createProductRequest({
+        vendor_id: vendorId,
+        requested_by_user_id: user.id,
+        name: newRequest.name,
+        category: newRequest.category,
+        price: parseFloat(newRequest.price),
+        unit: newRequest.unit,
+        availability: availability,
+        description: newRequest.description || null,
+      });
+      setNewRequest({
+        name: "",
+        category: "",
+        price: "",
+        unit: "Nos",
+        availability: "",
+        description: "",
+        selectedDays: []
+      });
+      setShowRequestDialog(false);
+    } catch (error) {
+      // Error handled by hook
+    }
+  };
+
+  const handleDayToggle = (day: string) => {
+    setNewRequest(prev => ({
+      ...prev,
+      selectedDays: prev.selectedDays.includes(day)
+        ? prev.selectedDays.filter(d => d !== day)
+        : [...prev.selectedDays, day]
+    }));
   };
   
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -395,60 +420,67 @@ const ProductManagement = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Product Name *</label>
+                <Label htmlFor="product-name">Product Name and Pack Size *</Label>
                 <Input
+                  id="product-name"
                   value={newRequest.name}
                   onChange={(e) => setNewRequest({...newRequest, name: e.target.value})}
-                  placeholder="Enter product name"
+                  placeholder="Enter product name and pack size"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Category *</label>
+                <Label htmlFor="category">Category *</Label>
                 <Select value={newRequest.category} onValueChange={(value) => setNewRequest({...newRequest, category: value})}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Milk">Milk</SelectItem>
-                    <SelectItem value="Newspaper">Newspaper</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
+                    {PRODUCT_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Price *</label>
+                <Label htmlFor="price">Price *</Label>
                 <Input
+                  id="price"
                   type="number"
+                  step="0.01"
                   value={newRequest.price}
                   onChange={(e) => setNewRequest({...newRequest, price: e.target.value})}
                   placeholder="Enter price"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Unit *</label>
+                <Label htmlFor="unit">Unit *</Label>
                 <Input
+                  id="unit"
                   value={newRequest.unit}
                   onChange={(e) => setNewRequest({...newRequest, unit: e.target.value})}
-                  placeholder="e.g., per litre, per copy"
+                  placeholder="Nos"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Availability</label>
-                <Select value={newRequest.availability} onValueChange={(value) => setNewRequest({...newRequest, availability: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select availability" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Daily">Daily</SelectItem>
-                    <SelectItem value="Weekly">Weekly</SelectItem>
-                    <SelectItem value="Monthly">Monthly</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Description</label>
-              <Input
+              <Label>Availability (Select Days) *</Label>
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                {DAYS_OF_WEEK.map((day) => (
+                  <div key={day} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`request-${day}`}
+                      checked={newRequest.selectedDays.includes(day)}
+                      onCheckedChange={() => handleDayToggle(day)}
+                    />
+                    <Label htmlFor={`request-${day}`} className="cursor-pointer">{day}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
                 value={newRequest.description}
                 onChange={(e) => setNewRequest({...newRequest, description: e.target.value})}
                 placeholder="Enter product description"
@@ -459,7 +491,7 @@ const ProductManagement = () => {
             <Button variant="outline" onClick={() => setShowRequestDialog(false)}>Cancel</Button>
             <Button 
               onClick={handleRequestProduct}
-              disabled={!newRequest.name || !newRequest.category || !newRequest.price || !newRequest.unit}
+              disabled={!newRequest.name || !newRequest.category || !newRequest.price || !newRequest.unit || !newRequest.selectedDays.length}
             >
               Submit Request
             </Button>
