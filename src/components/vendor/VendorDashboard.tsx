@@ -278,6 +278,257 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
         )}
       </div>
 
+      {/* Time View Selector */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={timeView === "today" ? "default" : "outline"}
+                onClick={() => setTimeView("today")}
+              >
+                Today
+              </Button>
+              <Button
+                variant={timeView === "tomorrow" ? "default" : "outline"}
+                onClick={() => setTimeView("tomorrow")}
+              >
+                Tomorrow
+              </Button>
+              <Button
+                variant={timeView === "week" ? "default" : "outline"}
+                onClick={() => setTimeView("week")}
+              >
+                This Week
+              </Button>
+              <Button
+                variant={timeView === "month" ? "default" : "outline"}
+                onClick={() => setTimeView("month")}
+              >
+                Monthly
+              </Button>
+            </div>
+            {timeView === "month" && (
+              <Input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-full md:w-auto"
+              />
+            )}
+            <Button onClick={exportToExcel} variant="outline" className="w-full md:w-auto">
+              <Download className="h-4 w-4 mr-2" />
+              Export to Excel
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Orders</CardTitle>
+            <ShoppingCart className="h-5 w-5 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{statisticsSummary.totalOrders}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Delivered Orders</CardTitle>
+            <CheckCircle className="h-5 w-5 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{statisticsSummary.deliveredCount}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-amber-500">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Orders</CardTitle>
+            <Clock className="h-5 w-5 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{statisticsSummary.pendingCount}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-purple-500">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Delivered Revenue</CardTitle>
+            <DollarSign className="h-5 w-5 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₹{statisticsSummary.deliveredRevenue.toFixed(2)}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-rose-500">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Revenue</CardTitle>
+            <TrendingUp className="h-5 w-5 text-rose-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₹{statisticsSummary.pendingRevenue.toFixed(2)}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-cyan-500">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Coverage</CardTitle>
+            <MapPin className="h-5 w-5 text-cyan-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {statisticsSummary.areasServed} Areas / {statisticsSummary.societiesServed} Societies
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Hierarchical Orders Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Receipt className="h-5 w-5" />
+            <span>Orders by Area & Society</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Area / Society / Wing / Flat</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredOrders.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                      No orders found for the selected time period
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  groupedOrdersByHierarchy.map((areaData: any) => (
+                    <React.Fragment key={areaData.areaId}>
+                      {/* Area Header Row */}
+                      <TableRow className="bg-blue-50 dark:bg-blue-950 font-semibold cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900" onClick={() => toggleAreaExpansion(areaData.areaId)}>
+                        <TableCell className="flex items-center space-x-2">
+                          {expandedAreas.has(areaData.areaId) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          <Building className="h-4 w-4" />
+                          <span>{areaData.areaName}</span>
+                        </TableCell>
+                        <TableCell colSpan={3}>{areaData.totalOrders} orders</TableCell>
+                        <TableCell>₹{areaData.totalRevenue.toFixed(2)}</TableCell>
+                        <TableCell colSpan={3}></TableCell>
+                      </TableRow>
+
+                      {/* Society Rows (if area is expanded) */}
+                      {expandedAreas.has(areaData.areaId) &&
+                        Array.from(areaData.societies.entries()).map(([societyId, societyData]: [string, any]) => (
+                          <React.Fragment key={`${areaData.areaId}-${societyId}`}>
+                            <TableRow className="bg-green-50 dark:bg-green-950 font-semibold cursor-pointer hover:bg-green-100 dark:hover:bg-green-900" onClick={() => toggleSocietyExpansion(`${areaData.areaId}-${societyId}`)}>
+                              <TableCell className="pl-8 flex items-center space-x-2">
+                                {expandedSocieties.has(`${areaData.areaId}-${societyId}`) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                <Building className="h-4 w-4" />
+                                <span>{societyData.societyName}</span>
+                              </TableCell>
+                              <TableCell colSpan={3}>{societyData.totalOrders} orders</TableCell>
+                              <TableCell>₹{societyData.totalRevenue.toFixed(2)}</TableCell>
+                              <TableCell colSpan={3}></TableCell>
+                            </TableRow>
+
+                            {/* Wing Rows (if society is expanded) */}
+                            {expandedSocieties.has(`${areaData.areaId}-${societyId}`) &&
+                              Array.from(societyData.wings.entries()).map(([wingNumber, wingData]: [string, any]) => (
+                                <React.Fragment key={`${areaData.areaId}-${societyId}-${wingNumber}`}>
+                                  <TableRow className="bg-yellow-50 dark:bg-yellow-950">
+                                    <TableCell className="pl-16 font-medium">
+                                      Wing: {wingNumber}
+                                    </TableCell>
+                                    <TableCell colSpan={3}>{wingData.totalOrders} orders</TableCell>
+                                    <TableCell>₹{wingData.totalRevenue.toFixed(2)}</TableCell>
+                                    <TableCell colSpan={3}></TableCell>
+                                  </TableRow>
+
+                                  {/* Flat Rows (individual orders) */}
+                                  {Array.from(wingData.flats.entries()).map(([flatNumber, orders]: [string, any]) =>
+                                    orders.map((order: any) => (
+                                      <TableRow key={order.id} className="hover:bg-muted/50">
+                                        <TableCell className="pl-24 text-sm">
+                                          Flat: {flatNumber}
+                                        </TableCell>
+                                        <TableCell>{order.customer?.name || 'N/A'}</TableCell>
+                                        <TableCell>{order.product?.name || 'N/A'}</TableCell>
+                                        <TableCell>{order.quantity} {order.unit}</TableCell>
+                                        <TableCell>₹{order.total_amount.toFixed(2)}</TableCell>
+                                        <TableCell>
+                                          <Badge variant={order.status === 'delivered' ? 'default' : 'secondary'}>
+                                            {order.status}
+                                          </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-sm">{format(new Date(order.order_date), 'dd MMM yyyy')}</TableCell>
+                                        <TableCell>
+                                          <Button
+                                            size="sm"
+                                            variant={order.status === 'delivered' ? 'outline' : 'default'}
+                                            onClick={() => handleStatusToggle(order.id, order.status)}
+                                          >
+                                            {order.status === 'delivered' ? 'Pending' : 'Delivered'}
+                                          </Button>
+                                        </TableCell>
+                                      </TableRow>
+                                    ))
+                                  )}
+                                </React.Fragment>
+                              ))}
+                          </React.Fragment>
+                        ))}
+                    </React.Fragment>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Summary Footer */}
+          {filteredOrders.length > 0 && (
+            <div className="mt-6 pt-4 border-t">
+              <Table>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-semibold">Delivered</TableCell>
+                    <TableCell>{statisticsSummary.deliveredCount} orders</TableCell>
+                    <TableCell className="font-semibold">₹{statisticsSummary.deliveredRevenue.toFixed(2)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-semibold">Pending</TableCell>
+                    <TableCell>{statisticsSummary.pendingCount} orders</TableCell>
+                    <TableCell className="font-semibold">₹{statisticsSummary.pendingRevenue.toFixed(2)}</TableCell>
+                  </TableRow>
+                  <TableRow className="bg-muted">
+                    <TableCell className="font-bold">Total</TableCell>
+                    <TableCell className="font-bold">{statisticsSummary.totalOrders} orders</TableCell>
+                    <TableCell className="font-bold">₹{(statisticsSummary.deliveredRevenue + statisticsSummary.pendingRevenue).toFixed(2)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
     </div>
   );
 };
