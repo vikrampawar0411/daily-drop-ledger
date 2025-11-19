@@ -88,38 +88,49 @@ const AdminApp = () => {
       {/* Admin Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7 mb-8 h-auto">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8 h-auto">
             <TabsTrigger value="dashboard" className="text-xs sm:text-sm">Dashboard</TabsTrigger>
-            <TabsTrigger value="customers" className="text-xs sm:text-sm">Customers</TabsTrigger>
-            <TabsTrigger value="vendors" className="text-xs sm:text-sm">Vendors</TabsTrigger>
-            <TabsTrigger value="orders" className="text-xs sm:text-sm">Orders</TabsTrigger>
-            <TabsTrigger value="products" className="text-xs sm:text-sm">Products</TabsTrigger>
-            <TabsTrigger value="history" className="text-xs sm:text-sm">Order History</TabsTrigger>
-            <TabsTrigger value="service-area" className="text-xs sm:text-sm">Service Area</TabsTrigger>
+            <TabsTrigger value="users" className="text-xs sm:text-sm">Users</TabsTrigger>
+            <TabsTrigger value="products-orders" className="text-xs sm:text-sm">Products & Orders</TabsTrigger>
+            <TabsTrigger value="service-area" className="text-xs sm:text-sm">Service Areas</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">
             <Dashboard onNavigate={setActiveTab} />
           </TabsContent>
 
-          <TabsContent value="customers">
-            <CustomerManagement />
+          <TabsContent value="users" className="space-y-6">
+            <Tabs defaultValue="customers" className="w-full">
+              <TabsList>
+                <TabsTrigger value="customers">Customers</TabsTrigger>
+                <TabsTrigger value="vendors">Vendors</TabsTrigger>
+              </TabsList>
+              <TabsContent value="customers">
+                <CustomerManagement />
+              </TabsContent>
+              <TabsContent value="vendors">
+                <VendorManagement />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
-          <TabsContent value="vendors">
-            <VendorManagement />
-          </TabsContent>
-
-          <TabsContent value="orders">
-            <OrderManagement />
-          </TabsContent>
-
-          <TabsContent value="products">
-            <ProductManagement />
-          </TabsContent>
-
-          <TabsContent value="history">
-            <AdminOrderHistory />
+          <TabsContent value="products-orders" className="space-y-6">
+            <Tabs defaultValue="products" className="w-full">
+              <TabsList>
+                <TabsTrigger value="products">Products</TabsTrigger>
+                <TabsTrigger value="orders">Current Orders</TabsTrigger>
+                <TabsTrigger value="history">Order History</TabsTrigger>
+              </TabsList>
+              <TabsContent value="products">
+                <ProductManagement />
+              </TabsContent>
+              <TabsContent value="orders">
+                <OrderManagement />
+              </TabsContent>
+              <TabsContent value="history">
+                <AdminOrderHistory />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="service-area">
