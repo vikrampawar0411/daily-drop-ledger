@@ -69,7 +69,7 @@ const VendorApp = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 lg:w-fit lg:grid-cols-7">
+          <TabsList className="grid w-full grid-cols-4 lg:w-fit lg:grid-cols-4">
             <TabsTrigger value="dashboard" className="flex items-center space-x-2">
               <TrendingUp className="h-4 w-4" />
               <span>Dashboard</span>
@@ -78,25 +78,13 @@ const VendorApp = () => {
               <Users className="h-4 w-4" />
               <span>Customers</span>
             </TabsTrigger>
-            <TabsTrigger value="orders" className="flex items-center space-x-2">
-              <Receipt className="h-4 w-4" />
-              <span>Orders</span>
-            </TabsTrigger>
-            <TabsTrigger value="hierarchy" className="flex items-center space-x-2">
-              <MapPin className="h-4 w-4" />
-              <span>Society View</span>
-            </TabsTrigger>
-            <TabsTrigger value="area-hierarchy" className="flex items-center space-x-2">
-              <MapPin className="h-4 w-4" />
-              <span>Area View</span>
-            </TabsTrigger>
-            <TabsTrigger value="products" className="flex items-center space-x-2">
+            <TabsTrigger value="products-orders" className="flex items-center space-x-2">
               <Package className="h-4 w-4" />
-              <span>Products</span>
+              <span>Products & Orders</span>
             </TabsTrigger>
-            <TabsTrigger value="areas" className="flex items-center space-x-2">
+            <TabsTrigger value="service-areas" className="flex items-center space-x-2">
               <MapPin className="h-4 w-4" />
-              <span>Manage Areas</span>
+              <span>Service Areas</span>
             </TabsTrigger>
           </TabsList>
 
@@ -108,27 +96,43 @@ const VendorApp = () => {
             <CustomerManagement />
           </TabsContent>
 
-          <TabsContent value="orders">
-            <OrderManagement 
-              initialTimeRange={navigationParams.timeRange}
-              initialStatus={navigationParams.status}
-            />
+          <TabsContent value="products-orders" className="space-y-6">
+            <Tabs defaultValue="products" className="w-full">
+              <TabsList>
+                <TabsTrigger value="products">Product Management</TabsTrigger>
+                <TabsTrigger value="orders">Order Management</TabsTrigger>
+              </TabsList>
+              <TabsContent value="products">
+                <ProductManagement />
+              </TabsContent>
+              <TabsContent value="orders">
+                <OrderManagement 
+                  initialTimeRange={navigationParams?.initialTimeRange}
+                  initialStatus={navigationParams?.initialStatus}
+                />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
-          <TabsContent value="hierarchy">
-            <SocietyHierarchyView initialTimeRange={navigationParams.timeRange} />
-          </TabsContent>
-
-          <TabsContent value="area-hierarchy">
-            <AreaHierarchyView initialTimeRange={navigationParams.timeRange} />
-          </TabsContent>
-
-          <TabsContent value="products">
-            <ProductManagement />
-          </TabsContent>
-
-          <TabsContent value="areas">
-            {currentVendorId && <AreaSocietyManagement />}
+          <TabsContent value="service-areas" className="space-y-6">
+            <Tabs defaultValue="society" className="w-full">
+              <TabsList>
+                <TabsTrigger value="society">Society View</TabsTrigger>
+                <TabsTrigger value="area">Area View</TabsTrigger>
+                {currentVendorId && <TabsTrigger value="setup">Area Setup</TabsTrigger>}
+              </TabsList>
+              <TabsContent value="society">
+                <SocietyHierarchyView initialTimeRange={navigationParams?.initialTimeRange} />
+              </TabsContent>
+              <TabsContent value="area">
+                <AreaHierarchyView initialTimeRange={navigationParams?.initialTimeRange} />
+              </TabsContent>
+              {currentVendorId && (
+                <TabsContent value="setup">
+                  <AreaSocietyManagement />
+                </TabsContent>
+              )}
+            </Tabs>
           </TabsContent>
         </Tabs>
       </div>
