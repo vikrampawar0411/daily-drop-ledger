@@ -243,6 +243,7 @@ export type Database = {
           updated_at: string
           updated_by_user_id: string | null
           vendor_id: string
+          vendor_product_id: string
         }
         Insert: {
           created_at?: string
@@ -266,6 +267,7 @@ export type Database = {
           updated_at?: string
           updated_by_user_id?: string | null
           vendor_id: string
+          vendor_product_id: string
         }
         Update: {
           created_at?: string
@@ -289,6 +291,7 @@ export type Database = {
           updated_at?: string
           updated_by_user_id?: string | null
           vendor_id?: string
+          vendor_product_id?: string
         }
         Relationships: [
           {
@@ -317,6 +320,57 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_vendor_product_fkey"
+            columns: ["vendor_product_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_change_history: {
+        Row: {
+          affected_orders_count: number | null
+          applied_to_orders: string
+          change_type: string
+          changed_by_user_id: string
+          created_at: string
+          id: string
+          new_values: Json
+          old_values: Json
+          product_id: string
+        }
+        Insert: {
+          affected_orders_count?: number | null
+          applied_to_orders: string
+          change_type: string
+          changed_by_user_id: string
+          created_at?: string
+          id?: string
+          new_values: Json
+          old_values: Json
+          product_id: string
+        }
+        Update: {
+          affected_orders_count?: number | null
+          applied_to_orders?: string
+          change_type?: string
+          changed_by_user_id?: string
+          created_at?: string
+          id?: string
+          new_values?: Json
+          old_values?: Json
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_change_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -693,27 +747,42 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          in_stock: boolean | null
           is_active: boolean
+          last_stock_update: string | null
           price_override: number | null
           product_id: string
+          stock_available: number | null
+          stock_quantity: number | null
+          stock_reserved: number | null
           updated_at: string
           vendor_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          in_stock?: boolean | null
           is_active?: boolean
+          last_stock_update?: string | null
           price_override?: number | null
           product_id: string
+          stock_available?: number | null
+          stock_quantity?: number | null
+          stock_reserved?: number | null
           updated_at?: string
           vendor_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          in_stock?: boolean | null
           is_active?: boolean
+          last_stock_update?: string | null
           price_override?: number | null
           product_id?: string
+          stock_available?: number | null
+          stock_quantity?: number | null
+          stock_reserved?: number | null
           updated_at?: string
           vendor_id?: string
         }

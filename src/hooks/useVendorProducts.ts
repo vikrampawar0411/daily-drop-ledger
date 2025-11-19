@@ -8,14 +8,22 @@ export interface VendorProduct {
   product_id: string;
   price_override: number | null;
   is_active: boolean;
+  stock_quantity: number;
+  stock_reserved: number;
+  stock_available: number;
+  in_stock: boolean;
+  last_stock_update: string | null;
+  created_at: string;
+  updated_at: string;
   product?: {
     id: string;
     name: string;
     category: string;
     price: number;
     unit: string;
-    availability: string;
     description: string | null;
+    image_url: string | null;
+    status: string;
   };
 }
 
@@ -148,12 +156,59 @@ export const useVendorProducts = (vendorId?: string) => {
     }
   };
 
+  const addStock = async (vendorProductId: string, quantity: number) => {
+    try {
+      const currentVP = vendorProducts.find(vp => vp.id === vendorProductId);
+      if (!currentVP) throw new Error("Product not found");
+
+      const { data, error } = await supabase
+        .from("vendor_products")
+        .update({ 
+          stock_quantity: (currentVP.stock_quantity || 0) + quantity
+        })
+        .eq("id", vendorProductId)
+        .select(`*, product:products(*)`)
+        .single();
+
+      if (error) throw error;
+
+      setVendorProducts(prev =>
+        prev.map(vp => vp.id === vendorProductId ? data : vp)
+      );
+
+      toast({
+        title: "Stock Updated",
+        description: `Added ${quantity} units to stock`,
+      });
+
+      return data;
+    } catch (error: any) {
+      toast({
+        title: "Error updating stock",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const updateStockStatus = async (vendorProductId: string, inStock: boolean) => {
+    return updateVendorProduct(vendorProductId, { in_stock: inStock });
+  };
+
+  const updatePrice = async (vendorProductId: string, price: number) => {
+    return updateVendorProduct(vendorProductId, { price_override: price });
+  };
+
   return {
     vendorProducts,
     loading,
     addVendorProduct,
     updateVendorProduct,
     removeVendorProduct,
+    addStock,
+    updateStockStatus,
+    updatePrice,
     refetch: fetchVendorProducts,
   };
 };

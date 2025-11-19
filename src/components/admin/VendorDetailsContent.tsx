@@ -51,9 +51,6 @@ export const VendorDetailsContent = ({ vendorId }: VendorDetailsContentProps) =>
                     <h4 className="font-medium">{vp.product?.name}</h4>
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant="outline">{vp.product?.category}</Badge>
-                      <span className="text-sm text-muted-foreground">
-                        {vp.product?.availability}
-                      </span>
                     </div>
                     {vp.product?.description && (
                       <p className="text-sm text-muted-foreground mt-2">
