@@ -138,16 +138,40 @@ export const useOrders = () => {
         throw new Error("Vendor or product not found");
       }
 
+      // Get vendor_product_id
+      const { data: vendorProduct } = await supabase
+        .from("vendor_products")
+        .select("id, price_override, stock_available, in_stock")
+        .eq("vendor_id", vendors.id)
+        .eq("product_id", products.id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (!vendorProduct) {
+        throw new Error("This vendor does not offer this product");
+      }
+
+      if (!vendorProduct.in_stock) {
+        throw new Error("Product is currently out of stock");
+      }
+
+      if (vendorProduct.stock_available < order.quantity) {
+        throw new Error(`Insufficient stock. Only ${vendorProduct.stock_available} available`);
+      }
+
+      const actualPrice = vendorProduct.price_override || products.price;
+
       const { data: newOrder, error } = await supabase
         .from("orders")
         .insert([{
           order_date: dateString,
           vendor_id: vendors.id,
           product_id: products.id,
+          vendor_product_id: vendorProduct.id,
           quantity: order.quantity,
           unit: order.unit,
-          price_per_unit: products.price,
-          total_amount: order.quantity * products.price,
+          price_per_unit: actualPrice,
+          total_amount: order.quantity * actualPrice,
           status: "pending",
           customer_id: customerId,
           placed_by_user_id: user?.id || null,

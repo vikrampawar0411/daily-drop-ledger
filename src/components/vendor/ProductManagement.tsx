@@ -260,13 +260,8 @@ const ProductManagement = () => {
                       </div>
                       <div>
                         <span className="font-medium">Price:</span>
-                        <div className="text-muted-foreground">₹{vp.price_override || vp.product?.price} {vp.product?.unit}</div>
+                        <div className="text-muted-foreground">₹{vp.price_override || vp.product?.price} / {vp.product?.unit}</div>
                       </div>
-                    </div>
-                    
-                    <div className="text-sm">
-                      <span className="font-medium">Availability:</span>
-                      <div className="text-muted-foreground">{vp.product?.availability}</div>
                     </div>
                     
                     {vp.product?.description && (
