@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { VendorOrderTabs } from "./components/VendorOrderTabs";
 import OrderCalendarView from "./components/OrderCalendarView";
 import { useOrders } from "@/hooks/useOrders";
+import { useOrders as useCustomerOrders } from "@/components/customer/hooks/useOrders";
 import { useVendors } from "@/hooks/useVendors";
 import { useVendorProducts } from "@/hooks/useVendorProducts";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +44,7 @@ interface CustomerDashboardProps {
 const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDashboardProps) => {
   const { user } = useAuth();
   const { orders, loading: ordersLoading, updateOrderStatus, raiseDispute, clearDispute, deleteOrder, updateOrder, refetch } = useOrders();
+  const { addOrder: addCalendarOrder, refetch: refetchCalendar } = useCustomerOrders();
   const { vendors, loading: vendorsLoading } = useVendors();
   const { toast } = useToast();
   const [customerName, setCustomerName] = useState("");
@@ -89,6 +91,27 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
     );
     return uniqueProducts;
   }, [orders, selectedVendor]);
+
+  // Auto-select most used product when vendor changes (Issue 2 Fix)
+  useEffect(() => {
+    if (selectedVendor && availableProducts.length > 0) {
+      const productFrequency = orders
+        .filter(o => o.vendor.id === selectedVendor)
+        .reduce((acc, order) => {
+          acc[order.product.id] = (acc[order.product.id] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+      
+      const mostUsedProductId = Object.entries(productFrequency)
+        .sort(([, a], [, b]) => b - a)[0]?.[0];
+      
+      if (mostUsedProductId) {
+        setSelectedProduct(mostUsedProductId);
+      } else {
+        setSelectedProduct('all');
+      }
+    }
+  }, [selectedVendor]);
   const [orderDetailsDialogOpen, setOrderDetailsDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [tableExpanded, setTableExpanded] = useState(true);
@@ -120,6 +143,14 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
   const [bulkEditFormData, setBulkEditFormData] = useState({
     quantity: 0,
     order_date: '',
+  });
+  
+  // Calendar order form state
+  const [newOrderFormData, setNewOrderFormData] = useState({
+    vendor_id: '',
+    product_id: '',
+    quantity: 0,
+    order_date: new Date(),
   });
 
   const handleOrderClick = (order: any) => {
@@ -886,43 +917,55 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
         />
       )}
 
-      {/* Next Order Info Card */}
-      <Card className="bg-gradient-to-r from-green-500 to-blue-500 text-white">
+      {/* Next Due Orders Card (Issue 1 Fix) */}
+      <Card className="bg-white border shadow-sm">
         <CardHeader>
-          <CardTitle className="text-xl">Your Next Orders</CardTitle>
+          <CardTitle className="text-xl">Your Next Due Orders</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {(() => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const upcomingOrders = orders
-              .filter(o => {
-                const orderDate = new Date(o.order_date);
-                orderDate.setHours(0, 0, 0, 0);
-                return orderDate >= today && o.status === 'pending';
-              })
-              .slice(0, 3);
+            
+            // Get first upcoming order per connected vendor
+            const nextOrdersByVendor = vendors.map(vendor => {
+              const vendorOrders = orders
+                .filter(o => {
+                  const orderDate = new Date(o.order_date);
+                  orderDate.setHours(0, 0, 0, 0);
+                  return o.vendor.id === vendor.id && 
+                         orderDate >= today && 
+                         o.status === 'pending';
+                })
+                .sort((a, b) => new Date(a.order_date).getTime() - new Date(b.order_date).getTime());
+              
+              return vendorOrders[0];
+            }).filter(Boolean);
+            
+            const sortedNextOrders = nextOrdersByVendor.sort((a, b) => 
+              new Date(a.order_date).getTime() - new Date(b.order_date).getTime()
+            );
 
-            if (upcomingOrders.length === 0) {
-              return <p className="text-green-100">No upcoming orders. Place a new order to get started!</p>;
+            if (sortedNextOrders.length === 0) {
+              return <p className="text-gray-500">No upcoming orders. Place a new order to get started!</p>;
             }
 
-            return upcomingOrders.map(order => (
-              <div key={order.id} className="flex items-center justify-between bg-white/20 rounded-lg p-3">
+            return sortedNextOrders.map(order => (
+              <div key={order.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3 border">
                 <div className="space-y-1">
-                  <p className="font-semibold">{order.product.name}</p>
-                  <p className="text-sm text-green-100">
+                  <p className="font-semibold text-gray-900">{order.product.name}</p>
+                  <p className="text-sm text-gray-500">
                     {order.vendor.name} • {new Date(order.order_date).toLocaleDateString()}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold">{order.quantity} {order.unit}</p>
-                  <p className="text-sm">₹{order.total_amount}</p>
+                  <p className="font-bold text-gray-900">{order.quantity} {order.unit}</p>
+                  <p className="text-sm text-gray-600">₹{order.total_amount}</p>
                 </div>
               </div>
             ));
           })()}
-          <div className="flex items-center space-x-4 text-green-100 pt-2 border-t border-white/20">
+          <div className="flex items-center space-x-4 text-gray-600 pt-2 border-t border-gray-200">
             <div className="flex items-center space-x-2">
               <Users className="h-4 w-4" />
               <span>{connectionCount} Connected Vendors</span>
@@ -1223,37 +1266,214 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
               </CollapsibleTrigger>
               
               <CollapsibleContent>
-                <OrderCalendarView
-                  selectedDate={calendarSelectedDate}
-                  onSelectDate={setCalendarSelectedDate}
-                  hasOrdersOnDate={(date) => {
-                    const dateStr = format(date, 'yyyy-MM-dd');
-                    return monthlyStats.orders.some(o => o.order_date === dateStr);
-                  }}
-                  getOrdersForDate={(date) => {
-                    const dateStr = format(date, 'yyyy-MM-dd');
-                    return monthlyStats.orders.filter(o => o.order_date === dateStr);
-                  }}
-                  month={new Date(selectedMonth + '-01')}
-                  onMonthChange={(newMonth) => {
-                    const monthStr = format(newMonth, 'yyyy-MM');
-                    setSelectedMonth(monthStr);
-                    setFilterBySpecificDate(undefined);
-                    setCalendarSelectedDate(undefined);
-                    setSelectedVendor('');
-                    setSelectedProduct('all');
-                  }}
-                  onDateClick={(date) => {
-                    const dateMonth = format(date, 'yyyy-MM');
-                    if (dateMonth !== selectedMonth) {
-                      setSelectedMonth(dateMonth);
-                    }
-                    
-                    setFilterBySpecificDate(date);
-                    setCalendarSelectedDate(date);
-                    setTableExpanded(true);
-                  }}
-                />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Calendar - Left Side */}
+                  <OrderCalendarView
+                    selectedDate={calendarSelectedDate}
+                    onSelectDate={setCalendarSelectedDate}
+                    hasOrdersOnDate={(date) => {
+                      const dateStr = format(date, 'yyyy-MM-dd');
+                      return monthlyStats.orders.some(o => o.order_date === dateStr);
+                    }}
+                    getOrdersForDate={(date) => {
+                      const dateStr = format(date, 'yyyy-MM-dd');
+                      return monthlyStats.orders.filter(o => o.order_date === dateStr);
+                    }}
+                    month={new Date(selectedMonth + '-01')}
+                    onMonthChange={(newMonth) => {
+                      const monthStr = format(newMonth, 'yyyy-MM');
+                      setSelectedMonth(monthStr);
+                      setFilterBySpecificDate(undefined);
+                      setCalendarSelectedDate(undefined);
+                      setSelectedVendor('');
+                      setSelectedProduct('all');
+                    }}
+                    onDateClick={(date) => {
+                      const dateMonth = format(date, 'yyyy-MM');
+                      if (dateMonth !== selectedMonth) {
+                        setSelectedMonth(dateMonth);
+                      }
+                      
+                      setFilterBySpecificDate(date);
+                      setCalendarSelectedDate(date);
+                      setTableExpanded(true);
+                      setNewOrderFormData({
+                        ...newOrderFormData,
+                        order_date: date,
+                      });
+                    }}
+                  />
+
+                  {/* Order Form - Right Side (Issue 3 Fix) */}
+                  {calendarSelectedDate && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Place New Order</CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          For {format(calendarSelectedDate, 'MMMM d, yyyy')}
+                        </p>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {/* Vendor Selection */}
+                        <div className="space-y-2">
+                          <Label>Select Vendor</Label>
+                          <Select
+                            value={newOrderFormData.vendor_id}
+                            onValueChange={(value) => {
+                              setNewOrderFormData({ 
+                                vendor_id: value,
+                                product_id: '',
+                                quantity: 0,
+                                order_date: calendarSelectedDate 
+                              });
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose vendor" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {vendors.map((vendor) => (
+                                <SelectItem key={vendor.id} value={vendor.id}>
+                                  {vendor.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Product Selection */}
+                        {newOrderFormData.vendor_id && (
+                          <div className="space-y-2">
+                            <Label>Select Product</Label>
+                            <Select
+                              value={newOrderFormData.product_id}
+                              onValueChange={(value) => 
+                                setNewOrderFormData({ ...newOrderFormData, product_id: value })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Choose product" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {orders
+                                  .filter(o => o.vendor.id === newOrderFormData.vendor_id)
+                                  .reduce((acc, o) => {
+                                    if (!acc.find(p => p.id === o.product.id)) {
+                                      acc.push(o.product);
+                                    }
+                                    return acc;
+                                  }, [] as any[])
+                                  .map((product) => (
+                                    <SelectItem key={product.id} value={product.id}>
+                                      {product.name}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        {/* Quantity Input */}
+                        {newOrderFormData.product_id && (
+                          <div className="space-y-2">
+                            <Label>Quantity</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.5"
+                              value={newOrderFormData.quantity || ''}
+                              onChange={(e) => 
+                                setNewOrderFormData({ 
+                                  ...newOrderFormData, 
+                                  quantity: parseFloat(e.target.value) || 0 
+                                })
+                              }
+                              placeholder="Enter quantity"
+                            />
+                          </div>
+                        )}
+
+                        {/* Place Order Button */}
+                        <Button
+                          className="w-full"
+                          disabled={!newOrderFormData.product_id || newOrderFormData.quantity <= 0}
+                          onClick={async () => {
+                            try {
+                              const vendor = vendors.find(v => v.id === newOrderFormData.vendor_id);
+                              const product = orders.find(o => o.product.id === newOrderFormData.product_id)?.product;
+                              
+                              if (!vendor || !product) {
+                                toast({
+                                  title: "Error",
+                                  description: "Invalid vendor or product selected",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+
+                              await addCalendarOrder(calendarSelectedDate, {
+                                vendor: vendor.name,
+                                product: product.name,
+                                quantity: newOrderFormData.quantity,
+                                unit: '',
+                                status: 'pending',
+                              });
+                              
+                              await refetch();
+                              await refetchCalendar();
+                              
+                              toast({
+                                title: "Order Placed",
+                                description: `Order for ${format(calendarSelectedDate, 'MMM d, yyyy')} created successfully`,
+                              });
+                              
+                              setNewOrderFormData({
+                                vendor_id: '',
+                                product_id: '',
+                                quantity: 0,
+                                order_date: calendarSelectedDate,
+                              });
+                            } catch (error) {
+                              toast({
+                                title: "Error",
+                                description: "Failed to place order",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Place Order
+                        </Button>
+
+                        {/* Show existing orders for this date */}
+                        {(() => {
+                          const dateStr = format(calendarSelectedDate, 'yyyy-MM-dd');
+                          const existingOrders = monthlyStats.orders.filter(o => o.order_date === dateStr);
+                          
+                          if (existingOrders.length > 0) {
+                            return (
+                              <div className="pt-4 border-t">
+                                <p className="text-sm font-medium mb-2">Existing Orders:</p>
+                                <div className="space-y-2">
+                                  {existingOrders.map(order => (
+                                    <div key={order.id} className="text-xs bg-muted p-2 rounded">
+                                      <p className="font-medium">{order.product.name}</p>
+                                      <p className="text-muted-foreground">
+                                        {order.vendor.name} • {order.quantity} {order.unit}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
               </CollapsibleContent>
             </div>
           </Collapsible>
