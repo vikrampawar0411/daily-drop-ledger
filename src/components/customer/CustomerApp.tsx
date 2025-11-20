@@ -113,7 +113,11 @@ const CustomerApp = () => {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <CustomerDashboard onNavigate={setActiveTab} />
+            <CustomerDashboard 
+              onNavigate={setActiveTab} 
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+            />
           </TabsContent>
 
           <TabsContent value="subscriptions">
