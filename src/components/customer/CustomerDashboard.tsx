@@ -733,30 +733,30 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     });
     
     const totalOrders = monthOrders.length;
-    const deliveredOrders = monthOrders.filter(o => o.status === 'delivered').length;
+    const deliveredNonDisputed = monthOrders.filter(o => o.status === 'delivered' && !o.dispute_raised).length;
+    const deliveredDisputed = monthOrders.filter(o => o.status === 'delivered' && o.dispute_raised === true).length;
     const scheduledOrders = monthOrders.filter(o => o.status === 'pending').length;
-    const disputedOrders = monthOrders.filter(o => o.dispute_raised === true).length;
     
-    const deliveredSpend = monthOrders
-      .filter(o => o.status === 'delivered')
+    const deliveredNonDisputedSpend = monthOrders
+      .filter(o => o.status === 'delivered' && !o.dispute_raised)
+      .reduce((sum, o) => sum + Number(o.total_amount), 0);
+    
+    const deliveredDisputedAmount = monthOrders
+      .filter(o => o.status === 'delivered' && o.dispute_raised === true)
       .reduce((sum, o) => sum + Number(o.total_amount), 0);
     
     const forecastedBill = monthOrders
       .filter(o => o.status === 'pending')
       .reduce((sum, o) => sum + Number(o.total_amount), 0);
     
-    const disputedAmount = monthOrders
-      .filter(o => o.dispute_raised === true)
-      .reduce((sum, o) => sum + Number(o.total_amount), 0);
-    
     return {
       totalOrders,
-      deliveredOrders,
+      deliveredOrders: deliveredNonDisputed,
+      deliveredDisputedOrders: deliveredDisputed,
       scheduledOrders,
-      disputedOrders,
-      deliveredSpend: Math.round(deliveredSpend),
+      deliveredSpend: Math.round(deliveredNonDisputedSpend),
+      deliveredDisputedAmount: Math.round(deliveredDisputedAmount),
       forecastedBill: Math.round(forecastedBill),
-      disputedAmount: Math.round(disputedAmount),
       orders: sortedOrders
     };
   }, [orders, selectedMonth, selectedVendor, selectedProduct, dateRangeType, customStartDate, customEndDate, sortColumn, sortDirection]);
@@ -1113,8 +1113,8 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                 <AlertTriangle className="h-4 w-4 text-orange-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-900">{monthlyStats.disputedOrders}</div>
-                <p className="text-xs text-orange-600 mt-1">₹{monthlyStats.disputedAmount}</p>
+                <div className="text-2xl font-bold text-orange-900">{monthlyStats.deliveredDisputedOrders}</div>
+                <p className="text-xs text-orange-600 mt-1">₹{monthlyStats.deliveredDisputedAmount}</p>
               </CardContent>
             </Card>
 
@@ -1384,30 +1384,11 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                     ₹{order.total_amount}
                                   </TableCell>
                                   <TableCell onClick={() => handleOrderClick(order)}>
-                                    <div className="flex items-center gap-2">
-                                      <Badge 
-                                        variant={order.status === 'delivered' ? 'default' : 'secondary'}
-                                        className={order.status === 'delivered' 
-                                          ? 'bg-green-100 text-green-800 border-green-200' 
-                                          : 'bg-amber-100 text-amber-800 border-amber-200'}
-                                      >
-      {order.status === 'delivered' ? (
-        <>
-          <CheckCircle className="h-3 w-3 mr-1" />
-          Delivered
-        </>
-      ) : (
-                                          <>
-                                            <Clock className="h-3 w-3 mr-1" />
-                                            Pending
-                                          </>
-                                        )}
-                                      </Badge>
-                                      {order.dispute_raised && (
-                                        <span className="text-xs text-yellow-600 flex items-center gap-1">
-                                          <AlertTriangle className="h-3 w-3" />
-                                          Disputed
-                                        </span>
+                                    <div className="text-sm">
+                                      {order.status === 'delivered' ? (
+                                        order.dispute_raised ? 'Delivered (Disputed)' : 'Delivered'
+                                      ) : (
+                                        'Pending'
                                       )}
                                     </div>
                                   </TableCell>
@@ -1512,11 +1493,26 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                       ) : (
                         <TableRow>
                           <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                            No orders found for the selected period
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
+                          No orders found for the selected period
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {Object.keys(groupedOrders).length > 0 && (
+                      <TableRow className="bg-muted font-semibold border-t-2">
+                        <TableCell></TableCell>
+                        <TableCell colSpan={4}>TOTAL</TableCell>
+                        <TableCell className="text-right">
+                          {monthlyStats.orders.reduce((sum, o) => sum + Number(o.quantity), 0)}
+                        </TableCell>
+                        <TableCell></TableCell>
+                        <TableCell className="text-right">
+                          ₹{monthlyStats.orders.reduce((sum, o) => sum + Number(o.total_amount), 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell></TableCell>
+                        <TableCell></TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
                   </Table>
                 </div>
                 
@@ -1539,17 +1535,17 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                           <TableCell className="text-right">{monthlyStats.deliveredSpend}</TableCell>
                         </TableRow>
                         <TableRow>
+                          <TableCell className="text-orange-700 font-medium flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4" />
+                            Delivered (Disputed)
+                          </TableCell>
+                          <TableCell className="text-right">{monthlyStats.deliveredDisputedOrders}</TableCell>
+                          <TableCell className="text-right">{monthlyStats.deliveredDisputedAmount}</TableCell>
+                        </TableRow>
+                        <TableRow>
                           <TableCell className="text-blue-700 font-medium">Pending</TableCell>
                           <TableCell className="text-right">{monthlyStats.scheduledOrders}</TableCell>
                           <TableCell className="text-right">{monthlyStats.forecastedBill}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="text-orange-700 font-medium flex items-center gap-2">
-                            <AlertTriangle className="h-4 w-4" />
-                            Disputed
-                          </TableCell>
-                          <TableCell className="text-right">{monthlyStats.disputedOrders}</TableCell>
-                          <TableCell className="text-right">{monthlyStats.disputedAmount}</TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>
