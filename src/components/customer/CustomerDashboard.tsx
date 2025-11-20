@@ -3,7 +3,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Users, ShoppingCart, Calendar as CalendarIcon, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock, Download, FileDown, ChevronDown, ChevronUp, AlertTriangle, MoreVertical, Edit, Trash2, Eye, Pencil, Check, X } from "lucide-react";
+import { Users, ShoppingCart, Calendar as CalendarIcon, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock, Download, FileDown, ChevronDown, ChevronUp, AlertTriangle, MoreVertical, Edit, Trash2, Eye, Pencil, Check, X, AlertCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { VendorOrderTabs } from "./components/VendorOrderTabs";
@@ -46,8 +46,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   const [connectionCount, setConnectionCount] = useState(0);
   const [loadingWelcome, setLoadingWelcome] = useState(true);
   
-  // View mode and calendar state
-  const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table');
+  // Calendar state
   const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(new Date());
   const [calendarFilteredDate, setCalendarFilteredDate] = useState<Date | undefined>(undefined);
   
@@ -88,6 +87,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   const [orderDetailsDialogOpen, setOrderDetailsDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [tableExpanded, setTableExpanded] = useState(true);
+  const [calendarExpanded, setCalendarExpanded] = useState(false);
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [bulkUpdateDialogOpen, setBulkUpdateDialogOpen] = useState(false);
   const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
@@ -889,7 +889,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2"
-              onClick={() => setViewMode('calendar')}
+              onClick={() => {
+                setCalendarExpanded(true);
+                window.scrollTo({ top: document.querySelector('.space-y-6')?.getBoundingClientRect().top, behavior: 'smooth' });
+              }}
             >
               <Plus className="h-6 w-6" />
               <span>Place New Order</span>
@@ -1056,13 +1059,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
           </RadioGroup>
         </div>
 
-        {/* View Mode Toggle */}
-        <Tabs value={viewMode} onValueChange={(value: 'table' | 'calendar') => setViewMode(value)} className="w-full mt-4">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="table">Table View</TabsTrigger>
-            <TabsTrigger value="calendar">Calendar View</TabsTrigger>
-          </TabsList>
-        </Tabs>
           </div>
         </CardHeader>
         <CardContent>
@@ -1132,9 +1128,164 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
             </Card>
           </div>
 
-          {/* Table and Calendar Content */}
-          <Tabs value={viewMode} className="w-full">
-            <TabsContent value="table" className="mt-0 space-y-6">
+          {/* Calendar View - Collapsed by default */}
+          <Collapsible open={calendarExpanded} onOpenChange={setCalendarExpanded} className="mb-6">
+            <div className="space-y-4">
+              <CollapsibleTrigger asChild>
+                <Button variant="outline">
+                  {calendarExpanded ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
+                  {calendarExpanded ? 'Hide' : 'Show'} Calendar View
+                </Button>
+              </CollapsibleTrigger>
+              
+              <CollapsibleContent>
+                <OrderCalendarView
+                  selectedDate={calendarSelectedDate}
+                  onSelectDate={setCalendarSelectedDate}
+                  hasOrdersOnDate={(date) => {
+                    const dateStr = format(date, 'yyyy-MM-dd');
+                    return monthlyStats.orders.some(o => o.order_date === dateStr);
+                  }}
+                  getOrdersForDate={(date) => {
+                    const dateStr = format(date, 'yyyy-MM-dd');
+                    return monthlyStats.orders.filter(o => o.order_date === dateStr);
+                  }}
+                  onDateClick={(date) => {
+                    setCalendarFilteredDate(date);
+                    setCalendarSelectedDate(date);
+                  }}
+                />
+
+                {/* Filtered Orders Table for Selected Date */}
+                {calendarFilteredDate && (() => {
+                  const filteredOrders = monthlyStats.orders.filter(o => 
+                    o.order_date === format(calendarFilteredDate, 'yyyy-MM-dd')
+                  );
+
+                  return (
+                    <div className="space-y-4 mt-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold">
+                          Orders for {format(calendarFilteredDate, 'MMMM d, yyyy')}
+                        </h3>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setCalendarFilteredDate(undefined)}
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Clear Filter
+                        </Button>
+                      </div>
+
+                      {filteredOrders.length > 0 ? (
+                        <div className="border rounded-lg overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Product</TableHead>
+                                <TableHead>Vendor</TableHead>
+                                <TableHead>Quantity</TableHead>
+                                <TableHead>Amount</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {filteredOrders.map((order) => (
+                                <TableRow 
+                                  key={order.id}
+                                  className="cursor-pointer hover:bg-muted/50"
+                                  onClick={() => handleOrderClick(order)}
+                                >
+                                  <TableCell>{order.product.name}</TableCell>
+                                  <TableCell>{order.vendor.name}</TableCell>
+                                  <TableCell>{order.quantity} {order.unit}</TableCell>
+                                  <TableCell>₹{order.total_amount}</TableCell>
+                                  <TableCell>
+                                    {order.dispute_raised ? (
+                                      <span className="text-red-600">
+                                        Delivered (Disputed)
+                                      </span>
+                                    ) : order.status === 'delivered' ? (
+                                      <span className="text-green-600">
+                                        Delivered
+                                      </span>
+                                    ) : (
+                                      <span className="text-amber-600">
+                                        Pending
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center gap-2">
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              size="sm"
+                                              variant={order.status === 'delivered' ? 'ghost' : 'default'}
+                                              className={`h-8 w-8 p-0 ${
+                                                order.status === 'delivered' 
+                                                  ? 'bg-green-100 hover:bg-green-200' 
+                                                  : 'bg-amber-100 hover:bg-amber-200'
+                                              }`}
+                                              onClick={() => handleStatusToggle(order)}
+                                            >
+                                              {order.status === 'delivered' ? (
+                                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                              ) : (
+                                                <XCircle className="h-4 w-4 text-amber-600" />
+                                              )}
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Toggle status</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+
+                                      {order.status === 'delivered' && !order.dispute_raised && (
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-8 w-8 p-0"
+                                                onClick={() => {
+                                                  setDisputeOrderId(order.id);
+                                                  setDisputeDialogOpen(true);
+                                                }}
+                                              >
+                                                <AlertCircle className="h-4 w-4 text-red-600" />
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>Raise Dispute</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No orders for this date
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+
           {/* Orders Table for Selected Period */}
           <Collapsible open={tableExpanded} onOpenChange={setTableExpanded}>
             <div className="space-y-4">
@@ -1554,229 +1705,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               </CollapsibleContent>
             </div>
           </Collapsible>
-            </TabsContent>
-
-            <TabsContent value="calendar" className="mt-0 space-y-6">
-              <OrderCalendarView
-                selectedDate={calendarSelectedDate}
-                onSelectDate={setCalendarSelectedDate}
-                hasOrdersOnDate={(date) => {
-                  const dateStr = format(date, 'yyyy-MM-dd');
-                  return monthlyStats.orders.some(o => o.order_date === dateStr);
-                }}
-                getOrdersForDate={(date) => {
-                  const dateStr = format(date, 'yyyy-MM-dd');
-                  return monthlyStats.orders.filter(o => o.order_date === dateStr);
-                }}
-                onDateClick={(date) => {
-                  setCalendarFilteredDate(date);
-                  setCalendarSelectedDate(date);
-                }}
-              />
-
-              {/* Filtered Orders Table for Selected Date */}
-              {calendarFilteredDate && (() => {
-                const filteredOrders = monthlyStats.orders.filter(o => 
-                  o.order_date === format(calendarFilteredDate, 'yyyy-MM-dd')
-                );
-
-                return (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">
-                        Orders for {format(calendarFilteredDate, 'MMMM d, yyyy')}
-                      </h3>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => setCalendarFilteredDate(undefined)}
-                      >
-                        <X className="h-4 w-4 mr-2" />
-                        Clear Filter
-                      </Button>
-                    </div>
-
-                    {filteredOrders.length > 0 ? (
-                      <div className="border rounded-lg overflow-hidden">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Vendor</TableHead>
-                              <TableHead>Product</TableHead>
-                              <TableHead>Quantity</TableHead>
-                              <TableHead>Amount</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead>Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {filteredOrders.map(order => {
-                              const isVendorUpdated = order.updated_by && order.updated_by.user_type === 'vendor';
-                              
-                              return (
-                                <TableRow key={order.id} className="group">
-                                  <TableCell className="font-medium">{order.vendor.name}</TableCell>
-                                  <TableCell>{order.product.name}</TableCell>
-                                  <TableCell>
-                                    {editingOrderId === order.id ? (
-                                      <div className="flex items-center gap-2">
-                                        <Input
-                                          type="number"
-                                          value={editQuantity}
-                                          onChange={(e) => {
-                                            const value = Number(e.target.value);
-                                            if (value >= 1 || e.target.value === '') {
-                                              setEditQuantity(value);
-                                            }
-                                          }}
-                                          className="w-20 h-8"
-                                          min={1}
-                                          autoFocus
-                                        />
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          className="h-8 w-8 p-0"
-                                          onClick={async () => {
-                                            if (editQuantity >= 1) {
-                                              const product = vendorProducts.find(vp => vp.product_id === order.product.id);
-                                              const pricePerUnit = product?.price_override || order.product.price;
-                                              await updateOrder(order.id, {
-                                                quantity: editQuantity,
-                                                total_amount: editQuantity * pricePerUnit
-                                              });
-                                              setEditingOrderId(null);
-                                            } else {
-                                              toast({
-                                                title: "Invalid Quantity",
-                                                description: "Quantity must be at least 1",
-                                                variant: "destructive",
-                                              });
-                                            }
-                                          }}
-                                        >
-                                          <Check className="h-4 w-4 text-green-600" />
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          className="h-8 w-8 p-0"
-                                          onClick={() => setEditingOrderId(null)}
-                                        >
-                                          <X className="h-4 w-4 text-gray-600" />
-                                        </Button>
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center gap-2">
-                                        <span>{order.quantity} {order.unit}</span>
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setEditingOrderId(order.id);
-                                            setEditQuantity(order.quantity);
-                                          }}
-                                          disabled={isVendorUpdated}
-                                        >
-                                          <Pencil className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    )}
-                                  </TableCell>
-                                  <TableCell>₹{order.total_amount}</TableCell>
-                                  <TableCell>
-                                    <Badge className={getStatusColor(order.status)}>
-                                      {getStatusIcon(order.status)}
-                                      <span className="ml-1 capitalize">{order.status}</span>
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell onClick={(e) => e.stopPropagation()}>
-                                    <div className="flex items-center gap-2">
-                                      {/* Status Toggle Button */}
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Button
-                                              size="sm"
-                                              variant={order.status === 'delivered' ? 'ghost' : 'default'}
-                                              className={`h-8 w-8 p-0 ${
-                                                order.status === 'delivered' 
-                                                  ? 'bg-green-100 hover:bg-green-200' 
-                                                  : 'bg-amber-100 hover:bg-amber-200'
-                                              }`}
-                                              onClick={() => handleStatusToggle(order)}
-                                              disabled={isVendorUpdated}
-                                            >
-                                              {order.status === 'delivered' ? (
-                                                <CheckCircle className="h-4 w-4 text-green-600" />
-                                              ) : (
-                                                <XCircle className="h-4 w-4 text-amber-600" />
-                                              )}
-                                            </Button>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>{isVendorUpdated ? 'Status updated by vendor' : 'Toggle status'}</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-
-                                      {/* Delete Button - Always Visible */}
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Button
-                                              size="sm"
-                                              variant="ghost"
-                                              className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
-                                              onClick={() => {
-                                                setDeleteOrderId(order.id);
-                                                setDeleteDialogOpen(true);
-                                              }}
-                                              disabled={isVendorUpdated}
-                                            >
-                                              <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>Delete order</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-
-                                      {/* Dropdown Menu - Only View Details */}
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                            <MoreVertical className="h-4 w-4" />
-                                          </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="bg-background z-50">
-                                          <DropdownMenuItem onClick={() => handleOrderClick(order)}>
-                                            <Eye className="h-4 w-4 mr-2" />
-                                            View Details
-                                          </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        No orders for this date
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-            </TabsContent>
-          </Tabs>
         </CardContent>
       </Card>
 
