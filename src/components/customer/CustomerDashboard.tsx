@@ -1391,13 +1391,12 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                           ? 'bg-green-100 text-green-800 border-green-200' 
                                           : 'bg-amber-100 text-amber-800 border-amber-200'}
                                       >
-                                        {order.status === 'delivered' ? (
-                                          <>
-                                            <CheckCircle className="h-3 w-3 mr-1" />
-                                            Delivered
-                                            {order.dispute_raised && ' (Dispute Raised)'}
-                                          </>
-                                        ) : (
+      {order.status === 'delivered' ? (
+        <>
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Delivered
+        </>
+      ) : (
                                           <>
                                             <Clock className="h-3 w-3 mr-1" />
                                             Pending
