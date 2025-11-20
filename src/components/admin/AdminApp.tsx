@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { LogOut, Shield, Users } from "lucide-react";
+import { LogOut, Shield, Users, Package } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import Dashboard from "@/components/Dashboard";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,28 +17,29 @@ const AdminApp = () => {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [adminName, setAdminName] = useState("");
-  const [connectionCount, setConnectionCount] = useState(0);
+  const [totalVendors, setTotalVendors] = useState(0);
+  const [totalCustomers, setTotalCustomers] = useState(0);
+  const [totalProducts, setTotalProducts] = useState(0);
 
   useEffect(() => {
     const loadAdminData = async () => {
       if (!user) return;
       
       try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('name')
-          .eq('id', user.id)
-          .single();
-        
-        if (profile?.name) {
-          setAdminName(profile.name);
-        }
-
-        const { count } = await supabase
-          .from('vendor_customer_connections')
+        const { count: vendorCount } = await supabase
+          .from('vendors')
           .select('*', { count: 'exact', head: true });
-        setConnectionCount(count || 0);
+        setTotalVendors(vendorCount || 0);
+
+        const { count: customerCount } = await supabase
+          .from('customers')
+          .select('*', { count: 'exact', head: true });
+        setTotalCustomers(customerCount || 0);
+
+        const { count: productCount } = await supabase
+          .from('products')
+          .select('*', { count: 'exact', head: true });
+        setTotalProducts(productCount || 0);
       } catch (error) {
         console.error('Error loading admin data:', error);
       }
@@ -64,18 +65,23 @@ const AdminApp = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
-                <p className="text-sm text-gray-600">Welcome back, {adminName || 'Administrator'}</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Users className="h-4 w-4" />
-                <span>{connectionCount} connections</span>
+              <div className="flex items-center space-x-4 text-sm text-gray-600">
+                <div className="flex items-center space-x-1">
+                  <Users className="h-4 w-4" />
+                  <span>{totalVendors} Vendors</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Users className="h-4 w-4" />
+                  <span>{totalCustomers} Customers</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Package className="h-4 w-4" />
+                  <span>{totalProducts} Products</span>
+                </div>
               </div>
-              <span className="text-sm text-gray-600 font-semibold flex items-center space-x-1">
-                <Shield className="h-4 w-4" />
-                <span>Administrator</span>
-              </span>
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out

@@ -32,12 +32,15 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import * as XLSX from 'xlsx-js-style';
+import { OnboardingCard } from "@/components/onboarding/OnboardingCard";
 
 interface CustomerDashboardProps {
   onNavigate?: (tab: string) => void;
+  activeTab?: string;
+  setActiveTab?: (tab: string) => void;
 }
 
-const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
+const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDashboardProps) => {
   const { user } = useAuth();
   const { orders, loading: ordersLoading, updateOrderStatus, raiseDispute, clearDispute, deleteOrder, updateOrder, refetch } = useOrders();
   const { vendors, loading: vendorsLoading } = useVendors();
@@ -89,7 +92,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   const [orderDetailsDialogOpen, setOrderDetailsDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [tableExpanded, setTableExpanded] = useState(true);
-  const [calendarExpanded, setCalendarExpanded] = useState(false);
+  const [calendarExpanded, setCalendarExpanded] = useState(true);
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [bulkUpdateDialogOpen, setBulkUpdateDialogOpen] = useState(false);
   const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
@@ -873,23 +876,60 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   return (
     <TooltipProvider>
       <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-lg p-6">
-        {loadingWelcome ? (
-          <Skeleton className="h-16 w-full bg-white/20" />
-        ) : (
-          <>
-            <h2 className="text-2xl font-bold mb-2">Welcome back, {customerName}!</h2>
-            <div className="flex items-center space-x-4 text-green-100">
-              <div className="flex items-center space-x-2">
-                <Users className="h-4 w-4" />
-                <span>{connectionCount} Connected Vendors</span>
+      {/* OOBE Card for New Users */}
+      {setActiveTab && (
+        <OnboardingCard
+          userType="customer"
+          hasData={orders.length > 0}
+          onDismiss={() => {}}
+          onAddAction={() => setActiveTab("vendors")}
+        />
+      )}
+
+      {/* Next Order Info Card */}
+      <Card className="bg-gradient-to-r from-green-500 to-blue-500 text-white">
+        <CardHeader>
+          <CardTitle className="text-xl">Your Next Orders</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {(() => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const upcomingOrders = orders
+              .filter(o => {
+                const orderDate = new Date(o.order_date);
+                orderDate.setHours(0, 0, 0, 0);
+                return orderDate >= today && o.status === 'pending';
+              })
+              .slice(0, 3);
+
+            if (upcomingOrders.length === 0) {
+              return <p className="text-green-100">No upcoming orders. Place a new order to get started!</p>;
+            }
+
+            return upcomingOrders.map(order => (
+              <div key={order.id} className="flex items-center justify-between bg-white/20 rounded-lg p-3">
+                <div className="space-y-1">
+                  <p className="font-semibold">{order.product.name}</p>
+                  <p className="text-sm text-green-100">
+                    {order.vendor.name} • {new Date(order.order_date).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold">{order.quantity} {order.unit}</p>
+                  <p className="text-sm">₹{order.total_amount}</p>
+                </div>
               </div>
-              <span className="px-2 py-1 bg-white/20 rounded text-sm">Customer</span>
+            ));
+          })()}
+          <div className="flex items-center space-x-4 text-green-100 pt-2 border-t border-white/20">
+            <div className="flex items-center space-x-2">
+              <Users className="h-4 w-4" />
+              <span>{connectionCount} Connected Vendors</span>
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
 
       {/* Quick Actions */}
@@ -1110,10 +1150,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
         </CardHeader>
         <CardContent>
           {/* Statistics Cards - Always Visible */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <Card 
               className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => onNavigate?.('subscriptions')}
+              onClick={() => onNavigate?.('orders')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-blue-900">Total Orders</CardTitle>
@@ -1121,11 +1161,15 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-900">{monthlyStats.totalOrders}</div>
+                <p className="text-xs text-blue-600 mt-1">
+                  ₹{(monthlyStats.deliveredSpend + monthlyStats.deliveredDisputedAmount + monthlyStats.forecastedBill).toFixed(2)}
+                </p>
               </CardContent>
             </Card>
 
             <Card 
               className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => onNavigate?.('orders')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-green-900">Delivered Orders</CardTitle>
@@ -1133,11 +1177,13 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-900">{monthlyStats.deliveredOrders}</div>
+                <p className="text-xs text-green-600 mt-1">₹{monthlyStats.deliveredSpend}</p>
               </CardContent>
             </Card>
 
             <Card 
               className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => onNavigate?.('orders')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-amber-900">Pending Orders</CardTitle>
@@ -1145,32 +1191,23 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-amber-900">{monthlyStats.scheduledOrders}</div>
+                <p className="text-xs text-amber-600 mt-1">₹{monthlyStats.forecastedBill}</p>
               </CardContent>
             </Card>
 
             <Card 
-              className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 cursor-pointer hover:shadow-lg transition-shadow"
+              className="bg-gradient-to-br from-red-50 to-red-100 border-red-200 cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => onNavigate?.('orders')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-orange-900">Disputed Orders</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-orange-600" />
+                <CardTitle className="text-sm font-medium text-red-900 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  Disputed Orders
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-900">{monthlyStats.deliveredDisputedOrders}</div>
-                <p className="text-xs text-orange-600 mt-1">₹{monthlyStats.deliveredDisputedAmount}</p>
-              </CardContent>
-            </Card>
-
-            <Card
-              className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => onNavigate?.('subscriptions')}
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-purple-900">Delivered Orders Bill</CardTitle>
-                <Package className="h-4 w-4 text-purple-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-purple-900">₹{monthlyStats.deliveredSpend}</div>
+                <div className="text-2xl font-bold text-red-900">{monthlyStats.deliveredDisputedOrders}</div>
+                <p className="text-xs text-red-600 mt-1">₹{monthlyStats.deliveredDisputedAmount}</p>
               </CardContent>
             </Card>
           </div>

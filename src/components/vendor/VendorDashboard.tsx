@@ -13,6 +13,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx-js-style';
+import { OnboardingCard } from "@/components/onboarding/OnboardingCard";
+import { InviteCustomerDialog } from "./InviteCustomerDialog";
+import { UserPlus } from "lucide-react";
 
 interface VendorDashboardProps {
   onNavigate?: (tab: string, params?: any) => void;
@@ -32,6 +35,8 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
   const [loadingWelcome, setLoadingWelcome] = useState(true);
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
   const [expandedSocieties, setExpandedSocieties] = useState<Set<string>>(new Set());
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [vendorId, setVendorId] = useState("");
 
   useEffect(() => {
     const loadVendorData = async () => {
@@ -46,6 +51,7 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
         
         if (vendor) {
           setVendorName(vendor.name);
+          setVendorId(vendor.id);
           const { count } = await supabase
             .from('vendor_customer_connections')
             .select('*', { count: 'exact', head: true })
@@ -257,26 +263,75 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-500 to-green-500 text-white rounded-lg p-6">
-        {loadingWelcome ? (
-          <Skeleton className="h-16 w-full bg-white/20" />
-        ) : (
-          <>
-            <div className="flex items-center space-x-2 mb-2">
-              <h2 className="text-2xl font-bold">Welcome back, {vendorName}!</h2>
-              <ShieldCheck className="h-6 w-6" />
-            </div>
-            <div className="flex items-center space-x-4 text-blue-100">
-              <div className="flex items-center space-x-2">
-                <Users className="h-4 w-4" />
-                <span>{connectionCount} Connected Customers</span>
+      {/* OOBE Card for New Vendors */}
+      <OnboardingCard
+        userType="vendor"
+        hasData={connectionCount > 0}
+        onDismiss={() => {}}
+        onAddAction={() => onNavigate?.('customers')}
+      />
+
+      {/* Next Deliveries Info Card */}
+      <Card className="bg-gradient-to-r from-green-500 to-blue-500 text-white">
+        <CardHeader>
+          <CardTitle className="text-xl">Today's Deliveries</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {(() => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayOrders = filteredOrders
+              .filter(o => {
+                const orderDate = new Date(o.order_date);
+                orderDate.setHours(0, 0, 0, 0);
+                return orderDate.getTime() === today.getTime() && o.status === 'pending';
+              })
+              .slice(0, 3);
+
+            if (todayOrders.length === 0) {
+              return <p className="text-green-100">No pending deliveries for today!</p>;
+            }
+
+            return todayOrders.map(order => (
+              <div key={order.id} className="flex items-center justify-between bg-white/20 rounded-lg p-3">
+                <div className="space-y-1">
+                  <p className="font-semibold">{order.customer?.name || 'Customer'}</p>
+                  <p className="text-sm text-green-100">
+                    {order.product?.name} • {order.customer?.societies?.name || 'Unknown'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold">{order.quantity} {order.unit}</p>
+                  <p className="text-sm">₹{order.total_amount}</p>
+                </div>
               </div>
-              <span className="px-2 py-1 bg-white/20 rounded text-sm">Vendor</span>
+            ));
+          })()}
+          <div className="flex items-center justify-between pt-2 border-t border-white/20">
+            <div className="flex items-center space-x-2 text-green-100">
+              <Users className="h-4 w-4" />
+              <span>{connectionCount} Connected Customers</span>
             </div>
-          </>
-        )}
-      </div>
+            <Button 
+              variant="secondary" 
+              size="sm"
+              onClick={() => setInviteDialogOpen(true)}
+              className="bg-white/20 hover:bg-white/30"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Invite Customer Dialog */}
+      <InviteCustomerDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        vendorId={vendorId}
+        vendorName={vendorName}
+      />
 
       {/* Time View Selector */}
       <Card>
