@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -112,6 +112,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
       }
     }
   }, [selectedVendor]);
+
   const [orderDetailsDialogOpen, setOrderDetailsDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [tableExpanded, setTableExpanded] = useState(true);
@@ -152,6 +153,35 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
     quantity: 0,
     order_date: new Date(),
   });
+
+  const calendarContainerRef = useRef<HTMLDivElement>(null);
+
+  // Clear calendar selection when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        calendarContainerRef.current && 
+        !calendarContainerRef.current.contains(event.target as Node) &&
+        calendarSelectedDate
+      ) {
+        setFilterBySpecificDate(undefined);
+        setCalendarSelectedDate(undefined);
+        setNewOrderFormData({
+          vendor_id: '',
+          product_id: '',
+          quantity: 0,
+          order_date: new Date(),
+        });
+      }
+    };
+
+    if (calendarExpanded && calendarSelectedDate) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [calendarExpanded, calendarSelectedDate]);
 
   const handleOrderClick = (order: any) => {
     setSelectedOrder(order);
@@ -1266,7 +1296,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
               </CollapsibleTrigger>
               
               <CollapsibleContent>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div ref={calendarContainerRef} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Calendar - Left Side */}
                   <OrderCalendarView
                     selectedDate={calendarSelectedDate}

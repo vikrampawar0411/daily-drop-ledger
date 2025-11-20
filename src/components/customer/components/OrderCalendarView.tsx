@@ -120,10 +120,6 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
             <div className="w-4 h-4 rounded bg-background" style={{ border: '4px solid hsl(var(--primary))' }}></div>
             <span className="font-normal">Today</span>
           </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 rounded bg-background ring-4 ring-ring ring-offset-2"></div>
-            <span className="font-normal">Selected date</span>
-          </div>
         </div>
       </CardContent>
     </Card>
