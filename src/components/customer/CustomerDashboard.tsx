@@ -898,7 +898,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2"
               onClick={() => {
@@ -908,14 +908,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
             >
               <Plus className="h-6 w-6" />
               <span>Place New Order</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 flex flex-col items-center justify-center space-y-2"
-              onClick={() => onNavigate?.('vendors')}
-            >
-              <Users className="h-6 w-6" />
-              <span>Find Vendors</span>
             </Button>
             <Button 
               variant="outline" 
@@ -947,12 +939,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               onValueChange={setSelectedVendor} 
               className="flex flex-wrap gap-2"
             >
-              <div className="flex items-center space-x-2 px-3 py-2 rounded-md border border-input hover:bg-accent cursor-pointer transition-colors">
-                <RadioGroupItem value="" id="vendor-all" />
-                <Label htmlFor="vendor-all" className="cursor-pointer font-normal text-sm">
-                  All
-                </Label>
-              </div>
               {vendors.map((vendor) => (
                 <div 
                   key={vendor.id} 
