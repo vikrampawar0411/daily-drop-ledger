@@ -506,7 +506,7 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
                     <Badge key={index} variant="secondary" className="flex items-center gap-1">
                       {date.toLocaleDateString()}
                       <X 
-                        className="h-3 w-3 cursor-pointer hover:text-red-600" 
+                        className="h-3 w-3 cursor-pointer text-gray-600 hover:text-gray-800" 
                         onClick={() => removeDate(date)}
                       />
                     </Badge>
@@ -673,9 +673,9 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => onDeleteOrder(order.id)}
-                                    className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+                                    className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                                   >
-                                    <Trash2 className="h-3 w-3 text-red-600" />
+                                    <Trash2 className="h-3 w-3" />
                                   </Button>
                                 ))}
                               </div>

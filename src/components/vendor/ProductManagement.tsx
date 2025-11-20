@@ -227,7 +227,7 @@ const ProductManagement = () => {
       case "approved":
         return <Badge variant="default">Approved</Badge>;
       case "rejected":
-        return <Badge variant="destructive">Rejected</Badge>;
+        return <Badge className="border-2 border-gray-400 text-gray-700">Rejected</Badge>;
       default:
         return null;
     }

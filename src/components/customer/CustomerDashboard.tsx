@@ -98,7 +98,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       case "delivered":
         return "bg-green-100 text-green-800";
       case "cancelled":
-        return "border-2 border-red-600 text-red-600";
+        return "border-2 border-gray-400 text-gray-700";
       default:
         return "bg-blue-100 text-blue-800";
     }
@@ -109,7 +109,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       case "delivered":
         return <CheckCircle className="h-4 w-4 text-green-600" />;
       case "cancelled":
-        return <XCircle className="h-4 w-4 text-red-600" />;
+        return <XCircle className="h-4 w-4 text-gray-600" />;
       default:
         return <Clock className="h-4 w-4 text-gray-600" />;
     }
@@ -1140,7 +1140,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                     />
                                   </TableCell>
                                   <TableCell 
-                                    className={`font-semibold ${isSunday ? 'text-red-700' : ''}`}
+                                    className={`font-semibold ${isSunday ? 'text-blue-600' : ''}`}
                                     onClick={() => handleOrderClick(order)}
                                   >
                                     {dayName}
@@ -1343,9 +1343,9 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               )}
 
               {selectedOrder.dispute_raised && (
-                <div className="border-2 border-red-600 rounded-lg p-3">
-                  <Label className="text-sm text-red-800">Dispute Raised:</Label>
-                  <div className="text-red-600">{selectedOrder.dispute_reason}</div>
+                <div className="border-2 border-orange-500 rounded-lg p-3">
+                  <Label className="text-sm text-orange-800">Dispute Raised:</Label>
+                  <div className="text-orange-700">{selectedOrder.dispute_reason}</div>
                 </div>
               )}
               <div className="flex justify-end space-x-2">
@@ -1444,7 +1444,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteOrder} className="border-2 border-red-600 text-red-600 hover:border-red-700 hover:bg-red-600/10">
+            <AlertDialogAction onClick={handleDeleteOrder} className="border-2 border-red-600 text-red-600 hover:border-red-700 hover:bg-red-50">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1526,7 +1526,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleBulkDelete} 
-              className="border-2 border-red-600 text-red-600 hover:border-red-700 hover:bg-red-600/10"
+              className="border-2 border-red-600 text-red-600 hover:border-red-700 hover:bg-red-50"
             >
               Delete All
             </AlertDialogAction>

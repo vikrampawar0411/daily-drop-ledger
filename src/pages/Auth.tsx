@@ -710,7 +710,7 @@ const Auth = () => {
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full border-2 border-red-600 text-red-600 hover:border-red-700 hover:bg-red-600/10" disabled={isLoading}>
+                  <Button type="submit" className="w-full" variant="outline" disabled={isLoading}>
                     {isLoading ? "Signing in..." : "Sign In as Admin"}
                   </Button>
                 </form>
