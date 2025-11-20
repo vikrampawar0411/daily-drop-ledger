@@ -102,13 +102,13 @@ const CustomerApp = () => {
               <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Dashboard</span>
             </TabsTrigger>
-            <TabsTrigger value="subscriptions" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
-              <Repeat className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Subscriptions</span>
-            </TabsTrigger>
             <TabsTrigger value="vendors" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
               <Users className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Vendors</span>
+            </TabsTrigger>
+            <TabsTrigger value="subscriptions" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
+              <Repeat className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Subscriptions</span>
             </TabsTrigger>
           </TabsList>
 
