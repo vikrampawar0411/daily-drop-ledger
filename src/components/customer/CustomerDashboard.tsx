@@ -1066,8 +1066,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs value={viewMode} className="w-full">
-            <TabsContent value="table" className="mt-0 space-y-6">
+          {/* Statistics Cards - Always Visible */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             <Card 
               className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 cursor-pointer hover:shadow-lg transition-shadow"
@@ -1132,14 +1131,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
               </CardContent>
             </Card>
           </div>
-
-          {/* View Mode Toggle */}
-          <Tabs value={viewMode} onValueChange={(value: 'table' | 'calendar') => setViewMode(value)} className="w-full mb-6">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="table">Table View</TabsTrigger>
-              <TabsTrigger value="calendar">Calendar View</TabsTrigger>
-            </TabsList>
-          </Tabs>
 
           {/* Table and Calendar Content */}
           <Tabs value={viewMode} className="w-full">
@@ -1659,7 +1650,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                                   ? 'bg-green-100 hover:bg-green-200' 
                                                   : 'bg-amber-100 hover:bg-amber-200'
                                               }`}
-                                              onClick={() => handleStatusToggle(order.id, order.status)}
+                                              onClick={() => handleStatusToggle(order)}
                                               disabled={isVendorUpdated}
                                             >
                                               {order.status === 'delivered' ? (
@@ -1694,7 +1685,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                             Edit Order
                                           </DropdownMenuItem>
                                           <DropdownMenuItem 
-                                            onClick={() => handleDeleteOrder(order.id)}
+                                            onClick={() => {
+                                              setDeleteOrderId(order.id);
+                                              setDeleteDialogOpen(true);
+                                            }}
                                             disabled={isVendorUpdated}
                                             className="text-red-600"
                                           >
