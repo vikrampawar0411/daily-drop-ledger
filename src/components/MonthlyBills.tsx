@@ -69,7 +69,7 @@ const MonthlyBills = () => {
     switch (status) {
       case 'paid': return 'bg-green-100 text-green-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'overdue': return 'bg-red-100 text-red-800';
+      case 'overdue': return 'border-2 border-red-600 text-red-600';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -137,14 +137,14 @@ const MonthlyBills = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white">
+        <Card className="border-2 border-red-600">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-red-100 text-sm">Overdue</p>
-                <p className="text-2xl font-bold">₹{totals.overdueAmount}</p>
+                <p className="text-red-600 text-sm font-medium">Overdue</p>
+                <p className="text-2xl font-bold text-red-600">₹{totals.overdueAmount}</p>
               </div>
-              <Calendar className="h-8 w-8 text-red-200" />
+              <Calendar className="h-8 w-8 text-red-600" />
             </div>
           </CardContent>
         </Card>

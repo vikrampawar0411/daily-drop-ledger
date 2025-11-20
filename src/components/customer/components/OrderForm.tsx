@@ -673,7 +673,7 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => onDeleteOrder(order.id)}
-                                    className="h-7 w-7 p-0 hover:bg-red-100"
+                                    className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
                                   >
                                     <Trash2 className="h-3 w-3 text-red-600" />
                                   </Button>
