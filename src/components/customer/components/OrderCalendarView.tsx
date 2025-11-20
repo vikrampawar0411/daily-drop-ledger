@@ -16,9 +16,11 @@ interface OrderCalendarViewProps {
   hasOrdersOnDate: (date: Date) => boolean;
   getOrdersForDate: (date: Date) => Order[];
   onDateClick?: (date: Date) => void;
+  month?: Date;
+  onMonthChange?: (month: Date) => void;
 }
 
-const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrdersForDate, onDateClick }: OrderCalendarViewProps) => {
+const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrdersForDate, onDateClick, month, onMonthChange }: OrderCalendarViewProps) => {
   const handleDateSelect = (date: Date | undefined) => {
     onSelectDate(date);
     if (date && onDateClick) {
@@ -35,6 +37,8 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
           mode="single"
           selected={selectedDate}
           onSelect={handleDateSelect}
+          month={month}
+          onMonthChange={onMonthChange}
           className={cn("rounded-md border pointer-events-auto")}
           modifiers={{
             today: (date) => {
