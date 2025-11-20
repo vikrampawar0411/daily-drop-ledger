@@ -1395,6 +1395,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                           <>
                                             <CheckCircle className="h-3 w-3 mr-1" />
                                             Delivered
+                                            {order.dispute_raised && ' (Dispute Raised)'}
                                           </>
                                         ) : (
                                           <>
@@ -1413,33 +1414,58 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
                                     <div className="flex items-center gap-2">
-                                      {/* Toggle Status Button */}
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Button
-                                              size="sm"
-                                              variant={order.status === 'delivered' ? 'ghost' : 'default'}
-                                              className={`h-8 w-8 p-0 ${
-                                                order.status === 'delivered' 
-                                                  ? 'bg-green-100 hover:bg-green-200' 
-                                                  : 'bg-amber-100 hover:bg-amber-200'
-                                              }`}
-                                              onClick={() => handleStatusToggle(order)}
-                                              disabled={isVendorUpdated || (isPastDate && !canModify)}
-                                            >
-                                              {order.status === 'delivered' ? (
-                                                <CheckCircle className="h-4 w-4 text-green-600" />
-                                              ) : (
-                                                <XCircle className="h-4 w-4 text-amber-600" />
-                                              )}
+                                      {/* Toggle Status Button - Hide for vendor-delivered orders */}
+                                      {!(isVendorUpdated && order.status === 'delivered') && (
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button
+                                                size="sm"
+                                                variant={order.status === 'delivered' ? 'ghost' : 'default'}
+                                                className={`h-8 w-8 p-0 ${
+                                                  order.status === 'delivered' 
+                                                    ? 'bg-green-100 hover:bg-green-200' 
+                                                    : 'bg-amber-100 hover:bg-amber-200'
+                                                }`}
+                                                onClick={() => handleStatusToggle(order)}
+                                                disabled={isVendorUpdated || (isPastDate && !canModify)}
+                                              >
+                                                {order.status === 'delivered' ? (
+                                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                                ) : (
+                                                  <XCircle className="h-4 w-4 text-amber-600" />
+                                                )}
+                                              </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>{isVendorUpdated ? 'Status updated by vendor' : 'Toggle status'}</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      )}
+
+                                      {/* 3-Dot Menu for Vendor-Delivered Orders */}
+                                      {isVendorUpdated && order.status === 'delivered' && !order.dispute_raised && (
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                              <MoreVertical className="h-4 w-4" />
                                             </Button>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>{isVendorUpdated ? 'Status updated by vendor' : 'Toggle status'}</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end" className="bg-background z-50">
+                                            <DropdownMenuItem 
+                                              onClick={() => {
+                                                setDisputeOrderId(order.id);
+                                                setDisputeReason("");
+                                                setDisputeDialogOpen(true);
+                                              }}
+                                            >
+                                              <AlertTriangle className="h-4 w-4 mr-2 text-orange-600" />
+                                              Raise Dispute
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      )}
 
                                       {/* Delete Button */}
                                       {canModify && !(isPastDate && order.status === 'delivered') && (
@@ -1455,29 +1481,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                         >
                                           <Trash2 className="h-4 w-4" />
                                         </Button>
-                                      )}
-
-                                      {/* Dispute Buttons */}
-                                      {isVendorUpdated && !order.dispute_raised && (
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Button 
-                                              variant="ghost" 
-                                              size="sm"
-                                              onClick={() => {
-                                                setDisputeOrderId(order.id);
-                                                setDisputeReason("");
-                                                setDisputeDialogOpen(true);
-                                              }}
-                                              className="h-8 w-8 p-0 text-orange-600 hover:bg-orange-50"
-                                            >
-                                              <AlertTriangle className="h-4 w-4" />
-                                            </Button>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>Raise a dispute</p>
-                                          </TooltipContent>
-                                        </Tooltip>
                                       )}
 
                                       {order.dispute_raised && (
@@ -1927,19 +1930,27 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
           <DialogHeader>
             <DialogTitle>Raise Dispute</DialogTitle>
             <DialogDescription>
-              Describe the issue with this order
+              Select the reason for disputing this order
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="dispute-reason">Reason for Dispute</Label>
-              <Textarea
-                id="dispute-reason"
-                placeholder="Please describe the issue..."
+              <Label htmlFor="dispute-reason">Dispute Reason</Label>
+              <Select
                 value={disputeReason}
-                onChange={(e) => setDisputeReason(e.target.value)}
-                rows={4}
-              />
+                onValueChange={setDisputeReason}
+              >
+                <SelectTrigger id="dispute-reason">
+                  <SelectValue placeholder="Select a reason..." />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  <SelectItem value="Product not delivered">Product not delivered</SelectItem>
+                  <SelectItem value="Wrong product delivered">Wrong product delivered</SelectItem>
+                  <SelectItem value="Damaged product">Damaged product</SelectItem>
+                  <SelectItem value="Quantity mismatch">Quantity mismatch</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
@@ -1961,7 +1972,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                 } else {
                   toast({
                     title: "Error",
-                    description: "Please provide a reason for the dispute",
+                    description: "Please select a reason for the dispute",
                     variant: "destructive",
                   });
                 }
