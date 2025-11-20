@@ -63,7 +63,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   
   // Filter state
   const [selectedVendor, setSelectedVendor] = useState<string>('');
-  const [selectedProduct, setSelectedProduct] = useState<string>('');
+  const [selectedProduct, setSelectedProduct] = useState<string>('all');
 
   // Inline editing state
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
@@ -692,14 +692,14 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
         const filterDateStr = format(filterBySpecificDate, 'yyyy-MM-dd');
         const matchesSpecificDate = o.order_date === filterDateStr;
         const matchesVendor = !selectedVendor || o.vendor.id === selectedVendor;
-        const matchesProduct = !selectedProduct || o.product.id === selectedProduct;
+        const matchesProduct = selectedProduct === 'all' || o.product.id === selectedProduct;
         return matchesSpecificDate && matchesVendor && matchesProduct && o.status !== 'cancelled';
       }
       
       // Otherwise, show full month range
       const matchesDate = orderDate >= startDate && orderDate <= endDate;
       const matchesVendor = !selectedVendor || o.vendor.id === selectedVendor;
-      const matchesProduct = !selectedProduct || o.product.id === selectedProduct;
+      const matchesProduct = selectedProduct === 'all' || o.product.id === selectedProduct;
       return matchesDate && matchesVendor && matchesProduct && o.status !== 'cancelled';
     });
     
@@ -978,7 +978,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                 <SelectValue placeholder="All Products" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Products</SelectItem>
+                <SelectItem value="all">All Products</SelectItem>
                 {availableProducts.map((product) => (
                   <SelectItem key={product.id} value={product.id}>
                     {product.name}
@@ -1027,7 +1027,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                   setFilterBySpecificDate(undefined);
                   setCalendarSelectedDate(undefined);
                   setSelectedVendor('');
-                  setSelectedProduct('');
+                  setSelectedProduct('all');
                 }}
               >
                 <SelectTrigger className="w-full h-10">
@@ -1218,7 +1218,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                     setFilterBySpecificDate(undefined);
                     setCalendarSelectedDate(undefined);
                     setSelectedVendor('');
-                    setSelectedProduct('');
+                    setSelectedProduct('all');
                   }}
                   onDateClick={(date) => {
                     const dateMonth = format(date, 'yyyy-MM');
