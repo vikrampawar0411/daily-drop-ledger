@@ -48,7 +48,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   
   // Calendar state
   const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(new Date());
-  const [calendarFilteredDate, setCalendarFilteredDate] = useState<Date | undefined>(undefined);
   const [filterBySpecificDate, setFilterBySpecificDate] = useState<Date | undefined>(undefined);
   
   // Date range state
@@ -59,6 +58,8 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   const [dateRangeType, setDateRangeType] = useState<'month' | 'custom'>('month');
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
+  const [customStartOpen, setCustomStartOpen] = useState(false);
+  const [customEndOpen, setCustomEndOpen] = useState(false);
   
   // Filter state
   const [selectedVendor, setSelectedVendor] = useState<string>('');
@@ -934,143 +935,189 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
           <div className="flex flex-col space-y-4">
             <div className="flex items-center justify-between">
               <CardTitle>Order Statistics</CardTitle>
-              <div className="flex items-center space-x-4">
-                <Select 
-                  value={dateRangeType} 
-                  onValueChange={(value: 'month' | 'custom') => {
-                    setDateRangeType(value);
-                    if (value === 'month') {
-                      setCustomStartDate(undefined);
-                      setCustomEndDate(undefined);
-                    }
-                  }}
-                >
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="month">By Month</SelectItem>
-                    <SelectItem value="custom">Custom Range</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {dateRangeType === 'month' ? (
-                  <div className="flex flex-col items-end space-y-1">
-                    <Select value={selectedMonth} onValueChange={(value) => {
-                      setSelectedMonth(value);
-                      setFilterBySpecificDate(undefined);
-                    }}>
-                      <SelectTrigger className="w-[200px]">
-                        <SelectValue placeholder="Select month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {monthOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="text-xs text-muted-foreground">
-                      {(() => {
-                        const [year, month] = selectedMonth.split('-').map(Number);
-                        const firstDay = new Date(year, month - 1, 1);
-                        const lastDay = new Date(year, month, 0);
-                        return `${firstDay.toLocaleDateString()} - ${lastDay.toLocaleDateString()}`;
-                      })()}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-[160px] justify-start text-sm">
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {customStartDate ? format(customStartDate, "PPP") : "Start Date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <DatePickerCalendar
-                          mode="single"
-                          selected={customStartDate}
-                          onSelect={setCustomStartDate}
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-
-                    <span className="text-sm text-muted-foreground">to</span>
-
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-[160px] justify-start text-sm">
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {customEndDate ? format(customEndDate, "PPP") : "End Date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <DatePickerCalendar
-                          mode="single"
-                          selected={customEndDate}
-                          onSelect={(date) => {
-                            if (date && customStartDate) {
-                              const diffTime = Math.abs(date.getTime() - customStartDate.getTime());
-                              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                              if (diffDays > 90) {
-                                toast({
-                                  title: "Invalid Range",
-                                  description: "Date range cannot exceed 3 months (90 days)",
-                                  variant: "destructive",
-                                });
-                                return;
-                              }
-                            }
-                            setCustomEndDate(date);
-                          }}
-                          disabled={(date) => {
-                            if (!customStartDate) return false;
-                            const diffTime = Math.abs(date.getTime() - customStartDate.getTime());
-                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                            return date < customStartDate || diffDays > 90;
-                          }}
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                )}
-              </div>
             </div>
-        <div className="space-y-3">
-          <Label>Filter by Vendor</Label>
-          <RadioGroup value={selectedVendor} onValueChange={setSelectedVendor} className="space-y-2">
-            {vendors.map((vendor) => (
-              <div key={vendor.id} className="flex items-center space-x-2">
-                <RadioGroupItem value={vendor.id} id={`vendor-${vendor.id}`} />
-                <Label htmlFor={`vendor-${vendor.id}`} className="cursor-pointer font-normal">
-                  {vendor.name}
-                </Label>
-              </div>
-            ))}
-          </RadioGroup>
-        </div>
         
-        <div className="space-y-3">
-          <Label>Filter by Product</Label>
-          <RadioGroup value={selectedProduct} onValueChange={setSelectedProduct} className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="" id="product-all" />
-              <Label htmlFor="product-all" className="cursor-pointer font-normal">All Products</Label>
-            </div>
-            {availableProducts.map((product) => (
-              <div key={product.id} className="flex items-center space-x-2">
-                <RadioGroupItem value={product.id} id={`product-${product.id}`} />
-                <Label htmlFor={`product-${product.id}`} className="cursor-pointer font-normal">
-                  {product.name}
+        {/* Filters Section - New Order */}
+        <div className="space-y-4">
+          {/* 1. Vendor Filter - Horizontal Radio Buttons */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Filter by Vendor</Label>
+            <RadioGroup 
+              value={selectedVendor} 
+              onValueChange={setSelectedVendor} 
+              className="flex flex-wrap gap-2"
+            >
+              <div className="flex items-center space-x-2 px-3 py-2 rounded-md border border-input hover:bg-accent cursor-pointer transition-colors">
+                <RadioGroupItem value="" id="vendor-all" />
+                <Label htmlFor="vendor-all" className="cursor-pointer font-normal text-sm">
+                  All
                 </Label>
               </div>
-            ))}
-          </RadioGroup>
+              {vendors.map((vendor) => (
+                <div 
+                  key={vendor.id} 
+                  className="flex items-center space-x-2 px-3 py-2 rounded-md border border-input hover:bg-accent cursor-pointer transition-colors"
+                >
+                  <RadioGroupItem value={vendor.id} id={`vendor-${vendor.id}`} />
+                  <Label 
+                    htmlFor={`vendor-${vendor.id}`} 
+                    className="cursor-pointer font-normal text-sm whitespace-nowrap"
+                  >
+                    {vendor.name}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
+
+          {/* 2. Product Filter - Dropdown */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Filter by Product</Label>
+            <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+              <SelectTrigger className="w-full h-10">
+                <SelectValue placeholder="All Products" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Products</SelectItem>
+                {availableProducts.map((product) => (
+                  <SelectItem key={product.id} value={product.id}>
+                    {product.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 3. Date Range Toggle */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Date Range</Label>
+            <div className="flex gap-2">
+              <Button
+                variant={dateRangeType === 'month' ? 'default' : 'outline'}
+                size="sm"
+                className="flex-1 h-10"
+                onClick={() => {
+                  setDateRangeType('month');
+                  setCustomStartDate(undefined);
+                  setCustomEndDate(undefined);
+                  setFilterBySpecificDate(undefined);
+                }}
+              >
+                By Month
+              </Button>
+              <Button
+                variant={dateRangeType === 'custom' ? 'default' : 'outline'}
+                size="sm"
+                className="flex-1 h-10"
+                onClick={() => setDateRangeType('custom')}
+              >
+                Custom Range
+              </Button>
+            </div>
+          </div>
+
+          {/* 4. Month Selector (Conditional) */}
+          {dateRangeType === 'month' && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Select Month</Label>
+              <Select 
+                value={selectedMonth} 
+                onValueChange={(value) => {
+                  setSelectedMonth(value);
+                  setFilterBySpecificDate(undefined);
+                  setCalendarSelectedDate(undefined);
+                  setSelectedVendor('');
+                  setSelectedProduct('');
+                }}
+              >
+                <SelectTrigger className="w-full h-10">
+                  <SelectValue placeholder="Select month" />
+                </SelectTrigger>
+                <SelectContent>
+                  {monthOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="text-xs text-muted-foreground">
+                {(() => {
+                  const [year, month] = selectedMonth.split('-').map(Number);
+                  const firstDay = new Date(year, month - 1, 1);
+                  const lastDay = new Date(year, month, 0);
+                  return `${firstDay.toLocaleDateString()} - ${lastDay.toLocaleDateString()}`;
+                })()}
+              </div>
+            </div>
+          )}
+
+          {/* 5. Custom Range Selector (Conditional) */}
+          {dateRangeType === 'custom' && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Custom Date Range</Label>
+              <div className="flex flex-col gap-2">
+                <Popover open={customStartOpen} onOpenChange={setCustomStartOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full h-10 justify-start text-sm font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customStartDate ? format(customStartDate, "PPP") : "Select start date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <DatePickerCalendar
+                      mode="single"
+                      selected={customStartDate}
+                      onSelect={(date) => {
+                        setCustomStartDate(date);
+                        setCustomStartOpen(false);
+                      }}
+                      disabled={(date) => date > new Date()}
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <Popover open={customEndOpen} onOpenChange={setCustomEndOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full h-10 justify-start text-sm font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customEndDate ? format(customEndDate, "PPP") : "Select end date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <DatePickerCalendar
+                      mode="single"
+                      selected={customEndDate}
+                      onSelect={(date) => {
+                        if (date && customStartDate) {
+                          const diffTime = Math.abs(date.getTime() - customStartDate.getTime());
+                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                          if (diffDays > 90) {
+                            toast({
+                              title: "Invalid Range",
+                              description: "Date range cannot exceed 3 months (90 days)",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                        }
+                        setCustomEndDate(date);
+                        setCustomEndOpen(false);
+                      }}
+                      disabled={(date) => {
+                        if (!customStartDate) return date > new Date();
+                        const diffTime = Math.abs(date.getTime() - customStartDate.getTime());
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        return date < customStartDate || diffDays > 90 || date > new Date();
+                      }}
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          )}
         </div>
 
           </div>
@@ -1168,6 +1215,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                   onMonthChange={(newMonth) => {
                     const monthStr = format(newMonth, 'yyyy-MM');
                     setSelectedMonth(monthStr);
+                    setFilterBySpecificDate(undefined);
+                    setCalendarSelectedDate(undefined);
+                    setSelectedVendor('');
+                    setSelectedProduct('');
                   }}
                   onDateClick={(date) => {
                     const dateMonth = format(date, 'yyyy-MM');
@@ -1178,7 +1229,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                     setFilterBySpecificDate(date);
                     setCalendarSelectedDate(date);
                     setTableExpanded(true);
-                    setCalendarFilteredDate(undefined);
                   }}
                 />
               </CollapsibleContent>
@@ -1193,6 +1243,17 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                   <Button variant="outline">
                     {tableExpanded ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
                     {tableExpanded ? 'Hide' : 'Show'} Detailed Orders
+                    {!tableExpanded && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {filterBySpecificDate ? (
+                          `(${format(filterBySpecificDate, 'MMM d, yyyy')})`
+                        ) : dateRangeType === 'custom' && customStartDate && customEndDate ? (
+                          `(${format(customStartDate, 'MMM d')} - ${format(customEndDate, 'MMM d, yyyy')})`
+                        ) : (
+                          `(${format(new Date(selectedMonth + '-01'), 'MMMM yyyy')})`
+                        )}
+                      </span>
+                    )}
                   </Button>
                 </CollapsibleTrigger>
                 <div className="flex gap-2 items-center flex-wrap">
