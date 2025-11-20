@@ -1368,7 +1368,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                           <Button
                                             size="sm"
                                             variant="ghost"
-                                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="h-8 w-8 p-0"
                                             onClick={() => {
                                               setEditingOrderId(order.id);
                                               setEditQuantity(order.quantity);
@@ -1639,6 +1639,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
                                     <div className="flex items-center gap-2">
+                                      {/* Status Toggle Button */}
                                       <TooltipProvider>
                                         <Tooltip>
                                           <TooltipTrigger asChild>
@@ -1666,6 +1667,30 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                         </Tooltip>
                                       </TooltipProvider>
 
+                                      {/* Delete Button - Always Visible */}
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
+                                              onClick={() => {
+                                                setDeleteOrderId(order.id);
+                                                setDeleteDialogOpen(true);
+                                              }}
+                                              disabled={isVendorUpdated}
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Delete order</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+
+                                      {/* Dropdown Menu - Only View Details */}
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -1676,24 +1701,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                           <DropdownMenuItem onClick={() => handleOrderClick(order)}>
                                             <Eye className="h-4 w-4 mr-2" />
                                             View Details
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem 
-                                            onClick={() => handleEditOrder(order)}
-                                            disabled={isVendorUpdated}
-                                          >
-                                            <Edit className="h-4 w-4 mr-2" />
-                                            Edit Order
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem 
-                                            onClick={() => {
-                                              setDeleteOrderId(order.id);
-                                              setDeleteDialogOpen(true);
-                                            }}
-                                            disabled={isVendorUpdated}
-                                            className="text-red-600"
-                                          >
-                                            <Trash2 className="h-4 w-4 mr-2" />
-                                            Delete
                                           </DropdownMenuItem>
                                         </DropdownMenuContent>
                                       </DropdownMenu>
