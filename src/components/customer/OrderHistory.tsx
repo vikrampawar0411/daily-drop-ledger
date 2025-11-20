@@ -391,7 +391,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
       case "scheduled":
         return "bg-blue-100 text-blue-800";
       case "cancelled":
-        return "bg-red-100 text-red-800";
+        return "border-2 border-red-600 text-red-600";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -1082,7 +1082,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                       <TableCell colSpan={2}></TableCell>
                     </TableRow>
                     {filteredOrders.some(o => o.status === 'cancelled') && (
-                      <TableRow className="bg-red-50 font-semibold">
+                      <TableRow className="font-semibold border-t-2 border-red-600">
                         <TableCell colSpan={4} className="text-right">Cancelled Orders:</TableCell>
                         <TableCell>{filteredOrders.filter(o => o.status === 'cancelled').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}</TableCell>
                         <TableCell>₹{Math.round(filteredOrders.filter(o => o.status === 'cancelled').reduce((sum, o) => sum + Number(o.total_amount), 0))}</TableCell>
@@ -1141,7 +1141,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
               </Button>
               <Button 
                 onClick={submitDispute} 
-                className="bg-red-600 hover:bg-red-700"
+                className="border-2 border-red-600 text-red-600 hover:border-red-700 hover:bg-red-600/10"
                 disabled={!disputeReason.trim()}
               >
                 Submit Dispute
@@ -1213,7 +1213,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                 </div>
               )}
               {selectedOrder.dispute_raised && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="border-2 border-red-600 rounded-lg p-3">
                   <Label className="text-sm text-red-800">Dispute Raised:</Label>
                   <div className="text-red-600">{selectedOrder.dispute_reason}</div>
                 </div>
@@ -1239,7 +1239,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteOrder} className="bg-red-600 hover:bg-red-700">
+            <AlertDialogAction onClick={handleDeleteOrder} className="border-2 border-red-600 text-red-600 hover:border-red-700 hover:bg-red-600/10">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1315,7 +1315,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleBulkDelete} 
-              className="bg-red-600 hover:bg-red-700"
+              className="border-2 border-red-600 text-red-600 hover:border-red-700 hover:bg-red-600/10"
             >
               Delete All
             </AlertDialogAction>

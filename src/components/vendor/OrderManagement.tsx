@@ -105,7 +105,7 @@ const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementPro
     const configs = {
       pending: { className: "bg-orange-100 text-orange-800", icon: <Clock className="h-3 w-3" /> },
       delivered: { className: "bg-green-100 text-green-800", icon: <CheckCircle className="h-3 w-3" /> },
-      cancelled: { className: "bg-red-100 text-red-800", icon: <AlertCircle className="h-3 w-3" /> },
+      cancelled: { className: "border-2 border-red-600 text-red-600", icon: <AlertCircle className="h-3 w-3" /> },
     };
     const config = configs[status as keyof typeof configs] || configs.pending;
     return (
@@ -371,7 +371,7 @@ const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementPro
                               </div>
                             )}
                             {order.dispute_raised && (
-                              <div className="bg-red-50 border border-red-200 rounded px-3 py-2 text-sm">
+                              <div className="border-2 border-red-600 rounded px-3 py-2 text-sm text-red-600">
                                 <span className="font-medium text-red-800">⚠️ Dispute:</span>{" "}
                                 <span className="text-red-600">{order.dispute_reason}</span>
                               </div>

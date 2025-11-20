@@ -52,7 +52,7 @@ const OrderDetailsView = ({ selectedDate, orders, onDeleteOrder, onShowOrderForm
                         size="sm"
                         variant="ghost"
                         onClick={() => onDeleteOrder(order.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="text-red-600 hover:text-red-700"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
