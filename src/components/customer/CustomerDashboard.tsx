@@ -1355,9 +1355,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                         <TableHead className="cursor-pointer" onClick={() => handleSort('order_date')}>
                           Date {sortColumn === 'order_date' && (sortDirection === 'asc' ? '↑' : '↓')}
                         </TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => handleSort('vendor')}>
-                          Vendor {sortColumn === 'vendor' && (sortDirection === 'asc' ? '↑' : '↓')}
-                        </TableHead>
                         <TableHead className="cursor-pointer" onClick={() => handleSort('product')}>
                           Product {sortColumn === 'product' && (sortDirection === 'asc' ? '↑' : '↓')}
                         </TableHead>
@@ -1378,7 +1375,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                         Object.entries(groupedOrders).map(([month, monthOrders]) => (
                           <React.Fragment key={month}>
                             <TableRow className="bg-muted/50">
-                              <TableCell colSpan={9}>
+                              <TableCell colSpan={8}>
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -1421,9 +1418,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                     {dayName}
                                   </TableCell>
                                   <TableCell onClick={() => handleOrderClick(order)}>{orderDate.toLocaleDateString()}</TableCell>
-                                  <TableCell onClick={() => handleOrderClick(order)}>
-                                    {order.vendor.name}
-                                  </TableCell>
                                   <TableCell onClick={() => handleOrderClick(order)}>
                                     {order.product.name}
                                   </TableCell>
@@ -1609,24 +1603,9 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                          <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                           No orders found for the selected period
                         </TableCell>
-                      </TableRow>
-                    )}
-                    {Object.keys(groupedOrders).length > 0 && (
-                      <TableRow className="bg-muted font-semibold border-t-2">
-                        <TableCell></TableCell>
-                        <TableCell colSpan={4}>TOTAL</TableCell>
-                        <TableCell className="text-right">
-                          {monthlyStats.orders.reduce((sum, o) => sum + Number(o.quantity), 0)}
-                        </TableCell>
-                        <TableCell></TableCell>
-                        <TableCell className="text-right">
-                          ₹{monthlyStats.orders.reduce((sum, o) => sum + Number(o.total_amount), 0).toFixed(2)}
-                        </TableCell>
-                        <TableCell></TableCell>
-                        <TableCell></TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -1663,6 +1642,19 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                           <TableCell className="text-blue-700 font-medium">Pending</TableCell>
                           <TableCell className="text-right">{monthlyStats.scheduledOrders}</TableCell>
                           <TableCell className="text-right">{monthlyStats.forecastedBill}</TableCell>
+                        </TableRow>
+                        <TableRow className="bg-muted font-semibold border-t-2">
+                          <TableCell className="font-bold">TOTAL</TableCell>
+                          <TableCell className="text-right font-bold">
+                            {monthlyStats.deliveredOrders + monthlyStats.deliveredDisputedOrders + monthlyStats.scheduledOrders}
+                          </TableCell>
+                          <TableCell className="text-right font-bold">
+                            ₹{(
+                              monthlyStats.deliveredSpend + 
+                              monthlyStats.deliveredDisputedAmount + 
+                              monthlyStats.forecastedBill
+                            ).toFixed(2)}
+                          </TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>
