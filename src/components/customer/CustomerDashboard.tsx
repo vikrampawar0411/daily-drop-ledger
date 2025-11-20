@@ -49,6 +49,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   // View mode and calendar state
   const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table');
   const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(new Date());
+  const [calendarFilteredDate, setCalendarFilteredDate] = useState<Date | undefined>(undefined);
   
   // Date range state
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -1083,10 +1084,9 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
 
             <Card 
               className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => onNavigate?.('subscriptions')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-green-900">Orders Delivered</CardTitle>
+                <CardTitle className="text-sm font-medium text-green-900">Delivered Orders</CardTitle>
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
@@ -1096,7 +1096,6 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
 
             <Card 
               className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => onNavigate?.('subscriptions')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-amber-900">Pending Orders</CardTitle>
@@ -1132,22 +1131,19 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                 <div className="text-2xl font-bold text-purple-900">₹{monthlyStats.deliveredSpend}</div>
               </CardContent>
             </Card>
-
-            <Card 
-              className="bg-gradient-to-br from-rose-50 to-rose-100 border-rose-200 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => onNavigate?.('subscriptions')}
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-rose-900">Pending Orders Bill</CardTitle>
-                <TrendingUp className="h-4 w-4 text-rose-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-rose-900">₹{monthlyStats.forecastedBill}</div>
-              </CardContent>
-            </Card>
           </div>
 
+          {/* View Mode Toggle */}
+          <Tabs value={viewMode} onValueChange={(value: 'table' | 'calendar') => setViewMode(value)} className="w-full mb-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="table">Table View</TabsTrigger>
+              <TabsTrigger value="calendar">Calendar View</TabsTrigger>
+            </TabsList>
+          </Tabs>
 
+          {/* Table and Calendar Content */}
+          <Tabs value={viewMode} className="w-full">
+            <TabsContent value="table" className="mt-0 space-y-6">
           {/* Orders Table for Selected Period */}
           <Collapsible open={tableExpanded} onOpenChange={setTableExpanded}>
             <div className="space-y-4">
@@ -1301,7 +1297,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                               return (
                                 <TableRow 
                                   key={order.id} 
-                                  className="cursor-pointer hover:bg-muted/50"
+                                  className="group cursor-pointer hover:bg-muted/50"
                                 >
                                   <TableCell onClick={(e) => e.stopPropagation()}>
                                     <Checkbox 
@@ -1329,7 +1325,12 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                         <Input
                                           type="number"
                                           value={editQuantity}
-                                          onChange={(e) => setEditQuantity(Number(e.target.value))}
+                                          onChange={(e) => {
+                                            const value = Number(e.target.value);
+                                            if (value >= 1 || e.target.value === '') {
+                                              setEditQuantity(value);
+                                            }
+                                          }}
                                           className="w-20 h-8"
                                           min={1}
                                           autoFocus
@@ -1339,7 +1340,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                           variant="ghost"
                                           className="h-8 w-8 p-0"
                                           onClick={async () => {
-                                            if (editQuantity > 0) {
+                                            if (editQuantity >= 1) {
                                               const product = vendorProducts.find(vp => vp.product_id === order.product.id);
                                               const pricePerUnit = product?.price_override || order.product.price;
                                               await updateOrder(order.id, {
@@ -1347,6 +1348,12 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                                 total_amount: editQuantity * pricePerUnit
                                               });
                                               setEditingOrderId(null);
+                                            } else {
+                                              toast({
+                                                title: "Invalid Quantity",
+                                                description: "Quantity must be at least 1",
+                                                variant: "destructive",
+                                              });
                                             }
                                           }}
                                         >
@@ -1503,7 +1510,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
           </Collapsible>
             </TabsContent>
 
-            <TabsContent value="calendar" className="mt-0">
+            <TabsContent value="calendar" className="mt-0 space-y-6">
               <OrderCalendarView
                 selectedDate={calendarSelectedDate}
                 onSelectDate={setCalendarSelectedDate}
@@ -1516,10 +1523,202 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                   return monthlyStats.orders.filter(o => o.order_date === dateStr);
                 }}
                 onDateClick={(date) => {
-                  setViewMode('table');
+                  setCalendarFilteredDate(date);
                   setCalendarSelectedDate(date);
                 }}
               />
+
+              {/* Filtered Orders Table for Selected Date */}
+              {calendarFilteredDate && (() => {
+                const filteredOrders = monthlyStats.orders.filter(o => 
+                  o.order_date === format(calendarFilteredDate, 'yyyy-MM-dd')
+                );
+
+                return (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold">
+                        Orders for {format(calendarFilteredDate, 'MMMM d, yyyy')}
+                      </h3>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => setCalendarFilteredDate(undefined)}
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Clear Filter
+                      </Button>
+                    </div>
+
+                    {filteredOrders.length > 0 ? (
+                      <div className="border rounded-lg overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Vendor</TableHead>
+                              <TableHead>Product</TableHead>
+                              <TableHead>Quantity</TableHead>
+                              <TableHead>Amount</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredOrders.map(order => {
+                              const isVendorUpdated = order.updated_by && order.updated_by.user_type === 'vendor';
+                              
+                              return (
+                                <TableRow key={order.id} className="group">
+                                  <TableCell className="font-medium">{order.vendor.name}</TableCell>
+                                  <TableCell>{order.product.name}</TableCell>
+                                  <TableCell>
+                                    {editingOrderId === order.id ? (
+                                      <div className="flex items-center gap-2">
+                                        <Input
+                                          type="number"
+                                          value={editQuantity}
+                                          onChange={(e) => {
+                                            const value = Number(e.target.value);
+                                            if (value >= 1 || e.target.value === '') {
+                                              setEditQuantity(value);
+                                            }
+                                          }}
+                                          className="w-20 h-8"
+                                          min={1}
+                                          autoFocus
+                                        />
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-8 w-8 p-0"
+                                          onClick={async () => {
+                                            if (editQuantity >= 1) {
+                                              const product = vendorProducts.find(vp => vp.product_id === order.product.id);
+                                              const pricePerUnit = product?.price_override || order.product.price;
+                                              await updateOrder(order.id, {
+                                                quantity: editQuantity,
+                                                total_amount: editQuantity * pricePerUnit
+                                              });
+                                              setEditingOrderId(null);
+                                            } else {
+                                              toast({
+                                                title: "Invalid Quantity",
+                                                description: "Quantity must be at least 1",
+                                                variant: "destructive",
+                                              });
+                                            }
+                                          }}
+                                        >
+                                          <Check className="h-4 w-4 text-green-600" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-8 w-8 p-0"
+                                          onClick={() => setEditingOrderId(null)}
+                                        >
+                                          <X className="h-4 w-4 text-gray-600" />
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <span>{order.quantity} {order.unit}</span>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingOrderId(order.id);
+                                            setEditQuantity(order.quantity);
+                                          }}
+                                          disabled={isVendorUpdated}
+                                        >
+                                          <Pencil className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>₹{order.total_amount}</TableCell>
+                                  <TableCell>
+                                    <Badge className={getStatusColor(order.status)}>
+                                      {getStatusIcon(order.status)}
+                                      <span className="ml-1 capitalize">{order.status}</span>
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center gap-2">
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              size="sm"
+                                              variant={order.status === 'delivered' ? 'ghost' : 'default'}
+                                              className={`h-8 w-8 p-0 ${
+                                                order.status === 'delivered' 
+                                                  ? 'bg-green-100 hover:bg-green-200' 
+                                                  : 'bg-amber-100 hover:bg-amber-200'
+                                              }`}
+                                              onClick={() => handleStatusToggle(order.id, order.status)}
+                                              disabled={isVendorUpdated}
+                                            >
+                                              {order.status === 'delivered' ? (
+                                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                              ) : (
+                                                <XCircle className="h-4 w-4 text-amber-600" />
+                                              )}
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>{isVendorUpdated ? 'Status updated by vendor' : 'Toggle status'}</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                            <MoreVertical className="h-4 w-4" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="bg-background z-50">
+                                          <DropdownMenuItem onClick={() => handleOrderClick(order)}>
+                                            <Eye className="h-4 w-4 mr-2" />
+                                            View Details
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem 
+                                            onClick={() => handleEditOrder(order)}
+                                            disabled={isVendorUpdated}
+                                          >
+                                            <Edit className="h-4 w-4 mr-2" />
+                                            Edit Order
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem 
+                                            onClick={() => handleDeleteOrder(order.id)}
+                                            disabled={isVendorUpdated}
+                                            className="text-red-600"
+                                          >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No orders for this date
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </TabsContent>
           </Tabs>
         </CardContent>
