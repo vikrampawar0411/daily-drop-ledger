@@ -3,10 +3,11 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Users, ShoppingCart, Calendar, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock, Download, FileDown, ChevronDown, ChevronUp, AlertTriangle, MoreVertical, Edit, Trash2 } from "lucide-react";
+import { Users, ShoppingCart, Calendar as CalendarIcon, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock, Download, FileDown, ChevronDown, ChevronUp, AlertTriangle, MoreVertical, Edit, Trash2, Eye, Pencil, Check, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { VendorOrderTabs } from "./components/VendorOrderTabs";
+import OrderCalendarView from "./components/OrderCalendarView";
 import { useOrders } from "@/hooks/useOrders";
 import { useVendors } from "@/hooks/useVendors";
 import { useVendorProducts } from "@/hooks/useVendorProducts";
@@ -24,6 +25,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar as DatePickerCalendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -35,18 +39,33 @@ interface CustomerDashboardProps {
 
 const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   const { user } = useAuth();
-  const { orders, loading: ordersLoading, updateOrderStatus, raiseDispute, deleteOrder, updateOrder, refetch } = useOrders();
+  const { orders, loading: ordersLoading, updateOrderStatus, raiseDispute, clearDispute, deleteOrder, updateOrder, refetch } = useOrders();
   const { vendors, loading: vendorsLoading } = useVendors();
   const { toast } = useToast();
   const [customerName, setCustomerName] = useState("");
   const [connectionCount, setConnectionCount] = useState(0);
   const [loadingWelcome, setLoadingWelcome] = useState(true);
   
+  // View mode and calendar state
+  const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table');
+  const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(new Date());
+  
+  // Date range state
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   });
+  const [dateRangeType, setDateRangeType] = useState<'month' | 'custom'>('month');
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
+  
+  // Filter state
   const [selectedVendor, setSelectedVendor] = useState<string>('');
+  const [selectedProduct, setSelectedProduct] = useState<string>('');
+
+  // Inline editing state
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [editQuantity, setEditQuantity] = useState<number>(0);
 
   // Set initial vendor after vendors load
   useEffect(() => {
@@ -56,6 +75,15 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       setSelectedVendor(validVendor ? savedVendor : vendors[0].id);
     }
   }, [vendors, selectedVendor]);
+
+  // Get available products from filtered orders
+  const availableProducts = useMemo(() => {
+    const filteredOrders = orders.filter(o => !selectedVendor || o.vendor.id === selectedVendor);
+    const uniqueProducts = Array.from(
+      new Map(filteredOrders.map(o => [o.product.id, o.product])).values()
+    );
+    return uniqueProducts;
+  }, [orders, selectedVendor]);
   const [orderDetailsDialogOpen, setOrderDetailsDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [tableExpanded, setTableExpanded] = useState(true);
@@ -636,16 +664,30 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   };
 
   const monthlyStats = useMemo(() => {
-    const [year, month] = selectedMonth.split('-').map(Number);
-    const firstDay = new Date(year, month - 1, 1);
-    const lastDay = new Date(year, month, 0);
+    let startDate: Date, endDate: Date;
+    
+    // Determine date range based on type
+    if (dateRangeType === 'month') {
+      const [year, month] = selectedMonth.split('-').map(Number);
+      startDate = new Date(year, month - 1, 1);
+      endDate = new Date(year, month, 0);
+    } else if (customStartDate && customEndDate) {
+      startDate = customStartDate;
+      endDate = customEndDate;
+    } else {
+      // Default to current month if custom dates not set
+      const today = new Date();
+      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    }
     
     const monthOrders = orders.filter(o => {
       const orderDate = new Date(o.order_date);
-      const matchesDate = orderDate >= firstDay && orderDate <= lastDay;
+      const matchesDate = orderDate >= startDate && orderDate <= endDate;
       const matchesVendor = !selectedVendor || o.vendor.id === selectedVendor;
+      const matchesProduct = !selectedProduct || o.product.id === selectedProduct;
       // Exclude cancelled orders
-      return matchesDate && matchesVendor && o.status !== 'cancelled';
+      return matchesDate && matchesVendor && matchesProduct && o.status !== 'cancelled';
     });
     
     // Sort orders based on selected column
@@ -692,6 +734,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     const totalOrders = monthOrders.length;
     const deliveredOrders = monthOrders.filter(o => o.status === 'delivered').length;
     const scheduledOrders = monthOrders.filter(o => o.status === 'pending').length;
+    const disputedOrders = monthOrders.filter(o => o.dispute_raised === true).length;
     
     const deliveredSpend = monthOrders
       .filter(o => o.status === 'delivered')
@@ -701,15 +744,21 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       .filter(o => o.status === 'pending')
       .reduce((sum, o) => sum + Number(o.total_amount), 0);
     
+    const disputedAmount = monthOrders
+      .filter(o => o.dispute_raised === true)
+      .reduce((sum, o) => sum + Number(o.total_amount), 0);
+    
     return {
       totalOrders,
       deliveredOrders,
       scheduledOrders,
+      disputedOrders,
       deliveredSpend: Math.round(deliveredSpend),
       forecastedBill: Math.round(forecastedBill),
+      disputedAmount: Math.round(disputedAmount),
       orders: sortedOrders
     };
-  }, [orders, selectedMonth, selectedVendor, sortColumn, sortDirection]);
+  }, [orders, selectedMonth, selectedVendor, selectedProduct, dateRangeType, customStartDate, customEndDate, sortColumn, sortDirection]);
 
   const groupedOrders = useMemo(() => {
     const groups: Record<string, any[]> = {};
@@ -839,7 +888,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2"
-              onClick={() => onNavigate?.('calendar')}
+              onClick={() => setViewMode('calendar')}
             >
               <Plus className="h-6 w-6" />
               <span>Place New Order</span>
@@ -864,33 +913,114 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
         </CardContent>
       </Card>
 
-      {/* Monthly Statistics */}
+      {/* Order Statistics */}
       <Card>
         <CardHeader>
           <div className="flex flex-col space-y-4">
             <div className="flex items-center justify-between">
-              <CardTitle>Monthly Statistics</CardTitle>
-              <div className="flex flex-col items-end space-y-1">
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Select month" />
+              <CardTitle>Order Statistics</CardTitle>
+              <div className="flex items-center space-x-4">
+                <Select 
+                  value={dateRangeType} 
+                  onValueChange={(value: 'month' | 'custom') => {
+                    setDateRangeType(value);
+                    if (value === 'month') {
+                      setCustomStartDate(undefined);
+                      setCustomEndDate(undefined);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {monthOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="month">By Month</SelectItem>
+                    <SelectItem value="custom">Custom Range</SelectItem>
                   </SelectContent>
                 </Select>
-                <div className="text-xs text-muted-foreground">
-                  {(() => {
-                    const [year, month] = selectedMonth.split('-').map(Number);
-                    const firstDay = new Date(year, month - 1, 1);
-                    const lastDay = new Date(year, month, 0);
-                    return `${firstDay.toLocaleDateString()} - ${lastDay.toLocaleDateString()}`;
-                  })()}
-                </div>
+
+                {dateRangeType === 'month' ? (
+                  <div className="flex flex-col items-end space-y-1">
+                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Select month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {monthOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="text-xs text-muted-foreground">
+                      {(() => {
+                        const [year, month] = selectedMonth.split('-').map(Number);
+                        const firstDay = new Date(year, month - 1, 1);
+                        const lastDay = new Date(year, month, 0);
+                        return `${firstDay.toLocaleDateString()} - ${lastDay.toLocaleDateString()}`;
+                      })()}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-[160px] justify-start text-sm">
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {customStartDate ? format(customStartDate, "PPP") : "Start Date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <DatePickerCalendar
+                          mode="single"
+                          selected={customStartDate}
+                          onSelect={setCustomStartDate}
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+
+                    <span className="text-sm text-muted-foreground">to</span>
+
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-[160px] justify-start text-sm">
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {customEndDate ? format(customEndDate, "PPP") : "End Date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <DatePickerCalendar
+                          mode="single"
+                          selected={customEndDate}
+                          onSelect={(date) => {
+                            if (date && customStartDate) {
+                              const diffTime = Math.abs(date.getTime() - customStartDate.getTime());
+                              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                              if (diffDays > 90) {
+                                toast({
+                                  title: "Invalid Range",
+                                  description: "Date range cannot exceed 3 months (90 days)",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                            }
+                            setCustomEndDate(date);
+                          }}
+                          disabled={(date) => {
+                            if (!customStartDate) return false;
+                            const diffTime = Math.abs(date.getTime() - customStartDate.getTime());
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            return date < customStartDate || diffDays > 90;
+                          }}
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
               </div>
             </div>
         <div className="space-y-3">
@@ -901,6 +1031,24 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                 <RadioGroupItem value={vendor.id} id={`vendor-${vendor.id}`} />
                 <Label htmlFor={`vendor-${vendor.id}`} className="cursor-pointer font-normal">
                   {vendor.name}
+                </Label>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
+        
+        <div className="space-y-3">
+          <Label>Filter by Product</Label>
+          <RadioGroup value={selectedProduct} onValueChange={setSelectedProduct} className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="" id="product-all" />
+              <Label htmlFor="product-all" className="cursor-pointer font-normal">All Products</Label>
+            </div>
+            {availableProducts.map((product) => (
+              <div key={product.id} className="flex items-center space-x-2">
+                <RadioGroupItem value={product.id} id={`product-${product.id}`} />
+                <Label htmlFor={`product-${product.id}`} className="cursor-pointer font-normal">
+                  {product.name}
                 </Label>
               </div>
             ))}

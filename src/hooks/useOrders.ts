@@ -236,6 +236,49 @@ export const useOrders = () => {
     }
   };
 
+  const clearDispute = async (orderId: string, resolvedStatus: 'delivered' | 'pending') => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ 
+          dispute_raised: false, 
+          dispute_reason: null,
+          dispute_raised_at: null,
+          status: resolvedStatus
+        })
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      setOrders(prev =>
+        prev.map(order =>
+          order.id === orderId 
+            ? { 
+                ...order, 
+                dispute_raised: false, 
+                dispute_reason: null,
+                dispute_raised_at: null,
+                status: resolvedStatus
+              } 
+            : order
+        )
+      );
+
+      toast({
+        title: "Success",
+        description: `Dispute cleared. Order marked as ${resolvedStatus}.`,
+      });
+      
+      await fetchOrders(); // Refresh to get latest data
+    } catch (error: any) {
+      toast({
+        title: "Error clearing dispute",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const deleteOrder = async (orderId: string) => {
     try {
       const { error } = await supabase
@@ -297,6 +340,7 @@ export const useOrders = () => {
     loading,
     updateOrderStatus,
     raiseDispute,
+    clearDispute,
     deleteOrder,
     updateOrder,
     refetch: fetchOrders,

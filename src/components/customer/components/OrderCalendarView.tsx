@@ -15,9 +15,16 @@ interface OrderCalendarViewProps {
   onSelectDate: (date: Date | undefined) => void;
   hasOrdersOnDate: (date: Date) => boolean;
   getOrdersForDate: (date: Date) => Order[];
+  onDateClick?: (date: Date) => void;
 }
 
-const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrdersForDate }: OrderCalendarViewProps) => {
+const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrdersForDate, onDateClick }: OrderCalendarViewProps) => {
+  const handleDateSelect = (date: Date | undefined) => {
+    onSelectDate(date);
+    if (date && onDateClick) {
+      onDateClick(date);
+    }
+  };
   return (
     <Card>
       <CardHeader>
@@ -27,7 +34,7 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
         <Calendar
           mode="single"
           selected={selectedDate}
-          onSelect={onSelectDate}
+          onSelect={handleDateSelect}
           className={cn("rounded-md border pointer-events-auto")}
           modifiers={{
             today: (date) => {
@@ -88,19 +95,19 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
         <div className="mt-4 space-y-2 text-sm text-muted-foreground">
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(142 76% 73%)', border: '2px solid hsl(142 71% 45%)' }}></div>
-            <span className="font-medium">Delivered orders</span>
+            <span className="font-normal">Delivered orders</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(38 92% 56%)', border: '2px solid hsl(38 92% 50%)' }}></div>
-            <span className="font-medium">Pending orders (action needed)</span>
+            <span className="font-normal">Pending orders (action needed)</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(214 95% 93%)', border: '1px solid hsl(213 97% 78%)', opacity: 0.7 }}></div>
-            <span className="font-medium text-gray-500">Future orders (lighter color)</span>
+            <span className="font-normal text-gray-500">Future orders</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 rounded bg-background" style={{ border: '4px solid hsl(var(--primary))' }}></div>
-            <span className="font-medium">Today</span>
+            <span className="font-normal">Today</span>
           </div>
         </div>
       </CardContent>
