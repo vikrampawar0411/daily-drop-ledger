@@ -1251,7 +1251,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                           Total {sortColumn === 'total_amount' && (sortDirection === 'asc' ? '↑' : '↓')}
                         </TableHead>
                         <TableHead className="cursor-pointer" onClick={() => handleSort('status')}>
-                          Mark Status {sortColumn === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+                          Status {sortColumn === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
                         </TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
@@ -1383,20 +1383,26 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                   <TableCell onClick={() => handleOrderClick(order)} className="font-semibold">
                                     ₹{order.total_amount}
                                   </TableCell>
-                                  <TableCell onClick={(e) => e.stopPropagation()}>
+                                  <TableCell onClick={() => handleOrderClick(order)}>
                                     <div className="flex items-center gap-2">
-                                      <Button
-                                        size="sm"
+                                      <Badge 
+                                        variant={order.status === 'delivered' ? 'default' : 'secondary'}
                                         className={order.status === 'delivered' 
-                                          ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 text-green-900 hover:from-green-100 hover:to-green-200' 
-                                          : 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 text-amber-900 hover:from-amber-100 hover:to-amber-200'}
-                                        variant="outline"
-                                        onClick={() => handleStatusToggle(order)}
-                                        disabled={isVendorUpdated || (isPastDate && !canModify)}
+                                          ? 'bg-green-100 text-green-800 border-green-200' 
+                                          : 'bg-amber-100 text-amber-800 border-amber-200'}
                                       >
-                                        {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
-                                        {order.status === 'pending' ? 'Pending' : 'Delivered'}
-                                      </Button>
+                                        {order.status === 'delivered' ? (
+                                          <>
+                                            <CheckCircle className="h-3 w-3 mr-1" />
+                                            Delivered
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Clock className="h-3 w-3 mr-1" />
+                                            Pending
+                                          </>
+                                        )}
+                                      </Badge>
                                       {order.dispute_raised && (
                                         <span className="text-xs text-yellow-600 flex items-center gap-1">
                                           <AlertTriangle className="h-3 w-3" />
@@ -1406,44 +1412,95 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                                     </div>
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
-                                    {canModify && !(isPastDate && order.status === 'delivered') ? (
-                                      <div className="flex items-center gap-1">
-                                        {!(isPastDate && order.status === 'delivered') && (
-                                          <Button
-                                            variant="ghost" 
-                                            size="sm"
-                                            onClick={() => {
-                                              setDeleteOrderId(order.id);
-                                              setDeleteDialogOpen(true);
-                                            }}
-                                            className="text-red-600 hover:text-red-700"
-                                            title="Delete Order"
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        )}
-                                      </div>
-                                    ) : isVendorUpdated && !order.dispute_raised ? (
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Button 
-                                            variant="ghost" 
-                                            size="sm"
-                                            onClick={() => {
-                                              setDisputeOrderId(order.id);
-                                              setDisputeReason("");
-                                              setDisputeDialogOpen(true);
-                                            }}
-                                            className="text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
-                                          >
-                                            <AlertTriangle className="h-4 w-4" />
-                                          </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>Raise Dispute</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    ) : null}
+                                    <div className="flex items-center gap-2">
+                                      {/* Toggle Status Button */}
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              size="sm"
+                                              variant={order.status === 'delivered' ? 'ghost' : 'default'}
+                                              className={`h-8 w-8 p-0 ${
+                                                order.status === 'delivered' 
+                                                  ? 'bg-green-100 hover:bg-green-200' 
+                                                  : 'bg-amber-100 hover:bg-amber-200'
+                                              }`}
+                                              onClick={() => handleStatusToggle(order)}
+                                              disabled={isVendorUpdated || (isPastDate && !canModify)}
+                                            >
+                                              {order.status === 'delivered' ? (
+                                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                              ) : (
+                                                <XCircle className="h-4 w-4 text-amber-600" />
+                                              )}
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>{isVendorUpdated ? 'Status updated by vendor' : 'Toggle status'}</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+
+                                      {/* Delete Button */}
+                                      {canModify && !(isPastDate && order.status === 'delivered') && (
+                                        <Button
+                                          variant="ghost" 
+                                          size="sm"
+                                          onClick={() => {
+                                            setDeleteOrderId(order.id);
+                                            setDeleteDialogOpen(true);
+                                          }}
+                                          className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
+                                          title="Delete Order"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      )}
+
+                                      {/* Dispute Buttons */}
+                                      {isVendorUpdated && !order.dispute_raised && (
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button 
+                                              variant="ghost" 
+                                              size="sm"
+                                              onClick={() => {
+                                                setDisputeOrderId(order.id);
+                                                setDisputeReason("");
+                                                setDisputeDialogOpen(true);
+                                              }}
+                                              className="h-8 w-8 p-0 text-orange-600 hover:bg-orange-50"
+                                            >
+                                              <AlertTriangle className="h-4 w-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Raise a dispute</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      )}
+
+                                      {order.dispute_raised && (
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button 
+                                              variant="ghost" 
+                                              size="sm"
+                                              onClick={async () => {
+                                                await clearDispute(order.id, order.status);
+                                                refetch();
+                                              }}
+                                              className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50"
+                                            >
+                                              <CheckCircle className="h-4 w-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Clear dispute</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      )}
+                                    </div>
                                   </TableCell>
                                 </TableRow>
                               );
