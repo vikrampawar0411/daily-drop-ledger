@@ -71,7 +71,7 @@ export const AreaSocietyManagement = () => {
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="icon">
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-4 w-4 text-red-600" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -134,11 +134,11 @@ export const AreaSocietyManagement = () => {
                     <div key={society.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                       <span>{society.name}</span>
                       <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </AlertDialogTrigger>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete Society</AlertDialogTitle>

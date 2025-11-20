@@ -378,7 +378,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
       case "scheduled":
         return <Clock className="h-4 w-4 text-blue-600" />;
       case "cancelled":
-        return <XCircle className="h-4 w-4 text-red-600" />;
+        return <XCircle className="h-4 w-4 text-gray-600" />;
       default:
         return <Clock className="h-4 w-4 text-gray-600" />;
     }
@@ -391,7 +391,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
       case "scheduled":
         return "bg-blue-100 text-blue-800";
       case "cancelled":
-        return "border-2 border-red-600 text-red-600";
+        return "border-2 border-gray-400 text-gray-700";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -967,7 +967,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                                     />
                                   )}
                                 </TableCell>
-                                <TableCell className={`font-semibold ${isSunday(order.order_date) ? 'text-red-700' : ''}`}>
+                                <TableCell className={`font-semibold ${isSunday(order.order_date) ? 'text-blue-600' : ''}`}>
                                   {getDayName(order.order_date)}
                                 </TableCell>
                                 <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
@@ -1082,7 +1082,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                       <TableCell colSpan={2}></TableCell>
                     </TableRow>
                     {filteredOrders.some(o => o.status === 'cancelled') && (
-                      <TableRow className="font-semibold border-t-2 border-red-600">
+                      <TableRow className="font-semibold border-t-2 border-gray-400">
                         <TableCell colSpan={4} className="text-right">Cancelled Orders:</TableCell>
                         <TableCell>{filteredOrders.filter(o => o.status === 'cancelled').reduce((sum, o) => sum + Number(o.quantity), 0).toFixed(2)}</TableCell>
                         <TableCell>₹{Math.round(filteredOrders.filter(o => o.status === 'cancelled').reduce((sum, o) => sum + Number(o.total_amount), 0))}</TableCell>
@@ -1141,7 +1141,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
               </Button>
               <Button 
                 onClick={submitDispute} 
-                className="border-2 border-red-600 text-red-600 hover:border-red-700 hover:bg-red-600/10"
+                className="border-2 border-orange-500 text-orange-700 hover:border-orange-600 hover:bg-orange-50"
                 disabled={!disputeReason.trim()}
               >
                 Submit Dispute
@@ -1213,9 +1213,9 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                 </div>
               )}
               {selectedOrder.dispute_raised && (
-                <div className="border-2 border-red-600 rounded-lg p-3">
-                  <Label className="text-sm text-red-800">Dispute Raised:</Label>
-                  <div className="text-red-600">{selectedOrder.dispute_reason}</div>
+                <div className="border-2 border-orange-500 rounded-lg p-3">
+                  <Label className="text-sm text-orange-800">Dispute Raised:</Label>
+                  <div className="text-orange-700">{selectedOrder.dispute_reason}</div>
                 </div>
               )}
               <div className="flex justify-end space-x-2">
@@ -1239,7 +1239,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteOrder} className="border-2 border-red-600 text-red-600 hover:border-red-700 hover:bg-red-600/10">
+            <AlertDialogAction onClick={handleDeleteOrder} className="border-2 border-red-600 text-red-600 hover:border-red-700 hover:bg-red-50">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1315,7 +1315,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleBulkDelete} 
-              className="border-2 border-red-600 text-red-600 hover:border-red-700 hover:bg-red-600/10"
+              className="border-2 border-red-600 text-red-600 hover:border-red-700 hover:bg-red-50"
             >
               Delete All
             </AlertDialogAction>

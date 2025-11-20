@@ -571,7 +571,7 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
       case "paused":
         return <Badge className="bg-yellow-500">Paused</Badge>;
       case "cancelled":
-        return <Badge className="border-2 border-red-600 text-red-600">Cancelled</Badge>;
+        return <Badge className="border-2 border-gray-400 text-gray-700">Cancelled</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
