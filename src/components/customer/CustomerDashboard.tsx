@@ -49,6 +49,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
   // Calendar state
   const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(new Date());
   const [calendarFilteredDate, setCalendarFilteredDate] = useState<Date | undefined>(undefined);
+  const [filterBySpecificDate, setFilterBySpecificDate] = useState<Date | undefined>(undefined);
   
   // Date range state
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -684,10 +685,20 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
     
     const monthOrders = orders.filter(o => {
       const orderDate = new Date(o.order_date);
+      
+      // If filtering by specific date, only show that date's orders
+      if (filterBySpecificDate) {
+        const filterDateStr = format(filterBySpecificDate, 'yyyy-MM-dd');
+        const matchesSpecificDate = o.order_date === filterDateStr;
+        const matchesVendor = !selectedVendor || o.vendor.id === selectedVendor;
+        const matchesProduct = !selectedProduct || o.product.id === selectedProduct;
+        return matchesSpecificDate && matchesVendor && matchesProduct && o.status !== 'cancelled';
+      }
+      
+      // Otherwise, show full month range
       const matchesDate = orderDate >= startDate && orderDate <= endDate;
       const matchesVendor = !selectedVendor || o.vendor.id === selectedVendor;
       const matchesProduct = !selectedProduct || o.product.id === selectedProduct;
-      // Exclude cancelled orders
       return matchesDate && matchesVendor && matchesProduct && o.status !== 'cancelled';
     });
     
@@ -759,7 +770,7 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
       forecastedBill: Math.round(forecastedBill),
       orders: sortedOrders
     };
-  }, [orders, selectedMonth, selectedVendor, selectedProduct, dateRangeType, customStartDate, customEndDate, sortColumn, sortDirection]);
+  }, [orders, selectedMonth, selectedVendor, selectedProduct, dateRangeType, customStartDate, customEndDate, sortColumn, sortDirection, filterBySpecificDate]);
 
   const groupedOrders = useMemo(() => {
     const groups: Record<string, any[]> = {};
@@ -945,7 +956,10 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
 
                 {dateRangeType === 'month' ? (
                   <div className="flex flex-col items-end space-y-1">
-                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                    <Select value={selectedMonth} onValueChange={(value) => {
+                      setSelectedMonth(value);
+                      setFilterBySpecificDate(undefined);
+                    }}>
                       <SelectTrigger className="w-[200px]">
                         <SelectValue placeholder="Select month" />
                       </SelectTrigger>
@@ -1150,138 +1164,23 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                     const dateStr = format(date, 'yyyy-MM-dd');
                     return monthlyStats.orders.filter(o => o.order_date === dateStr);
                   }}
+                  month={new Date(selectedMonth + '-01')}
+                  onMonthChange={(newMonth) => {
+                    const monthStr = format(newMonth, 'yyyy-MM');
+                    setSelectedMonth(monthStr);
+                  }}
                   onDateClick={(date) => {
-                    setCalendarFilteredDate(date);
+                    const dateMonth = format(date, 'yyyy-MM');
+                    if (dateMonth !== selectedMonth) {
+                      setSelectedMonth(dateMonth);
+                    }
+                    
+                    setFilterBySpecificDate(date);
                     setCalendarSelectedDate(date);
+                    setTableExpanded(true);
+                    setCalendarFilteredDate(undefined);
                   }}
                 />
-
-                {/* Filtered Orders Table for Selected Date */}
-                {calendarFilteredDate && (() => {
-                  const filteredOrders = monthlyStats.orders.filter(o => 
-                    o.order_date === format(calendarFilteredDate, 'yyyy-MM-dd')
-                  );
-
-                  return (
-                    <div className="space-y-4 mt-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">
-                          Orders for {format(calendarFilteredDate, 'MMMM d, yyyy')}
-                        </h3>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => setCalendarFilteredDate(undefined)}
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Clear Filter
-                        </Button>
-                      </div>
-
-                      {filteredOrders.length > 0 ? (
-                        <div className="border rounded-lg overflow-hidden">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Product</TableHead>
-                                <TableHead>Vendor</TableHead>
-                                <TableHead>Quantity</TableHead>
-                                <TableHead>Amount</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Actions</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {filteredOrders.map((order) => (
-                                <TableRow 
-                                  key={order.id}
-                                  className="cursor-pointer hover:bg-muted/50"
-                                  onClick={() => handleOrderClick(order)}
-                                >
-                                  <TableCell>{order.product.name}</TableCell>
-                                  <TableCell>{order.vendor.name}</TableCell>
-                                  <TableCell>{order.quantity} {order.unit}</TableCell>
-                                  <TableCell>₹{order.total_amount}</TableCell>
-                                  <TableCell>
-                                    {order.dispute_raised ? (
-                                      <span className="text-red-600">
-                                        Delivered (Disputed)
-                                      </span>
-                                    ) : order.status === 'delivered' ? (
-                                      <span className="text-green-600">
-                                        Delivered
-                                      </span>
-                                    ) : (
-                                      <span className="text-amber-600">
-                                        Pending
-                                      </span>
-                                    )}
-                                  </TableCell>
-                                  <TableCell onClick={(e) => e.stopPropagation()}>
-                                    <div className="flex items-center gap-2">
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Button
-                                              size="sm"
-                                              variant={order.status === 'delivered' ? 'ghost' : 'default'}
-                                              className={`h-8 w-8 p-0 ${
-                                                order.status === 'delivered' 
-                                                  ? 'bg-green-100 hover:bg-green-200' 
-                                                  : 'bg-amber-100 hover:bg-amber-200'
-                                              }`}
-                                              onClick={() => handleStatusToggle(order)}
-                                            >
-                                              {order.status === 'delivered' ? (
-                                                <CheckCircle className="h-4 w-4 text-green-600" />
-                                              ) : (
-                                                <XCircle className="h-4 w-4 text-amber-600" />
-                                              )}
-                                            </Button>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>Toggle status</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-
-                                      {order.status === 'delivered' && !order.dispute_raised && (
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-8 w-8 p-0"
-                                                onClick={() => {
-                                                  setDisputeOrderId(order.id);
-                                                  setDisputeDialogOpen(true);
-                                                }}
-                                              >
-                                                <AlertCircle className="h-4 w-4 text-red-600" />
-                                              </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              <p>Raise Dispute</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      ) : (
-                        <div className="text-center py-8 text-muted-foreground">
-                          No orders for this date
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
               </CollapsibleContent>
             </div>
           </Collapsible>
@@ -1296,7 +1195,27 @@ const CustomerDashboard = ({ onNavigate }: CustomerDashboardProps) => {
                     {tableExpanded ? 'Hide' : 'Show'} Detailed Orders
                   </Button>
                 </CollapsibleTrigger>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center flex-wrap">
+                  {filterBySpecificDate && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-sm">
+                        <CalendarIcon className="h-3 w-3 mr-1" />
+                        Filtered: {format(filterBySpecificDate, 'MMM d, yyyy')}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setFilterBySpecificDate(undefined);
+                          setCalendarSelectedDate(undefined);
+                        }}
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Clear Date Filter
+                      </Button>
+                    </div>
+                  )}
+                
                   {selectedOrderIds.length > 0 && (() => {
                     // Calculate selected orders information for bulk actions
                     const selectedOrders = monthlyStats.orders.filter(order => 
