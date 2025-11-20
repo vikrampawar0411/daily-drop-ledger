@@ -45,6 +45,7 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
               const today = new Date();
               return date.toDateString() === today.toDateString();
             },
+            selected: selectedDate,
             deliveredOrder: (date) => {
               const dateStr = format(date, 'yyyy-MM-dd');
               const orders = getOrdersForDate(date);
@@ -75,6 +76,9 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
               boxShadow: '0 0 0 3px hsl(var(--primary)) inset',
               fontWeight: '700'
             },
+            selected: {
+              boxShadow: '0 0 0 4px hsl(var(--ring)) inset'
+            },
             deliveredOrder: {
               backgroundColor: 'hsl(142 76% 73%)',
               color: 'hsl(142 76% 20%)',
@@ -95,6 +99,9 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
               opacity: 0.7
             }
           }}
+          modifiersClassNames={{
+            selected: '!ring-4 !ring-ring !ring-offset-2'
+          }}
         />
         <div className="mt-4 space-y-2 text-sm text-muted-foreground">
           <div className="flex items-center space-x-2">
@@ -112,6 +119,10 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 rounded bg-background" style={{ border: '4px solid hsl(var(--primary))' }}></div>
             <span className="font-normal">Today</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 rounded bg-background ring-4 ring-ring ring-offset-2"></div>
+            <span className="font-normal">Selected date</span>
           </div>
         </div>
       </CardContent>

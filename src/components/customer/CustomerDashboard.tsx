@@ -1869,54 +1869,50 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                   </Table>
                 </div>
                 
-                {/* Summary at bottom */}
-                <div className="mt-6 pt-6 border-t space-y-2">
-                  <div className="pt-4 border-t">
-                    <h4 className="font-semibold mb-2">Order Summary</h4>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Orders</TableHead>
-                          <TableHead className="text-right">Amount (₹)</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        <TableRow>
-                          <TableCell className="text-green-700 font-medium">Delivered</TableCell>
-                          <TableCell className="text-right">{monthlyStats.deliveredOrders}</TableCell>
-                          <TableCell className="text-right">{monthlyStats.deliveredSpend}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="text-orange-700 font-medium flex items-center gap-2">
-                            <AlertTriangle className="h-4 w-4" />
-                            Delivered (Disputed)
-                          </TableCell>
-                          <TableCell className="text-right">{monthlyStats.deliveredDisputedOrders}</TableCell>
-                          <TableCell className="text-right">{monthlyStats.deliveredDisputedAmount}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="text-blue-700 font-medium">Pending</TableCell>
-                          <TableCell className="text-right">{monthlyStats.scheduledOrders}</TableCell>
-                          <TableCell className="text-right">{monthlyStats.forecastedBill}</TableCell>
-                        </TableRow>
-                        <TableRow className="bg-muted font-semibold border-t-2">
-                          <TableCell className="font-bold">TOTAL</TableCell>
-                          <TableCell className="text-right font-bold">
-                            {monthlyStats.deliveredOrders + monthlyStats.deliveredDisputedOrders + monthlyStats.scheduledOrders}
-                          </TableCell>
-                          <TableCell className="text-right font-bold">
-                            ₹{(
-                              monthlyStats.deliveredSpend + 
-                              monthlyStats.deliveredDisputedAmount + 
-                              monthlyStats.forecastedBill
-                            ).toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
+                {/* Summary at bottom - Hide when filtering by specific date */}
+                {!filterBySpecificDate && (
+                  <div className="mt-6 pt-6 border-t space-y-2">
+                    <div className="pt-4 border-t">
+                      <h4 className="font-semibold mb-2">Order Summary</h4>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Orders</TableHead>
+                            <TableHead className="text-right">Amount (₹)</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          <TableRow>
+                            <TableCell className="text-green-700 font-medium">Delivered</TableCell>
+                            <TableCell className="text-right">{monthlyStats.deliveredOrders}</TableCell>
+                            <TableCell className="text-right">{monthlyStats.deliveredSpend}</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="text-orange-700 font-medium flex items-center gap-2">
+                              <AlertTriangle className="h-4 w-4" />
+                              Delivered (Disputed)
+                            </TableCell>
+                            <TableCell className="text-right">{monthlyStats.deliveredDisputedOrders}</TableCell>
+                            <TableCell className="text-right">{monthlyStats.deliveredDisputedAmount}</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="text-blue-700 font-medium">Pending</TableCell>
+                            <TableCell className="text-right">{monthlyStats.scheduledOrders}</TableCell>
+                            <TableCell className="text-right">{monthlyStats.forecastedBill}</TableCell>
+                          </TableRow>
+                          <TableRow className="font-bold bg-gray-50">
+                            <TableCell>Total</TableCell>
+                            <TableCell className="text-right">{monthlyStats.totalOrders}</TableCell>
+                            <TableCell className="text-right">
+                              ₹{(monthlyStats.deliveredSpend + monthlyStats.deliveredDisputedAmount + monthlyStats.forecastedBill).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
-                </div>
+                )}
               </CollapsibleContent>
             </div>
           </Collapsible>
