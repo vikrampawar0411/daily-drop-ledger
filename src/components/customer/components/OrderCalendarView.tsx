@@ -18,17 +18,29 @@ interface OrderCalendarViewProps {
   onDateClick?: (date: Date) => void;
   month?: Date;
   onMonthChange?: (month: Date) => void;
+  onCalendarAreaClick?: () => void;
 }
 
-const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrdersForDate, onDateClick, month, onMonthChange }: OrderCalendarViewProps) => {
+const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrdersForDate, onDateClick, month, onMonthChange, onCalendarAreaClick }: OrderCalendarViewProps) => {
   const handleDateSelect = (date: Date | undefined) => {
     onSelectDate(date);
     if (date && onDateClick) {
       onDateClick(date);
     }
   };
+  
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Check if click is NOT on a date button (rdp-day class)
+    const target = e.target as HTMLElement;
+    const isDateButton = target.closest('.rdp-day');
+    
+    if (!isDateButton && onCalendarAreaClick) {
+      onCalendarAreaClick();
+    }
+  };
+  
   return (
-    <Card>
+    <Card onClick={handleCardClick}>
       <CardHeader>
         <CardTitle>Select Date</CardTitle>
       </CardHeader>
