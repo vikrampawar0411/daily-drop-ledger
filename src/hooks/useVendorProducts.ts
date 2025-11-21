@@ -34,22 +34,29 @@ export const useVendorProducts = (vendorId?: string) => {
 
   const fetchVendorProducts = async () => {
     try {
-      let query = supabase
+      if (!vendorId) {
+        setVendorProducts([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
         .from("vendor_products")
         .select(`
           *,
           product:products(*)
-        `);
-      
-      // If vendorId is provided, filter by it, otherwise fetch all
-      if (vendorId) {
-        query = query.eq("vendor_id", vendorId);
-      }
-      
-      const { data, error } = await query.order("created_at", { ascending: false });
+        `)
+        .eq("vendor_id", vendorId)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setVendorProducts(data || []);
+      
+      // Remove duplicates based on product_id
+      const uniqueProducts = (data || []).filter((item, index, self) =>
+        index === self.findIndex((t) => t.product_id === item.product_id)
+      );
+      
+      setVendorProducts(uniqueProducts);
     } catch (error: any) {
       toast({
         title: "Error fetching vendor products",
@@ -156,6 +163,41 @@ export const useVendorProducts = (vendorId?: string) => {
     }
   };
 
+  const updateStock = async (vendorProductId: string, quantity: number) => {
+    try {
+      const { data, error } = await supabase
+        .from("vendor_products")
+        .update({ 
+          stock_quantity: quantity,
+          stock_available: quantity,
+          last_stock_update: new Date().toISOString()
+        })
+        .eq("id", vendorProductId)
+        .select(`*, product:products(*)`)
+        .single();
+
+      if (error) throw error;
+
+      setVendorProducts(prev =>
+        prev.map(vp => vp.id === vendorProductId ? data : vp)
+      );
+
+      toast({
+        title: "Stock Updated",
+        description: "Stock quantity updated successfully",
+      });
+
+      return data;
+    } catch (error: any) {
+      toast({
+        title: "Error updating stock",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   const addStock = async (vendorProductId: string, quantity: number) => {
     try {
       const currentVP = vendorProducts.find(vp => vp.id === vendorProductId);
@@ -207,6 +249,7 @@ export const useVendorProducts = (vendorId?: string) => {
     updateVendorProduct,
     removeVendorProduct,
     addStock,
+    updateStock,
     updateStockStatus,
     updatePrice,
     refetch: fetchVendorProducts,

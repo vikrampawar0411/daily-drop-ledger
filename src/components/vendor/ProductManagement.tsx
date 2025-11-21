@@ -26,9 +26,9 @@ const ProductManagement = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [vendorId, setVendorId] = useState<string | undefined>();
-  const { vendorProducts, loading: vendorProductsLoading, addVendorProduct, removeVendorProduct, addStock, updateStockStatus, updatePrice } = useVendorProducts(vendorId);
+  const { vendorProducts, loading: vendorProductsLoading, addVendorProduct, removeVendorProduct, addStock, updateStock, updateStockStatus, updatePrice } = useVendorProducts(vendorId);
   const { productRequests, loading: requestsLoading, createProductRequest } = useProductRequests(vendorId);
-  const { createEditRequest } = useProductEditRequests(vendorId);
+  const { editRequests, createEditRequest } = useProductEditRequests(vendorId);
   
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
@@ -559,58 +559,43 @@ const ProductManagement = () => {
                         <span className="font-medium">Description:</span>
                         <div className="text-muted-foreground">{vp.product.description}</div>
                       </div>
-                    )}
+                     )}
+                     
+                     {/* Edit Request Pending Indicator */}
+                     {editRequests.some(req => req.product_id === vp.product_id && req.status === 'pending') && (
+                       <Alert className="bg-yellow-50 border-yellow-200">
+                         <AlertDescription className="text-xs text-yellow-800">
+                           ⏳ Edit request pending admin approval
+                         </AlertDescription>
+                       </Alert>
+                     )}
 
-                    {/* STOCK MANAGEMENT SECTION - Always visible */}
-                    {(
-                      <div className="border-t pt-3 mt-3 space-y-3">
-                        <div className="grid grid-cols-3 gap-2 text-sm bg-muted p-2 rounded">
-                          <div>
-                            <div className="text-xs text-muted-foreground mb-1">Current Stock</div>
-                            <Input
-                              type="number"
-                              min="0"
-                              value={vp.stock_quantity || 0}
-                              onChange={(e) => {
-                                const newStock = parseInt(e.target.value) || 0;
-                                supabase
-                                  .from('vendor_products')
-                                  .update({
-                                    stock_quantity: newStock,
-                                    stock_available: newStock - (vp.stock_reserved || 0),
-                                    last_stock_update: new Date().toISOString()
-                                  })
-                                  .eq('id', vp.id)
-                                  .then(({ error }) => {
-                                    if (error) {
-                                      toast({
-                                        title: "Error",
-                                        description: "Failed to update stock",
-                                        variant: "destructive",
-                                      });
-                                    } else {
-                                      toast({
-                                        title: "Success",
-                                        description: "Stock updated",
-                                      });
-                                      window.location.reload();
-                                    }
-                                  });
-                              }}
-                              className="h-8 text-center font-medium"
-                            />
-                          </div>
-                          <div>
-                            <div className="text-xs text-muted-foreground">Reserved</div>
-                            <div className="font-medium text-orange-600 text-center pt-1">{vp.stock_reserved || 0}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-muted-foreground">Available</div>
-                            <div className="font-medium text-green-600 text-center pt-1">{vp.stock_available || 0}</div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                     {/* STOCK MANAGEMENT SECTION - Always visible */}
+                     <div className="border-t pt-3 mt-3 space-y-3">
+                       <div className="grid grid-cols-3 gap-2 text-sm bg-muted p-2 rounded">
+                         <div>
+                           <div className="text-xs text-muted-foreground mb-1">Current Stock</div>
+                           <Input
+                             type="number"
+                             min="0"
+                             value={vp.stock_quantity || 0}
+                             onChange={(e) => {
+                               const newStock = parseInt(e.target.value) || 0;
+                               updateStock(vp.id, newStock);
+                             }}
+                             className="h-8 text-center font-medium"
+                           />
+                         </div>
+                         <div>
+                           <div className="text-xs text-muted-foreground">Reserved</div>
+                           <div className="font-medium text-orange-600 text-center pt-1">{vp.stock_reserved || 0}</div>
+                         </div>
+                         <div>
+                           <div className="text-xs text-muted-foreground">Available</div>
+                           <div className="font-medium text-green-600 text-center pt-1">{vp.stock_available || 0}</div>
+                         </div>
+                       </div>
+                     </div>
 
                     <div className="pt-2 flex gap-2">
                       <Button 
@@ -650,17 +635,28 @@ const ProductManagement = () => {
         </TabsContent>
 
         <TabsContent value="requests" className="space-y-4">
-          {productRequests.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-lg font-medium">No product requests</p>
-                <p className="text-sm text-muted-foreground mt-2">Request new products for admin approval</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {productRequests.map((request) => (
+          <Tabs defaultValue="new-products">
+            <TabsList>
+              <TabsTrigger value="new-products">
+                New Products ({productRequests.filter(r => r.status === 'pending').length})
+              </TabsTrigger>
+              <TabsTrigger value="edit-requests">
+                Edit Requests ({editRequests.filter(r => r.status === 'pending').length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="new-products" className="space-y-4 mt-4">
+              {productRequests.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-lg font-medium">No product requests</p>
+                    <p className="text-sm text-muted-foreground mt-2">Request new products for admin approval</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {productRequests.map((request) => (
                 <Card key={request.id}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -705,9 +701,91 @@ const ProductManagement = () => {
                     )}
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-          )}
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="edit-requests" className="space-y-4 mt-4">
+              {editRequests.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-lg font-medium">No edit requests</p>
+                    <p className="text-sm text-muted-foreground mt-2">Edit requests will appear here</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {editRequests.map((request) => (
+                    <Card key={request.id}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg">
+                            Edit Request: {request.product?.name}
+                          </CardTitle>
+                          {getStatusBadge(request.status)}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          {request.proposed_name && (
+                            <div>
+                              <span className="font-medium">Proposed Name:</span>
+                              <div className="text-muted-foreground">{request.proposed_name}</div>
+                            </div>
+                          )}
+                          {request.proposed_category && (
+                            <div>
+                              <span className="font-medium">Proposed Category:</span>
+                              <div className="text-muted-foreground">{request.proposed_category}</div>
+                            </div>
+                          )}
+                          {request.proposed_unit && (
+                            <div>
+                              <span className="font-medium">Proposed Unit:</span>
+                              <div className="text-muted-foreground">{request.proposed_unit}</div>
+                            </div>
+                          )}
+                          {request.proposed_subscribe_before && (
+                            <div>
+                              <span className="font-medium">Subscribe Before:</span>
+                              <div className="text-muted-foreground">{request.proposed_subscribe_before}</div>
+                            </div>
+                          )}
+                          {request.proposed_delivery_before && (
+                            <div>
+                              <span className="font-medium">Delivery Before:</span>
+                              <div className="text-muted-foreground">{request.proposed_delivery_before}</div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {request.proposed_description && (
+                          <div className="text-sm">
+                            <span className="font-medium">Proposed Description:</span>
+                            <div className="text-muted-foreground">{request.proposed_description}</div>
+                          </div>
+                        )}
+                        
+                        {request.admin_notes && (
+                          <Alert>
+                            <AlertDescription>
+                              <span className="font-medium">Admin Notes:</span> {request.admin_notes}
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                        
+                        <div className="text-xs text-muted-foreground">
+                          Requested: {new Date(request.created_at).toLocaleDateString()}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
 
