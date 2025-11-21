@@ -378,6 +378,88 @@ export type Database = {
           },
         ]
       }
+      product_edit_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          id: string
+          product_id: string
+          proposed_category: string | null
+          proposed_delivery_before: string | null
+          proposed_description: string | null
+          proposed_image_url: string | null
+          proposed_name: string | null
+          proposed_subscribe_before: string | null
+          proposed_unit: string | null
+          requested_by_user_id: string
+          reviewed_at: string | null
+          reviewed_by_user_id: string | null
+          status: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          product_id: string
+          proposed_category?: string | null
+          proposed_delivery_before?: string | null
+          proposed_description?: string | null
+          proposed_image_url?: string | null
+          proposed_name?: string | null
+          proposed_subscribe_before?: string | null
+          proposed_unit?: string | null
+          requested_by_user_id: string
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          status?: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          product_id?: string
+          proposed_category?: string | null
+          proposed_delivery_before?: string | null
+          proposed_description?: string | null
+          proposed_image_url?: string | null
+          proposed_name?: string | null
+          proposed_subscribe_before?: string | null
+          proposed_unit?: string | null
+          requested_by_user_id?: string
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          status?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_edit_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_edit_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_edit_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_requests: {
         Row: {
           admin_notes: string | null
