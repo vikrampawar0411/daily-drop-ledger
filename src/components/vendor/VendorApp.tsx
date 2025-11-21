@@ -1,10 +1,12 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Milk, Newspaper, Users, Receipt, TrendingUp, Calendar, MapPin, ArrowLeft, LogOut, Package } from "lucide-react";
+import { Milk, Newspaper, Users, Receipt, TrendingUp, Calendar, MapPin, ArrowLeft, LogOut, Package, User } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import VendorDashboard from "./VendorDashboard";
 import CustomerManagement from "./CustomerManagement";
 import OrderManagement from "./OrderManagement";
@@ -14,6 +16,7 @@ import SocietyHierarchyView from "./SocietyHierarchyView";
 import AreaHierarchyView from "./AreaHierarchyView";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVendors } from "@/hooks/useVendors";
+import { supabase } from "@/integrations/supabase/client";
 
 const VendorApp = () => {
   const navigate = useNavigate();
@@ -21,9 +24,28 @@ const VendorApp = () => {
   const [navigationParams, setNavigationParams] = useState<any>({});
   const { signOut, user } = useAuth();
   const { vendors } = useVendors();
+  const [vendorName, setVendorName] = useState("");
   
   // Get the current vendor's ID
   const currentVendorId = vendors[0]?.id || "";
+
+  useEffect(() => {
+    const loadVendorName = async () => {
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from('vendors')
+        .select('name, contact_person')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (data) {
+        setVendorName(data.contact_person || data.name);
+      }
+    };
+
+    loadVendorName();
+  }, [user]);
 
   const handleNavigation = (tab: string, params?: any) => {
     setActiveTab(tab);
@@ -56,11 +78,27 @@ const VendorApp = () => {
                 <Calendar className="h-4 w-4" />
                 <span>{new Date().toLocaleDateString()}</span>
               </div>
-              <span className="text-sm text-gray-600">{user?.email}</span>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="flex items-center space-x-2">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-green-500 text-white">
+                        {vendorName ? vendorName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="text-left hidden md:block">
+                      <div className="text-sm font-medium">{vendorName || user?.email?.split('@')[0]}</div>
+                      <div className="text-xs text-gray-500">{user?.email}</div>
+                    </div>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -69,22 +107,22 @@ const VendorApp = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-fit lg:grid-cols-4">
-            <TabsTrigger value="dashboard" className="flex items-center space-x-2">
-              <TrendingUp className="h-4 w-4" />
-              <span>Dashboard</span>
+          <TabsList className="grid w-full grid-cols-4 lg:w-fit lg:grid-cols-4 gap-1">
+            <TabsTrigger value="dashboard" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Dashboard</span>
             </TabsTrigger>
-            <TabsTrigger value="customers" className="flex items-center space-x-2">
-              <Users className="h-4 w-4" />
-              <span>Customers</span>
+            <TabsTrigger value="customers" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
+              <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Customers</span>
             </TabsTrigger>
-            <TabsTrigger value="products-orders" className="flex items-center space-x-2">
-              <Package className="h-4 w-4" />
-              <span>Products & Orders</span>
+            <TabsTrigger value="products-orders" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
+              <Package className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Products & Orders</span>
             </TabsTrigger>
-            <TabsTrigger value="service-areas" className="flex items-center space-x-2">
-              <MapPin className="h-4 w-4" />
-              <span>Service Areas</span>
+            <TabsTrigger value="service-areas" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
+              <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Service Areas</span>
             </TabsTrigger>
           </TabsList>
 
