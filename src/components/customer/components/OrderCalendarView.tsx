@@ -26,8 +26,15 @@ interface OrderCalendarViewProps {
 const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getOrdersForDate, onDateClick, month, onMonthChange, onCalendarAreaClick, onMonthCaptionClick }: OrderCalendarViewProps) => {
   const handleDateSelect = (dates: Date[] | undefined) => {
     onSelectDates(dates);
-    if (dates && dates.length > 0 && onDateClick) {
-      onDateClick(dates);
+    
+    // Always call onDateClick, even when dates are cleared
+    if (onDateClick) {
+      if (dates && dates.length > 0) {
+        onDateClick(dates);
+      } else {
+        // Pass empty array when dates are cleared
+        onDateClick([]);
+      }
     }
   };
   
@@ -38,15 +45,26 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
           <CardTitle>Order View</CardTitle>
           <p className="text-xs text-muted-foreground">(Select date(s) to place new order)</p>
         </div>
-        {selectedDates && selectedDates.length > 0 && onCalendarAreaClick && (
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={onCalendarAreaClick}
-          >
-            Clear Selection ({selectedDates.length} date{selectedDates.length > 1 ? 's' : ''})
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {selectedDates && selectedDates.length > 0 && onCalendarAreaClick && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={onCalendarAreaClick}
+            >
+              Clear Selection ({selectedDates.length} date{selectedDates.length > 1 ? 's' : ''})
+            </Button>
+          )}
+          {onMonthCaptionClick && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={onMonthCaptionClick}
+            >
+              Reset All Filters
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div 
@@ -140,10 +158,6 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(214 95% 93%)', border: '1px solid hsl(213 97% 78%)', opacity: 0.7 }}></div>
             <span className="font-normal text-gray-500">Future orders</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 rounded bg-background" style={{ border: '4px solid hsl(var(--primary))' }}></div>
-            <span className="font-normal">Today</span>
           </div>
         </div>
       </CardContent>

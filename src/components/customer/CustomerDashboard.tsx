@@ -178,6 +178,21 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
     });
   };
 
+  // Auto-clear filters when no dates are selected
+  useEffect(() => {
+    if (!calendarSelectedDates || calendarSelectedDates.length === 0) {
+      setFilterBySpecificDate(undefined);
+      setSelectedVendor('');
+      setSelectedProduct('all');
+      setNewOrderFormData({
+        vendor_id: '',
+        product_id: '',
+        quantity: 1,
+        order_date: new Date(),
+      });
+    }
+  }, [calendarSelectedDates]);
+
   const handleOrderClick = (order: any) => {
     setSelectedOrder(order);
     setOrderDetailsDialogOpen(true);
@@ -1327,13 +1342,11 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                     onMonthChange={(newMonth) => {
                       const monthStr = format(newMonth, 'yyyy-MM');
                       setSelectedMonth(monthStr);
-                      setFilterBySpecificDate(undefined);
-                      setCalendarSelectedDates(undefined);
-                      setSelectedVendor('');
-                      setSelectedProduct('all');
+                      setCalendarSelectedDates(undefined); // This triggers the useEffect to auto-clear filters
                     }}
                     onDateClick={(dates) => {
                       if (dates.length > 0) {
+                        // Dates are selected - set filters
                         const lastDate = dates[dates.length - 1];
                         const dateMonth = format(lastDate, 'yyyy-MM');
                         if (dateMonth !== selectedMonth) {
@@ -1347,6 +1360,17 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                           product_id: selectedProduct !== 'all' ? selectedProduct : '',
                           quantity: 1,
                           order_date: lastDate,
+                        });
+                      } else {
+                        // Dates are cleared - clear filters explicitly
+                        setFilterBySpecificDate(undefined);
+                        setSelectedVendor('');
+                        setSelectedProduct('all');
+                        setNewOrderFormData({
+                          vendor_id: '',
+                          product_id: '',
+                          quantity: 1,
+                          order_date: new Date(),
                         });
                       }
                     }}
