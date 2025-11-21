@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +38,7 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
   const [expandedSocieties, setExpandedSocieties] = useState<Set<string>>(new Set());
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [vendorId, setVendorId] = useState("");
+  const [currentDeliveryIndex, setCurrentDeliveryIndex] = useState(0);
 
   useEffect(() => {
     const loadVendorData = async () => {
@@ -67,6 +69,11 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
 
     loadVendorData();
   }, [user]);
+
+  // Reset carousel index when time view or orders change
+  useEffect(() => {
+    setCurrentDeliveryIndex(0);
+  }, [timeView, selectedMonth, orders]);
 
   const getDateRangeForView = () => {
     const now = new Date();
@@ -274,44 +281,91 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
       {/* Next Deliveries Info Card */}
       <Card className="bg-gradient-to-r from-green-500 to-blue-500 text-white">
         <CardHeader>
-          <CardTitle className="text-xl">Today's Deliveries</CardTitle>
+          <CardTitle className="text-xl">Today's next deliveries</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           {(() => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const todayOrders = filteredOrders
-              .filter(o => {
-                const orderDate = new Date(o.order_date);
-                orderDate.setHours(0, 0, 0, 0);
-                return orderDate.getTime() === today.getTime() && o.status === 'pending';
-              })
-              .slice(0, 3);
+            const todayOrders = filteredOrders.filter(o => {
+              const orderDate = new Date(o.order_date);
+              orderDate.setHours(0, 0, 0, 0);
+              return orderDate.getTime() === today.getTime() && o.status === 'pending';
+            });
 
             if (todayOrders.length === 0) {
               return <p className="text-green-100">No pending deliveries for today!</p>;
             }
 
-            return todayOrders.map(order => (
-              <div key={order.id} className="flex items-center justify-between bg-white/20 rounded-lg p-3">
-                <div className="space-y-1">
-                  <p className="font-semibold">{order.customer?.name || 'Customer'}</p>
-                  <p className="text-sm text-green-100">
-                    {order.product?.name} • {order.customer?.societies?.name || 'Unknown'}
-                  </p>
+            const currentOrder = todayOrders[currentDeliveryIndex];
+            
+            return (
+              <>
+                {/* Single Delivery Display */}
+                <div className="bg-white/20 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1 flex-1">
+                      <p className="font-semibold text-lg">{currentOrder.customer?.name || 'Customer'}</p>
+                      <p className="text-sm text-green-100">
+                        {currentOrder.product?.name} • {currentOrder.customer?.societies?.name || 'Unknown'}
+                        {currentOrder.customer?.wing_number && ` • Wing ${currentOrder.customer.wing_number}`}
+                        {currentOrder.customer?.flat_plot_house_number && ` • ${currentOrder.customer.flat_plot_house_number}`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-xl">{currentOrder.quantity} {currentOrder.unit}</p>
+                      <p className="text-lg">₹{currentOrder.total_amount}</p>
+                    </div>
+                  </div>
+
+                  {/* Mark as Delivered Button */}
+                  <Button
+                    className="w-full bg-white text-green-600 hover:bg-green-50 font-semibold"
+                    onClick={async () => {
+                      await handleStatusToggle(currentOrder.id, currentOrder.status);
+                      // Auto-advance to next delivery after marking
+                      if (currentDeliveryIndex < todayOrders.length - 1) {
+                        setCurrentDeliveryIndex(prev => prev + 1);
+                      } else {
+                        setCurrentDeliveryIndex(0); // Reset to first
+                      }
+                    }}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Mark as Delivered
+                  </Button>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold">{order.quantity} {order.unit}</p>
-                  <p className="text-sm">₹{order.total_amount}</p>
-                </div>
-              </div>
-            ));
+
+                {/* Slider for Navigation */}
+                {todayOrders.length > 1 && (
+                  <div className="space-y-2 px-2">
+                    <Slider
+                      value={[currentDeliveryIndex]}
+                      onValueChange={(value) => setCurrentDeliveryIndex(value[0])}
+                      min={0}
+                      max={todayOrders.length - 1}
+                      step={1}
+                      className="cursor-pointer"
+                    />
+                    <p className="text-center text-sm text-green-100">
+                      Delivery {currentDeliveryIndex + 1} of {todayOrders.length}
+                    </p>
+                  </div>
+                )}
+              </>
+            );
           })()}
+
+          {/* Connected Customers Section */}
           <div className="flex items-center justify-between pt-2 border-t border-white/20">
-            <div className="flex items-center space-x-2 text-green-100">
+            <Button
+              variant="ghost"
+              className="flex items-center space-x-2 text-green-100 hover:text-white hover:bg-white/20 p-2 rounded-lg"
+              onClick={() => onNavigate?.('customers')}
+            >
               <Users className="h-4 w-4" />
               <span>{connectionCount} Connected Customers</span>
-            </div>
+            </Button>
             <Button 
               variant="secondary" 
               size="sm"
