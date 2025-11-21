@@ -111,7 +111,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
         setSelectedProduct('all');
       }
     }
-  }, [selectedVendor]);
+  }, [selectedVendor, orders, availableProducts]);
 
   const [orderDetailsDialogOpen, setOrderDetailsDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -1300,20 +1300,22 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                       setSelectedVendor('');
                       setSelectedProduct('all');
                     }}
-                    onDateClick={(date) => {
-                      const dateMonth = format(date, 'yyyy-MM');
-                      if (dateMonth !== selectedMonth) {
-                        setSelectedMonth(dateMonth);
-                      }
-                      
-                      setFilterBySpecificDate(date);
-                      setCalendarSelectedDate(date);
-                      setTableExpanded(true);
-                      setNewOrderFormData({
-                        ...newOrderFormData,
-                        order_date: date,
-                      });
-                    }}
+            onDateClick={(date) => {
+              const dateMonth = format(date, 'yyyy-MM');
+              if (dateMonth !== selectedMonth) {
+                setSelectedMonth(dateMonth);
+              }
+              
+              setFilterBySpecificDate(date);
+              setCalendarSelectedDate(date);
+              setTableExpanded(true);
+              setNewOrderFormData({
+                vendor_id: selectedVendor || '',
+                product_id: selectedProduct !== 'all' ? selectedProduct : '',
+                quantity: 0,
+                order_date: date,
+              });
+            }}
                     onCalendarAreaClick={handleCalendarAreaClick}
                   />
 
