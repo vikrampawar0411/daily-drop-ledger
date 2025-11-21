@@ -856,7 +856,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
     };
   }, [orders, selectedMonth, selectedVendor, selectedProduct, dateRangeType, customStartDate, customEndDate, sortColumn, sortDirection, filterBySpecificDate]);
 
-  // Unfiltered orders for calendar display - shows all orders in the month
+  // Unfiltered orders for calendar display - shows all orders in the month for selected vendor
   const calendarOrders = useMemo(() => {
     let startDate: Date, endDate: Date;
     
@@ -875,9 +875,13 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
     
     return orders.filter(o => {
       const orderDate = new Date(o.order_date);
-      return orderDate >= startDate && orderDate <= endDate && o.status !== 'cancelled';
+      const matchesDateRange = orderDate >= startDate && orderDate <= endDate;
+      const matchesVendor = !selectedVendor || o.vendor.id === selectedVendor;
+      const notCancelled = o.status !== 'cancelled';
+      
+      return matchesDateRange && matchesVendor && notCancelled;
     });
-  }, [orders, selectedMonth, dateRangeType, customStartDate, customEndDate]);
+  }, [orders, selectedMonth, dateRangeType, customStartDate, customEndDate, selectedVendor]);
 
   const groupedOrders = useMemo(() => {
     const groups: Record<string, any[]> = {};
