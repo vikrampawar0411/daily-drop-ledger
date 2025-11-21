@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { LogOut, Shield, Users, Package } from "lucide-react";
+import { LogOut, Shield, Users, Package, Calendar, TrendingUp, MapPin } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import Dashboard from "@/components/Dashboard";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,12 +22,24 @@ const AdminApp = () => {
   const [totalVendors, setTotalVendors] = useState(0);
   const [totalCustomers, setTotalCustomers] = useState(0);
   const [totalProducts, setTotalProducts] = useState(0);
+  const [adminName, setAdminName] = useState("");
 
   useEffect(() => {
     const loadAdminData = async () => {
       if (!user) return;
       
       try {
+        // Load profile name
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        if (profileData?.name) {
+          setAdminName(profileData.name);
+        }
+
         const { count: vendorCount } = await supabase
           .from('vendors')
           .select('*', { count: 'exact', head: true });
@@ -68,7 +82,11 @@ const AdminApp = () => {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-4 text-sm text-gray-600">
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <Calendar className="h-4 w-4" />
+                <span className="hidden md:inline">{new Date().toLocaleDateString()}</span>
+              </div>
+              <div className="hidden lg:flex items-center space-x-4 text-sm text-gray-600">
                 <div className="flex items-center space-x-1">
                   <Users className="h-4 w-4" />
                   <span>{totalVendors} Vendors</span>
@@ -82,10 +100,27 @@ const AdminApp = () => {
                   <span>{totalProducts} Products</span>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="flex items-center space-x-2">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+                        {adminName ? adminName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="text-left hidden md:block">
+                      <div className="text-sm font-medium">{adminName || user?.email?.split('@')[0]}</div>
+                      <div className="text-xs text-gray-500">{user?.email}</div>
+                    </div>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -94,11 +129,23 @@ const AdminApp = () => {
       {/* Admin Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8 h-auto">
-            <TabsTrigger value="dashboard" className="text-xs sm:text-sm">Dashboard</TabsTrigger>
-            <TabsTrigger value="users" className="text-xs sm:text-sm">Users</TabsTrigger>
-            <TabsTrigger value="products-orders" className="text-xs sm:text-sm">Products & Orders</TabsTrigger>
-            <TabsTrigger value="service-area" className="text-xs sm:text-sm">Service Areas</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4 lg:w-fit lg:grid-cols-4 mb-8 gap-1">
+            <TabsTrigger value="dashboard" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Dashboard</span>
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
+              <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Users</span>
+            </TabsTrigger>
+            <TabsTrigger value="products-orders" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
+              <Package className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Products & Orders</span>
+            </TabsTrigger>
+            <TabsTrigger value="service-area" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
+              <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Service Areas</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">

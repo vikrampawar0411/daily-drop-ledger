@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Milk, Newspaper, Shield, Store, Users } from "lucide-react";
+import { Milk, Newspaper, Shield, Store, Users, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useStates } from "@/hooks/useStates";
 import { useCities } from "@/hooks/useCities";
@@ -303,6 +303,10 @@ const Auth = () => {
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Daily Drop Ledger</h1>
           <p className="text-gray-600 mt-2">Vendor-Customer Distribution Platform</p>
+          <div className="flex items-center justify-center space-x-2 text-sm text-gray-600 mt-3">
+            <Calendar className="h-4 w-4" />
+            <span>{new Date().toLocaleDateString()}</span>
+          </div>
         </div>
 
         <Card className="max-h-[90vh] overflow-y-auto">
