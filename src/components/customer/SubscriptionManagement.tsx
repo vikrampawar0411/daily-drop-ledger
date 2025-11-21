@@ -25,7 +25,7 @@ import * as XLSX from 'xlsx-js-style';
 import SubscriptionCalendarView from "./components/SubscriptionCalendarView";
 
 interface SubscriptionManagementProps {
-  onNavigate?: (tab: string) => void;
+  onNavigate?: (tab: string, params?: any) => void;
 }
 
 const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}) => {

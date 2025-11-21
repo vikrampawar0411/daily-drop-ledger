@@ -36,12 +36,13 @@ import * as XLSX from 'xlsx-js-style';
 import { OnboardingCard } from "@/components/onboarding/OnboardingCard";
 
 interface CustomerDashboardProps {
-  onNavigate?: (tab: string) => void;
+  onNavigate?: (tab: string, params?: any) => void;
   activeTab?: string;
   setActiveTab?: (tab: string) => void;
+  navigationParams?: any;
 }
 
-const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDashboardProps) => {
+const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationParams }: CustomerDashboardProps) => {
   const { user } = useAuth();
   const { orders, loading: ordersLoading, updateOrderStatus, raiseDispute, clearDispute, deleteOrder, updateOrder, refetch } = useOrders();
   const { addOrder: addCalendarOrder, refetch: refetchCalendar } = useCustomerOrders();
@@ -91,6 +92,34 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
     );
     return uniqueProducts;
   }, [orders, selectedVendor]);
+
+  // Handle navigation params from other tabs (e.g., Place Order from VendorDirectory)
+  useEffect(() => {
+    if (navigationParams?.vendorId) {
+      const vendorExists = vendors.find(v => v.id === navigationParams.vendorId);
+      if (vendorExists) {
+        setSelectedVendor(navigationParams.vendorId);
+        localStorage.setItem('lastSelectedVendor', navigationParams.vendorId);
+      }
+    }
+    
+    if (navigationParams?.productId) {
+      const productExists = availableProducts.find(p => p.id === navigationParams.productId);
+      if (productExists) {
+        setSelectedProduct(navigationParams.productId);
+      }
+    }
+    
+    // Clear params after processing
+    if (navigationParams?.vendorId || navigationParams?.productId) {
+      // Use a small delay to ensure state updates complete
+      setTimeout(() => {
+        if (onNavigate) {
+          onNavigate('dashboard', {});
+        }
+      }, 100);
+    }
+  }, [navigationParams, vendors, availableProducts, onNavigate]);
 
   // Auto-select most used product when vendor changes (Issue 2 Fix)
   useEffect(() => {

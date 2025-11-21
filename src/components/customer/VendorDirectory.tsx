@@ -24,7 +24,7 @@ interface Vendor {
 }
 
 interface VendorDirectoryProps {
-  onNavigate?: (tab: string) => void;
+  onNavigate?: (tab: string, params?: any) => void;
 }
 
 const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
@@ -290,7 +290,7 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                   <Button 
                     size="sm" 
                     className="flex-1 bg-green-600 hover:bg-green-700"
-                    onClick={() => onNavigate?.('calendar')}
+                    onClick={() => onNavigate?.('dashboard', { vendorId: vendor.id })}
                   >
                     Place Order
                   </Button>
@@ -399,7 +399,10 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                                     size="sm"
                                     onClick={() => {
                                       setShowDetailsDialog(false);
-                                      onNavigate?.('calendar');
+                                      onNavigate?.('dashboard', { 
+                                        vendorId: selectedVendor.id,
+                                        productId: product.id 
+                                      });
                                     }}
                                     className="bg-green-600 hover:bg-green-700"
                                   >
@@ -410,7 +413,10 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                                     variant="outline"
                                     onClick={() => {
                                       setShowDetailsDialog(false);
-                                      onNavigate?.('subscriptions');
+                                      onNavigate?.('subscriptions', {
+                                        vendorId: selectedVendor.id,
+                                        productId: product.id
+                                      });
                                     }}
                                   >
                                     Subscribe
@@ -455,7 +461,7 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                     className="flex-1 bg-green-600 hover:bg-green-700"
                     onClick={() => {
                       setShowDetailsDialog(false);
-                      onNavigate?.('calendar');
+                      onNavigate?.('dashboard', { vendorId: selectedVendor.id });
                     }}
                   >
                     Place Order
