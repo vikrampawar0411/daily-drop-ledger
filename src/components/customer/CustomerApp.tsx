@@ -62,7 +62,7 @@ const CustomerApp = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Customer Portal</h1>
-                <p className="text-sm text-gray-600">Manage your orders and vendors</p>
+                <p className="text-sm text-gray-600 hidden md:block">Manage your orders and vendors</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
