@@ -123,19 +123,41 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
     const vendorIdToFilter = newSubscription.vendor_id || selectedVendorFilter;
     
     if (vendorIdToFilter === "all" || !vendorIdToFilter) {
-      return vendorProducts
-        .filter(vp => vp.is_active)
-        .map(vp => {
-          const product = products.find(p => p.id === vp.product_id);
-          return product ? {
-            ...product,
-            price: vp.price_override || product.price,
-            vendor_id: vp.vendor_id
-          } : null;
-        })
-        .filter(p => p !== null);
+      // Get all active vendor products
+      const allVendorProducts = vendorProducts.filter(vp => vp.is_active);
+      
+      // Create a Map to deduplicate by product_id
+      const uniqueProductsMap = new Map();
+      
+      allVendorProducts.forEach(vp => {
+        const product = products.find(p => p.id === vp.product_id);
+        if (product) {
+          // If we haven't seen this product yet, or if this vendor offers a better price
+          if (!uniqueProductsMap.has(product.id)) {
+            uniqueProductsMap.set(product.id, {
+              ...product,
+              price: vp.price_override || product.price,
+              vendor_id: vp.vendor_id
+            });
+          } else {
+            // Keep the lowest price variant
+            const existing = uniqueProductsMap.get(product.id);
+            const currentPrice = vp.price_override || product.price;
+            if (currentPrice < existing.price) {
+              uniqueProductsMap.set(product.id, {
+                ...product,
+                price: currentPrice,
+                vendor_id: vp.vendor_id
+              });
+            }
+          }
+        }
+      });
+      
+      return Array.from(uniqueProductsMap.values());
     }
     
+    // When a specific vendor is selected, show all their products
     return vendorProducts
       .filter(vp => vp.vendor_id === vendorIdToFilter && vp.is_active)
       .map(vp => {
@@ -788,7 +810,7 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Subscribe to Products</CardTitle>
+              <CardTitle>Subscribe to New Products</CardTitle>
               <Select value={selectedVendorFilter} onValueChange={setSelectedVendorFilter}>
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Filter by vendor" />
