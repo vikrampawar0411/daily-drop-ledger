@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/hooks/useProducts";
 import { useVendorConnections } from "@/hooks/useVendorConnections";
 import { useVendorProducts } from "@/hooks/useVendorProducts";
+import { useSubscriptions } from "@/hooks/useSubscriptions";
 
 interface Vendor {
   id: string;
@@ -44,6 +45,7 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
     disconnectFromVendor, 
     loading: connectionsLoading 
   } = useVendorConnections();
+  const { subscriptions, loading: subscriptionsLoading } = useSubscriptions();
 
   // Fetch all active vendors for browsing
   useEffect(() => {
@@ -114,7 +116,7 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
     return matchesSearch && matchesCategory && matchesConnection && vendor.is_active;
   });
 
-  if (vendorsLoading || productsLoading || vendorProductsLoading || connectionsLoading) {
+  if (vendorsLoading || productsLoading || vendorProductsLoading || connectionsLoading || subscriptionsLoading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-center p-12">
@@ -135,6 +137,15 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
   const handleViewDetails = (vendor: any) => {
     setSelectedVendor(vendor);
     setShowDetailsDialog(true);
+  };
+
+  const getProductSubscriptionStatus = (productId: string, vendorId: string) => {
+    const subscription = subscriptions.find(
+      sub => sub.product_id === productId && 
+             sub.vendor_id === vendorId && 
+             (sub.status === 'active' || sub.status === 'paused')
+    );
+    return subscription;
   };
 
   return (
@@ -286,15 +297,6 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                     </>
                   )}
                 </Button>
-                {isConnected(vendor.id) && (
-                  <Button 
-                    size="sm" 
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                    onClick={() => onNavigate?.('dashboard', { vendorId: vendor.id })}
-                  >
-                    Place Order
-                  </Button>
-                )}
               </div>
             </CardContent>
           </Card>
@@ -408,19 +410,43 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                                   >
                                     Order Now
                                   </Button>
-                                  <Button 
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setShowDetailsDialog(false);
-                                      onNavigate?.('subscriptions', {
-                                        vendorId: selectedVendor.id,
-                                        productId: product.id
-                                      });
-                                    }}
-                                  >
-                                    Subscribe
-                                  </Button>
+                                  {(() => {
+                                    const existingSubscription = getProductSubscriptionStatus(product.id, selectedVendor.id);
+                                    
+                                    if (existingSubscription) {
+                                      return (
+                                        <Button 
+                                          size="sm"
+                                          variant="outline"
+                                          className="border-orange-500 text-orange-600 hover:bg-orange-50"
+                                          onClick={() => {
+                                            setShowDetailsDialog(false);
+                                            onNavigate?.('subscriptions', {
+                                              highlightSubscriptionId: existingSubscription.id
+                                            });
+                                          }}
+                                        >
+                                          {existingSubscription.status === 'paused' ? 'Paused' : 'Subscribed'} ✓
+                                        </Button>
+                                      );
+                                    }
+                                    
+                                    return (
+                                      <Button 
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setShowDetailsDialog(false);
+                                          onNavigate?.('subscriptions', {
+                                            vendorId: selectedVendor.id,
+                                            productId: product.id
+                                          });
+                                        }}
+                                      >
+                                        Subscribe
+                                      </Button>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             </div>
@@ -456,17 +482,6 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                     </>
                   )}
                 </Button>
-                {isConnected(selectedVendor.id) && (
-                  <Button 
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                    onClick={() => {
-                      setShowDetailsDialog(false);
-                      onNavigate?.('dashboard', { vendorId: selectedVendor.id });
-                    }}
-                  >
-                    Place Order
-                  </Button>
-                )}
               </div>
             </div>
           )}

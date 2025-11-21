@@ -26,9 +26,14 @@ import SubscriptionCalendarView from "./components/SubscriptionCalendarView";
 
 interface SubscriptionManagementProps {
   onNavigate?: (tab: string, params?: any) => void;
+  navigationParams?: {
+    vendorId?: string;
+    productId?: string;
+    highlightSubscriptionId?: string;
+  };
 }
 
-const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}) => {
+const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionManagementProps = {}) => {
   const { user } = useAuth();
   const { subscriptions, loading, pauseSubscription, resumeSubscription, cancelSubscription, createSubscription } = useSubscriptions();
   const { vendors } = useVendors();
@@ -80,6 +85,24 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
 
   // Product quantity state for quick subscribe
   const [productQuantities, setProductQuantities] = useState<Record<string, number>>({});
+
+  // Handle highlighting subscription when navigated from vendor directory
+  useEffect(() => {
+    if (navigationParams?.highlightSubscriptionId) {
+      // Scroll to the subscription card
+      setTimeout(() => {
+        const element = document.getElementById(`subscription-${navigationParams.highlightSubscriptionId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Add temporary highlight animation
+          element.classList.add('ring-2', 'ring-orange-500', 'ring-offset-2');
+          setTimeout(() => {
+            element.classList.remove('ring-2', 'ring-orange-500', 'ring-offset-2');
+          }, 3000);
+        }
+      }, 100);
+    }
+  }, [navigationParams]);
 
   // Fetch customer ID and all orders
   useEffect(() => {
@@ -689,7 +712,7 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
             {subscriptions
               .filter(sub => showCancelled || sub.status !== 'cancelled')
               .map((subscription) => (
-              <Card key={subscription.id} className="hover:shadow-lg transition-shadow">
+              <Card key={subscription.id} id={`subscription-${subscription.id}`} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 flex-1">
