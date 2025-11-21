@@ -64,6 +64,19 @@ const ProductManagement = () => {
       return;
     }
 
+    // Check if product name already exists
+    const existingProduct = products.find(p => 
+      p.name.toLowerCase().trim() === newProduct.name.toLowerCase().trim()
+    );
+    if (existingProduct) {
+      toast({
+        title: "Duplicate product",
+        description: "A product with this name already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       await addProduct({
         name: newProduct.name,

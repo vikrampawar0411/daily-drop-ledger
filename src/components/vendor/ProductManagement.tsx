@@ -88,6 +88,17 @@ const ProductManagement = () => {
 
   const handleAddProduct = async () => {
     if (selectedProduct && vendorId) {
+      // Check if product already added
+      const alreadyAdded = vendorProducts.some(vp => vp.product_id === selectedProduct);
+      if (alreadyAdded) {
+        toast({
+          title: "Product already added",
+          description: "This product is already in your list",
+          variant: "destructive",
+        });
+        return;
+      }
+
       try {
         await addVendorProduct(selectedProduct);
         setShowAddDialog(false);
@@ -103,6 +114,19 @@ const ProductManagement = () => {
       toast({
         title: "Missing information",
         description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if product name already exists
+    const existingProduct = products.find(p => 
+      p.name.toLowerCase().trim() === newRequest.name.toLowerCase().trim()
+    );
+    if (existingProduct) {
+      toast({
+        title: "Product already exists",
+        description: "A product with this name already exists. Please add it from the master list instead.",
         variant: "destructive",
       });
       return;
@@ -177,6 +201,33 @@ const ProductManagement = () => {
     }
   };
 
+  const handleUpdateTimesImmediate = async (productId: string, subscribeBefore: string, deliveryBefore: string) => {
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({
+          subscribe_before: subscribeBefore || null,
+          delivery_before: deliveryBefore || null
+        } as any)
+        .eq('id', productId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Time fields updated successfully",
+      });
+      
+      window.location.reload();
+    } catch (error: any) {
+      toast({
+        title: "Error updating times",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSubmitEditRequest = async () => {
     if (!selectedForEdit || !vendorId || !user) return;
 
@@ -189,8 +240,6 @@ const ProductManagement = () => {
         proposed_category: editForm.category || undefined,
         proposed_unit: editForm.unit || undefined,
         proposed_description: editForm.description || undefined,
-        proposed_subscribe_before: editForm.subscribe_before || undefined,
-        proposed_delivery_before: editForm.delivery_before || undefined,
       });
       
       setShowEditDialog(false);
@@ -369,7 +418,11 @@ const ProductManagement = () => {
                         <Input 
                           type="time" 
                           value={(vp.product as any)?.subscribe_before || ""} 
-                          disabled
+                          onChange={(e) => handleUpdateTimesImmediate(
+                            vp.product.id,
+                            e.target.value,
+                            (vp.product as any)?.delivery_before || ""
+                          )}
                           className="h-8 text-xs"
                         />
                       </div>
@@ -378,7 +431,11 @@ const ProductManagement = () => {
                         <Input 
                           type="time" 
                           value={(vp.product as any)?.delivery_before || ""} 
-                          disabled
+                          onChange={(e) => handleUpdateTimesImmediate(
+                            vp.product.id,
+                            (vp.product as any)?.subscribe_before || "",
+                            e.target.value
+                          )}
                           className="h-8 text-xs"
                         />
                       </div>
@@ -399,15 +456,9 @@ const ProductManagement = () => {
                       onClick={() => setStockToggles(prev => ({ ...prev, [vp.id]: !prev[vp.id] }))}
                     >
                       {stockToggles[vp.id] ? (
-                        <>
-                          <ChevronUp className="h-4 w-4 mr-1" />
-                          Hide Stock Details
-                        </>
+                        <ChevronUp className="h-4 w-4" />
                       ) : (
-                        <>
-                          <ChevronDown className="h-4 w-4 mr-1" />
-                          Show Stock Details
-                        </>
+                        <ChevronDown className="h-4 w-4" />
                       )}
                     </Button>
 
@@ -444,21 +495,6 @@ const ProductManagement = () => {
                             Additional Stock
                           </Button>
                         </div>
-
-                        <div className="flex items-center justify-between p-2 bg-muted rounded">
-                          <span className="text-sm font-medium">In Stock Toggle</span>
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={vp.in_stock}
-                              onCheckedChange={(checked) => 
-                                updateStockStatus(vp.id, checked)
-                              }
-                            />
-                            <span className="text-xs font-medium">
-                              {vp.in_stock ? "In Stock" : "Out of Stock"}
-                            </span>
-                          </div>
-                        </div>
                       </div>
                     )}
 
@@ -483,18 +519,6 @@ const ProductManagement = () => {
                       >
                         <Edit className="h-4 w-4 mr-1" />
                         Edit
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => {
-                          setSelectedProductForImage(vp.product);
-                          setShowImageDialog(true);
-                        }}
-                      >
-                        <Upload className="h-4 w-4 mr-1" />
-                        {(vp.product as any)?.image_url ? 'Change' : 'Add'} Image
                       </Button>
                       <Button 
                         size="sm" 
@@ -699,9 +723,37 @@ const ProductManagement = () => {
           </DialogHeader>
           <Alert>
             <AlertDescription>
-              All changes except price require admin approval. Price changes apply immediately.
+              Changes to name, category, unit, and description require admin approval. 
+              Subscribe/delivery times, images, and price changes apply immediately.
             </AlertDescription>
           </Alert>
+          
+          {/* Image Upload Section */}
+          <div className="border rounded-lg p-4 space-y-3">
+            <Label>Product Image (Updates Immediately)</Label>
+            {(selectedForEdit?.product as any)?.image_url && (
+              <div className="w-full h-32 rounded-lg overflow-hidden bg-gray-100">
+                <img 
+                  src={(selectedForEdit.product as any).image_url} 
+                  alt={selectedForEdit.product.name}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            )}
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                if (e.target.files?.[0] && selectedForEdit) {
+                  setSelectedProductForImage(selectedForEdit.product);
+                  handleImageUpload(e);
+                }
+              }}
+              disabled={uploading}
+            />
+            {uploading && <p className="text-sm text-muted-foreground">Uploading...</p>}
+          </div>
+
           <div className="space-y-4">
             <div>
               <Label htmlFor="edit-name">Product Name</Label>
@@ -857,7 +909,7 @@ const ProductManagement = () => {
             </div>
 
             <div>
-              <Label htmlFor="stockQuantity">Add Quantity ({selectedProductForStock?.product?.unit})</Label>
+              <Label htmlFor="stockQuantity">Current Additional Stock ({selectedProductForStock?.product?.unit})</Label>
                 <Input
                   id="stockQuantity"
                   type="number"
@@ -865,10 +917,10 @@ const ProductManagement = () => {
                   step="1"
                   value={stockQuantityToAdd}
                   onChange={(e) => setStockQuantityToAdd(e.target.value)}
-                  placeholder="Enter quantity to add"
+                  placeholder="Current additional stock quantity"
                 />
               <p className="text-xs text-muted-foreground mt-1">
-                This will be added to your current stock
+                This represents your current additional stock available
               </p>
             </div>
           </div>
