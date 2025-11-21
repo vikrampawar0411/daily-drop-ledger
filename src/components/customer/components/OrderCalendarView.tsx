@@ -12,31 +12,22 @@ interface Order {
 }
 
 interface OrderCalendarViewProps {
-  selectedDate: Date | undefined;
-  onSelectDate: (date: Date | undefined) => void;
+  selectedDates: Date[] | undefined;
+  onSelectDates: (dates: Date[] | undefined) => void;
   hasOrdersOnDate: (date: Date) => boolean;
   getOrdersForDate: (date: Date) => Order[];
-  onDateClick?: (date: Date) => void;
+  onDateClick?: (dates: Date[]) => void;
   month?: Date;
   onMonthChange?: (month: Date) => void;
   onCalendarAreaClick?: () => void;
+  onMonthCaptionClick?: () => void;
 }
 
-const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrdersForDate, onDateClick, month, onMonthChange, onCalendarAreaClick }: OrderCalendarViewProps) => {
-  const handleDateSelect = (date: Date | undefined) => {
-    onSelectDate(date);
-    if (date && onDateClick) {
-      onDateClick(date);
-    }
-  };
-  
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Check if click is NOT on a date button (rdp-day class)
-    const target = e.target as HTMLElement;
-    const isDateButton = target.closest('.rdp-day');
-    
-    if (!isDateButton && onCalendarAreaClick) {
-      onCalendarAreaClick();
+const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getOrdersForDate, onDateClick, month, onMonthChange, onCalendarAreaClick, onMonthCaptionClick }: OrderCalendarViewProps) => {
+  const handleDateSelect = (dates: Date[] | undefined) => {
+    onSelectDates(dates);
+    if (dates && dates.length > 0 && onDateClick) {
+      onDateClick(dates);
     }
   };
   
@@ -45,32 +36,40 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <div>
           <CardTitle>Order View</CardTitle>
-          <p className="text-xs text-muted-foreground">(Select date to place new order)</p>
+          <p className="text-xs text-muted-foreground">(Select date(s) to place new order)</p>
         </div>
-        {selectedDate && onCalendarAreaClick && (
+        {selectedDates && selectedDates.length > 0 && onCalendarAreaClick && (
           <Button 
             variant="ghost" 
             size="sm"
             onClick={onCalendarAreaClick}
           >
-            Clear Selection
+            Clear Selection ({selectedDates.length} date{selectedDates.length > 1 ? 's' : ''})
           </Button>
         )}
       </CardHeader>
       <CardContent>
-        <Calendar
-          mode="single"
-          selected={selectedDate}
-          onSelect={handleDateSelect}
-          month={month}
-          onMonthChange={onMonthChange}
-          className={cn("rounded-md border pointer-events-auto")}
-          modifiers={{
-            today: (date) => {
-              const today = new Date();
-              return date.toDateString() === today.toDateString();
-            },
-            selected: selectedDate,
+        <div 
+          onClick={(e) => {
+            const target = e.target as HTMLElement;
+            // Check if clicked on month caption
+            if (target.closest('.rdp-caption_label') && onMonthCaptionClick) {
+              onMonthCaptionClick();
+            }
+          }}
+        >
+          <Calendar
+            mode="multiple"
+            selected={selectedDates}
+            onSelect={handleDateSelect}
+            month={month}
+            onMonthChange={onMonthChange}
+            className={cn("rounded-md border pointer-events-auto")}
+            modifiers={{
+              today: (date) => {
+                const today = new Date();
+                return date.toDateString() === today.toDateString();
+              },
             deliveredOrder: (date) => {
               const dateStr = format(date, 'yyyy-MM-dd');
               const orders = getOrdersForDate(date);
@@ -127,7 +126,8 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
           modifiersClassNames={{
             selected: '!ring-4 !ring-ring !ring-offset-2'
           }}
-        />
+          />
+        </div>
         <div className="mt-4 space-y-2 text-sm text-muted-foreground">
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(142 76% 73%)', border: '2px solid hsl(142 71% 45%)' }}></div>
