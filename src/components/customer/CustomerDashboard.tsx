@@ -154,30 +154,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
     order_date: new Date(),
   });
 
-  const handleCalendarAreaClick = () => {
-    setFilterBySpecificDate(undefined);
-    setCalendarSelectedDates(undefined);
-    setNewOrderFormData({
-      vendor_id: '',
-      product_id: '',
-      quantity: 1,
-      order_date: new Date(),
-    });
-  };
-
-  const handleMonthCaptionClick = () => {
-    setFilterBySpecificDate(undefined);
-    setCalendarSelectedDates(undefined);
-    setSelectedVendor('');
-    setSelectedProduct('all');
-    setNewOrderFormData({
-      vendor_id: '',
-      product_id: '',
-      quantity: 1,
-      order_date: new Date(),
-    });
-  };
-
   // Auto-clear filters when no dates are selected
   useEffect(() => {
     if (!calendarSelectedDates || calendarSelectedDates.length === 0) {
@@ -1407,8 +1383,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                         });
                       }
                     }}
-                    onCalendarAreaClick={handleCalendarAreaClick}
-                    onMonthCaptionClick={handleMonthCaptionClick}
                   />
 
                   {/* Order Form - Right Side */}

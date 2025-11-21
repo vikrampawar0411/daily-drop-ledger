@@ -19,11 +19,9 @@ interface OrderCalendarViewProps {
   onDateClick?: (dates: Date[]) => void;
   month?: Date;
   onMonthChange?: (month: Date) => void;
-  onCalendarAreaClick?: () => void;
-  onMonthCaptionClick?: () => void;
 }
 
-const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getOrdersForDate, onDateClick, month, onMonthChange, onCalendarAreaClick, onMonthCaptionClick }: OrderCalendarViewProps) => {
+const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getOrdersForDate, onDateClick, month, onMonthChange }: OrderCalendarViewProps) => {
   const handleDateSelect = (dates: Date[] | undefined) => {
     onSelectDates(dates);
     
@@ -40,34 +38,12 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
   
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <div>
-          <CardTitle>Order View</CardTitle>
-          <p className="text-xs text-muted-foreground">(Select date(s) to place new order)</p>
-        </div>
-        {onMonthCaptionClick && (
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={onMonthCaptionClick}
-          >
-            {selectedDates && selectedDates.length > 0 
-              ? `Clear Selection (${selectedDates.length} date${selectedDates.length > 1 ? 's' : ''})` 
-              : 'Reset All Filters'}
-          </Button>
-        )}
+      <CardHeader>
+        <CardTitle>Order View</CardTitle>
+        <p className="text-xs text-muted-foreground">(Select date(s) to place new order)</p>
       </CardHeader>
       <CardContent>
-        <div 
-          onClick={(e) => {
-            const target = e.target as HTMLElement;
-            // Check if clicked on month caption
-            if (target.closest('.rdp-caption_label') && onMonthCaptionClick) {
-              onMonthCaptionClick();
-            }
-          }}
-        >
-          <Calendar
+        <Calendar
             mode="multiple"
             selected={selectedDates}
             onSelect={handleDateSelect}
@@ -135,8 +111,7 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
           modifiersClassNames={{
             selected: '!ring-4 !ring-ring !ring-offset-2'
           }}
-          />
-        </div>
+        />
         <div className="mt-4 space-y-2 text-sm text-muted-foreground">
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(142 76% 73%)', border: '2px solid hsl(142 71% 45%)' }}></div>
