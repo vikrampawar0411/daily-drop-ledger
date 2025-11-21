@@ -668,173 +668,160 @@ const ProductManagement = () => {
           )}
         </TabsContent>
 
-        <TabsContent value="requests" className="space-y-4">
-          <Tabs defaultValue="new-products">
-            <TabsList>
-              <TabsTrigger value="new-products">
-                New Products ({productRequests.filter(r => r.status === 'pending').length})
-              </TabsTrigger>
-              <TabsTrigger value="edit-requests">
-                Edit Requests ({editRequests.filter(r => r.status === 'pending').length})
-              </TabsTrigger>
-            </TabsList>
+        <TabsContent value="edit-requests" className="space-y-4">
+          {editRequests.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-lg font-medium">No edit requests</p>
+                <p className="text-sm text-muted-foreground mt-2">Edit requests will appear here</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {editRequests.map((request) => {
+                const proposedProduct = {
+                  name: request.proposed_name || request.product?.name,
+                  category: request.proposed_category || request.product?.category,
+                  unit: request.proposed_unit || request.product?.unit,
+                  description: request.proposed_description || request.product?.description,
+                  subscribe_before: request.proposed_subscribe_before || (request.product as any)?.subscribe_before,
+                  delivery_before: request.proposed_delivery_before || (request.product as any)?.delivery_before,
+                  image_url: request.proposed_image_url || request.product?.image_url,
+                };
 
-            <TabsContent value="new-products" className="space-y-4 mt-4">
-              {productRequests.length === 0 ? (
-                <Card>
-                  <CardContent className="py-12 text-center">
-                    <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-lg font-medium">No product requests</p>
-                    <p className="text-sm text-muted-foreground mt-2">Request new products for admin approval</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  {productRequests.map((request) => (
-                <Card key={request.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{request.name}</CardTitle>
-                      {getStatusBadge(request.status)}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                      <div>
-                        <span className="font-medium">Category:</span>
-                        <div className="text-muted-foreground">{request.category}</div>
+                return (
+                  <Card key={request.id}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">Edit Request</CardTitle>
+                        {getStatusBadge(request.status)}
                       </div>
-                      <div>
-                        <span className="font-medium">Price:</span>
-                        <div className="text-muted-foreground">₹{request.price} {request.unit}</div>
-                      </div>
-                      <div>
-                        <span className="font-medium">Availability:</span>
-                        <div className="text-muted-foreground">{request.availability}</div>
-                      </div>
-                      <div>
-                        <span className="font-medium">Requested:</span>
-                        <div className="text-muted-foreground">
-                          {new Date(request.created_at).toLocaleDateString()}
+                    </CardHeader>
+                    <CardContent>
+                      {/* Display as product card with proposed changes */}
+                      <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950/20">
+                        <div className="flex items-start gap-4">
+                          {proposedProduct.image_url && (
+                            <img 
+                              src={proposedProduct.image_url} 
+                              alt={proposedProduct.name}
+                              className="w-20 h-20 object-cover rounded"
+                            />
+                          )}
+                          <div className="flex-1 space-y-2">
+                            <h3 className="font-semibold text-lg">{proposedProduct.name}</h3>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div>
+                                <span className="text-muted-foreground">Category:</span>
+                                <span className="ml-2 font-medium">{proposedProduct.category}</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Unit:</span>
+                                <span className="ml-2 font-medium">{proposedProduct.unit}</span>
+                              </div>
+                              {proposedProduct.subscribe_before && (
+                                <div>
+                                  <span className="text-muted-foreground">Subscribe Before:</span>
+                                  <span className="ml-2 font-medium">{proposedProduct.subscribe_before}</span>
+                                </div>
+                              )}
+                              {proposedProduct.delivery_before && (
+                                <div>
+                                  <span className="text-muted-foreground">Delivery Before:</span>
+                                  <span className="ml-2 font-medium">{proposedProduct.delivery_before}</span>
+                                </div>
+                              )}
+                            </div>
+                            {proposedProduct.description && (
+                              <p className="text-sm text-muted-foreground">{proposedProduct.description}</p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="mt-3 pt-3 border-t text-xs text-blue-700 dark:text-blue-400 font-medium">
+                          ✨ These changes will apply after admin approval
                         </div>
                       </div>
+
+                      {request.admin_notes && (
+                        <Alert className="mt-3">
+                          <AlertDescription>
+                            <span className="font-medium">Admin Notes:</span> {request.admin_notes}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
+                      <div className="text-xs text-muted-foreground mt-3">
+                        Requested: {new Date(request.created_at).toLocaleDateString()}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="requests" className="space-y-4">
+          {productRequests.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-lg font-medium">No product requests</p>
+                <p className="text-sm text-muted-foreground mt-2">Request new products for admin approval</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {productRequests.map((request) => (
+            <Card key={request.id}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{request.name}</CardTitle>
+                  {getStatusBadge(request.status)}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  <div>
+                    <span className="font-medium">Category:</span>
+                    <div className="text-muted-foreground">{request.category}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Price:</span>
+                    <div className="text-muted-foreground">₹{request.price} {request.unit}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Availability:</span>
+                    <div className="text-muted-foreground">{request.availability}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Requested:</span>
+                    <div className="text-muted-foreground">
+                      {new Date(request.created_at).toLocaleDateString()}
                     </div>
-                    
-                    {request.description && (
-                      <div className="text-sm">
-                        <span className="font-medium">Description:</span>
-                        <div className="text-muted-foreground">{request.description}</div>
-                      </div>
-                    )}
-
-                    {request.admin_notes && (
-                      <div className="text-sm">
-                        <span className="font-medium">Admin Notes:</span>
-                        <div className="text-muted-foreground">{request.admin_notes}</div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-                  ))}
+                  </div>
                 </div>
-              )}
-            </TabsContent>
+                
+                {request.description && (
+                  <div className="text-sm">
+                    <span className="font-medium">Description:</span>
+                    <div className="text-muted-foreground">{request.description}</div>
+                  </div>
+                )}
 
-            <TabsContent value="edit-requests" className="space-y-4 mt-4">
-              {editRequests.length === 0 ? (
-                <Card>
-                  <CardContent className="py-12 text-center">
-                    <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-lg font-medium">No edit requests</p>
-                    <p className="text-sm text-muted-foreground mt-2">Edit requests will appear here</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {editRequests.map((request) => {
-                    const proposedProduct = {
-                      name: request.proposed_name || request.product?.name,
-                      category: request.proposed_category || request.product?.category,
-                      unit: request.proposed_unit || request.product?.unit,
-                      description: request.proposed_description || request.product?.description,
-                      subscribe_before: request.proposed_subscribe_before || (request.product as any)?.subscribe_before,
-                      delivery_before: request.proposed_delivery_before || (request.product as any)?.delivery_before,
-                      image_url: request.proposed_image_url || request.product?.image_url,
-                    };
-
-                    return (
-                      <Card key={request.id}>
-                        <CardHeader>
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-lg">Edit Request</CardTitle>
-                            {getStatusBadge(request.status)}
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          {/* Display as product card with proposed changes */}
-                          <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950/20">
-                            <div className="flex items-start gap-4">
-                              {proposedProduct.image_url && (
-                                <img 
-                                  src={proposedProduct.image_url} 
-                                  alt={proposedProduct.name}
-                                  className="w-20 h-20 object-cover rounded"
-                                />
-                              )}
-                              <div className="flex-1 space-y-2">
-                                <h3 className="font-semibold text-lg">{proposedProduct.name}</h3>
-                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                  <div>
-                                    <span className="text-muted-foreground">Category:</span>
-                                    <span className="ml-2 font-medium">{proposedProduct.category}</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">Unit:</span>
-                                    <span className="ml-2 font-medium">{proposedProduct.unit}</span>
-                                  </div>
-                                  {proposedProduct.subscribe_before && (
-                                    <div>
-                                      <span className="text-muted-foreground">Subscribe Before:</span>
-                                      <span className="ml-2 font-medium">{proposedProduct.subscribe_before}</span>
-                                    </div>
-                                  )}
-                                  {proposedProduct.delivery_before && (
-                                    <div>
-                                      <span className="text-muted-foreground">Delivery Before:</span>
-                                      <span className="ml-2 font-medium">{proposedProduct.delivery_before}</span>
-                                    </div>
-                                  )}
-                                </div>
-                                {proposedProduct.description && (
-                                  <p className="text-sm text-muted-foreground">{proposedProduct.description}</p>
-                                )}
-                              </div>
-                            </div>
-                            
-                            <div className="mt-3 pt-3 border-t text-xs text-blue-700 dark:text-blue-400 font-medium">
-                              ✨ These changes will apply after admin approval
-                            </div>
-                          </div>
-
-                          {request.admin_notes && (
-                            <Alert className="mt-3">
-                              <AlertDescription>
-                                <span className="font-medium">Admin Notes:</span> {request.admin_notes}
-                              </AlertDescription>
-                            </Alert>
-                          )}
-
-                          <div className="text-xs text-muted-foreground mt-3">
-                            Requested: {new Date(request.created_at).toLocaleDateString()}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+                {request.admin_notes && (
+                  <div className="text-sm">
+                    <span className="font-medium">Admin Notes:</span>
+                    <div className="text-muted-foreground">{request.admin_notes}</div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
