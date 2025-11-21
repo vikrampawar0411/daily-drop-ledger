@@ -1,5 +1,6 @@
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -40,10 +41,21 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
   };
   
   return (
-    <Card onClick={handleCardClick}>
-      <CardHeader>
-        <CardTitle>Order View</CardTitle>
-        <p className="text-xs text-muted-foreground">(Select date to place new order)</p>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <div>
+          <CardTitle>Order View</CardTitle>
+          <p className="text-xs text-muted-foreground">(Select date to place new order)</p>
+        </div>
+        {selectedDate && onCalendarAreaClick && (
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={onCalendarAreaClick}
+          >
+            Clear Selection
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
         <Calendar

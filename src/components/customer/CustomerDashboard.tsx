@@ -997,8 +997,27 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2"
               onClick={() => {
+                const today = new Date();
                 setCalendarExpanded(true);
-                window.scrollTo({ top: document.querySelector('.space-y-6')?.getBoundingClientRect().top, behavior: 'smooth' });
+                setCalendarSelectedDate(today);
+                setFilterBySpecificDate(today);
+                setTableExpanded(true);
+                
+                // Pre-fill form with current filter selections
+                setNewOrderFormData({
+                  vendor_id: selectedVendor || '',
+                  product_id: selectedProduct !== 'all' ? selectedProduct : '',
+                  quantity: 1,
+                  order_date: today,
+                });
+                
+                // Scroll to calendar after state updates
+                setTimeout(() => {
+                  const calendarElement = document.querySelector('[data-calendar-section]');
+                  if (calendarElement) {
+                    calendarElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }, 100);
               }}
             >
               <Plus className="h-6 w-6" />
@@ -1278,7 +1297,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
               </CollapsibleTrigger>
               
               <CollapsibleContent>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div data-calendar-section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Calendar - Left Side */}
                   <OrderCalendarView
                     selectedDate={calendarSelectedDate}
@@ -1319,7 +1338,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                     onCalendarAreaClick={handleCalendarAreaClick}
                   />
 
-                  {/* Order Form - Right Side (Issue 3 Fix) */}
+                  {/* Order Form - Right Side */}
                   {calendarSelectedDate && (
                     <Card>
                       <CardHeader>
@@ -1330,205 +1349,100 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                       </CardHeader>
                       <CardContent className="space-y-4">
                         
-                        {/* CASE 1: Top filter has specific vendor selected */}
-                        {selectedVendor ? (
-                          <>
-                            {/* Show Vendor as Label (Read-only) */}
-                            <div className="space-y-2">
-                              <Label>Vendor</Label>
-                              <div className="px-3 py-2 border rounded-md bg-muted">
-                                <p className="text-sm font-medium">
-                                  {vendors.find(v => v.id === selectedVendor)?.name || 'Unknown Vendor'}
-                                </p>
-                              </div>
-                            </div>
+                        {/* Vendor Dropdown - Always visible with pre-selected value */}
+                        <div className="space-y-2">
+                          <Label>Select Vendor</Label>
+                          <Select
+                            value={newOrderFormData.vendor_id || selectedVendor}
+                            onValueChange={(value) => {
+                              setNewOrderFormData({ 
+                                vendor_id: value,
+                                product_id: '', // Reset product when vendor changes
+                                quantity: 1,
+                                order_date: calendarSelectedDate 
+                              });
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose vendor" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {vendors.map((vendor) => (
+                                <SelectItem key={vendor.id} value={vendor.id}>
+                                  {vendor.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                            {/* CASE 1A: Top filter ALSO has specific product selected */}
-                            {selectedProduct !== 'all' ? (
-                              <>
-                                {/* Show Product as Label (Read-only) */}
-                                <div className="space-y-2">
-                                  <Label>Product</Label>
-                                  <div className="px-3 py-2 border rounded-md bg-muted">
-                                    <p className="text-sm font-medium">
-                                      {availableProducts.find(p => p.id === selectedProduct)?.name || 'Unknown Product'}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                {/* Show Quantity Input */}
-                                <div className="space-y-2">
-                                  <Label>Quantity</Label>
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    step="1"
-                                    value={newOrderFormData.quantity}
-                                    onChange={(e) => {
-                                      const value = parseInt(e.target.value) || 1;
-                                      setNewOrderFormData({ 
-                                        vendor_id: selectedVendor,
-                                        product_id: selectedProduct,
-                                        quantity: value,
-                                        order_date: calendarSelectedDate
-                                      })
-                                    }}
-                                    placeholder="Enter quantity"
-                                    autoFocus
-                                  />
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                {/* CASE 1B: Vendor selected but product is 'all' - Show Product Dropdown */}
-                                <div className="space-y-2">
-                                  <Label>Select Product</Label>
-                  <Select
-                    value={newOrderFormData.product_id}
-                    onValueChange={(value) => 
-                      setNewOrderFormData({ 
-                        vendor_id: selectedVendor,
-                        product_id: value,
-                        quantity: 1,
-                        order_date: calendarSelectedDate
-                      })
-                    }
-                  >
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Choose product" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {availableProducts.map((product) => (
-                                        <SelectItem key={product.id} value={product.id}>
-                                          {product.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-
-                                {/* Show Quantity Input after product is selected */}
-                                {newOrderFormData.product_id && (
-                                  <div className="space-y-2">
-                                    <Label>Quantity</Label>
-                                    <Input
-                                      type="number"
-                                      min="1"
-                                      step="1"
-                                      value={newOrderFormData.quantity}
-                                      onChange={(e) => {
-                                        const value = parseInt(e.target.value) || 1;
-                                        setNewOrderFormData({ 
-                                          ...newOrderFormData, 
-                                          quantity: value
-                                        })
-                                      }}
-                                      placeholder="Enter quantity"
-                                    />
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            {/* CASE 2: No vendor selected in top filter - Show Both Dropdowns */}
-                            
-                            {/* Vendor Dropdown */}
-                            <div className="space-y-2">
-                              <Label>Select Vendor</Label>
-                  <Select
-                    value={newOrderFormData.vendor_id}
-                    onValueChange={(value) => {
-                      setNewOrderFormData({ 
-                        vendor_id: value,
-                        product_id: '',
-                        quantity: 1,
-                        order_date: calendarSelectedDate 
-                      });
-                    }}
-                  >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Choose vendor" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {vendors.map((vendor) => (
-                                    <SelectItem key={vendor.id} value={vendor.id}>
-                                      {vendor.name}
+                        {/* Product Dropdown - Show after vendor is selected */}
+                        {(newOrderFormData.vendor_id || selectedVendor) && (
+                          <div className="space-y-2">
+                            <Label>Select Product</Label>
+                            <Select
+                              value={newOrderFormData.product_id || (selectedProduct !== 'all' ? selectedProduct : '')}
+                              onValueChange={(value) => 
+                                setNewOrderFormData({ 
+                                  ...newOrderFormData, 
+                                  product_id: value 
+                                })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Choose product" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableProducts
+                                  .filter(p => {
+                                    const vendorId = newOrderFormData.vendor_id || selectedVendor;
+                                    return orders.some(o => o.vendor.id === vendorId && o.product.id === p.id);
+                                  })
+                                  .map((product) => (
+                                    <SelectItem key={product.id} value={product.id}>
+                                      {product.name}
                                     </SelectItem>
                                   ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            {/* Product Dropdown (shown after vendor is selected) */}
-                            {newOrderFormData.vendor_id && (
-                              <div className="space-y-2">
-                                <Label>Select Product</Label>
-                                <Select
-                                  value={newOrderFormData.product_id}
-                                  onValueChange={(value) => 
-                                    setNewOrderFormData({ ...newOrderFormData, product_id: value })
-                                  }
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Choose product" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {orders
-                                      .filter(o => o.vendor.id === newOrderFormData.vendor_id)
-                                      .reduce((acc, o) => {
-                                        if (!acc.find(p => p.id === o.product.id)) {
-                                          acc.push(o.product);
-                                        }
-                                        return acc;
-                                      }, [] as any[])
-                                      .map((product) => (
-                                        <SelectItem key={product.id} value={product.id}>
-                                          {product.name}
-                                        </SelectItem>
-                                      ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            )}
-
-                            {/* Quantity Input (shown after product is selected) */}
-                            {newOrderFormData.product_id && (
-                              <div className="space-y-2">
-                                <Label>Quantity</Label>
-                                <Input
-                                  type="number"
-                                  min="1"
-                                  step="1"
-                                  value={newOrderFormData.quantity}
-                                  onChange={(e) => {
-                                    const value = parseInt(e.target.value) || 1;
-                                    setNewOrderFormData({ 
-                                      ...newOrderFormData, 
-                                      quantity: value
-                                    })
-                                  }}
-                                  placeholder="Enter quantity"
-                                />
-                              </div>
-                            )}
-                          </>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         )}
 
-                        {/* Place Order Button - Updated condition */}
+                        {/* Quantity Input - Show after product is selected */}
+                        {(newOrderFormData.product_id || (selectedProduct !== 'all')) && (
+                          <div className="space-y-2">
+                            <Label>Quantity</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              step="1"
+                              value={newOrderFormData.quantity}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value) || 1;
+                                setNewOrderFormData({ 
+                                  ...newOrderFormData, 
+                                  quantity: value
+                                })
+                              }}
+                              placeholder="Enter quantity"
+                              autoFocus
+                            />
+                          </div>
+                        )}
+
+                        {/* Place Order Button */}
                         <Button
                           className="w-full"
-                  disabled={
-                    !newOrderFormData.quantity || 
-                    newOrderFormData.quantity < 1 ||
-                    (!selectedVendor && !newOrderFormData.vendor_id) ||
-                    (selectedProduct === 'all' && !newOrderFormData.product_id)
-                  }
+                          disabled={
+                            !newOrderFormData.quantity || 
+                            newOrderFormData.quantity < 1 ||
+                            !(newOrderFormData.vendor_id || selectedVendor) ||
+                            !(newOrderFormData.product_id || (selectedProduct !== 'all'))
+                          }
                           onClick={async () => {
                             try {
-                              const finalVendorId = selectedVendor || newOrderFormData.vendor_id;
-                              const finalProductId = selectedProduct !== 'all' ? selectedProduct : newOrderFormData.product_id;
+                              const finalVendorId = newOrderFormData.vendor_id || selectedVendor;
+                              const finalProductId = newOrderFormData.product_id || selectedProduct;
                               
                               const vendor = vendors.find(v => v.id === finalVendorId);
                               const product = orders.find(o => o.product.id === finalProductId)?.product 
@@ -1559,12 +1473,13 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                                 description: `Order for ${format(calendarSelectedDate, 'MMM d, yyyy')} created successfully`,
                               });
                               
-                setNewOrderFormData({
-                  vendor_id: selectedVendor || '',
-                  product_id: selectedProduct !== 'all' ? selectedProduct : '',
-                  quantity: 1,
-                  order_date: calendarSelectedDate,
-                });
+                              // Reset form - keep vendor/product from filters
+                              setNewOrderFormData({
+                                vendor_id: selectedVendor || '',
+                                product_id: selectedProduct !== 'all' ? selectedProduct : '',
+                                quantity: 1,
+                                order_date: calendarSelectedDate,
+                              });
                             } catch (error) {
                               toast({
                                 title: "Error",
