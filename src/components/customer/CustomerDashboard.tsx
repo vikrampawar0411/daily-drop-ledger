@@ -193,6 +193,35 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
     }
   }, [calendarSelectedDates]);
 
+  // Auto-apply filters when vendor is selected in new order form
+  useEffect(() => {
+    if (newOrderFormData.vendor_id && newOrderFormData.vendor_id !== selectedVendor) {
+      // Update main vendor filter
+      setSelectedVendor(newOrderFormData.vendor_id);
+      
+      // Find most ordered product from this vendor
+      const productFrequency = orders
+        .filter(o => o.vendor.id === newOrderFormData.vendor_id)
+        .reduce((acc, order) => {
+          acc[order.product.id] = (acc[order.product.id] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+      
+      const mostUsedProductId = Object.entries(productFrequency)
+        .sort(([, a], [, b]) => b - a)[0]?.[0];
+      
+      if (mostUsedProductId) {
+        // Update main product filter
+        setSelectedProduct(mostUsedProductId);
+        // Update new order form product
+        setNewOrderFormData(prev => ({
+          ...prev,
+          product_id: mostUsedProductId
+        }));
+      }
+    }
+  }, [newOrderFormData.vendor_id, orders, selectedVendor]);
+
   const handleOrderClick = (order: any) => {
     setSelectedOrder(order);
     setOrderDetailsDialogOpen(true);
