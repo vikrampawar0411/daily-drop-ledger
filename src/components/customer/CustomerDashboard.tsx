@@ -100,26 +100,21 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
       if (vendorExists) {
         setSelectedVendor(navigationParams.vendorId);
         localStorage.setItem('lastSelectedVendor', navigationParams.vendorId);
-      }
-    }
-    
-    if (navigationParams?.productId) {
-      const productExists = availableProducts.find(p => p.id === navigationParams.productId);
-      if (productExists) {
-        setSelectedProduct(navigationParams.productId);
-      }
-    }
-    
-    // Clear params after processing
-    if (navigationParams?.vendorId || navigationParams?.productId) {
-      // Use a small delay to ensure state updates complete
-      setTimeout(() => {
-        if (onNavigate) {
-          onNavigate('dashboard', {});
+        
+        // If productId is also provided, set it directly
+        if (navigationParams?.productId) {
+          setSelectedProduct(navigationParams.productId);
         }
-      }, 100);
+        
+        // Clear params after processing
+        setTimeout(() => {
+          if (onNavigate) {
+            onNavigate('dashboard', {});
+          }
+        }, 100);
+      }
     }
-  }, [navigationParams, vendors, availableProducts, onNavigate]);
+  }, [navigationParams, vendors, onNavigate]);
 
   // Auto-select most used product when vendor changes (Issue 2 Fix)
   useEffect(() => {
