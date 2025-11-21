@@ -13,6 +13,8 @@ export interface Product {
   is_active: boolean;
   status: string;
   image_url: string | null;
+  subscribe_before: string | null;
+  delivery_before: string | null;
 }
 
 export const useProducts = () => {
@@ -28,7 +30,24 @@ export const useProducts = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setProducts(data || []);
+      
+      // Map the data to ensure all fields are present
+      const mappedData = (data || []).map((product: any) => ({
+        id: product.id,
+        name: product.name,
+        category: product.category,
+        price: product.price,
+        unit: product.unit,
+        availability: product.availability,
+        description: product.description,
+        is_active: product.is_active,
+        status: product.status,
+        image_url: product.image_url,
+        subscribe_before: product.subscribe_before || null,
+        delivery_before: product.delivery_before || null,
+      }));
+      
+      setProducts(mappedData);
     } catch (error: any) {
       toast({
         title: "Error fetching products",
@@ -54,12 +73,27 @@ export const useProducts = () => {
 
       if (error) throw error;
 
-      setProducts((prev) => [data, ...prev]);
+      const mappedProduct: Product = {
+        id: data.id,
+        name: data.name,
+        category: data.category,
+        price: data.price,
+        unit: data.unit,
+        availability: data.availability,
+        description: data.description,
+        is_active: data.is_active,
+        status: data.status,
+        image_url: data.image_url,
+        subscribe_before: (data as any).subscribe_before || null,
+        delivery_before: (data as any).delivery_before || null,
+      };
+
+      setProducts((prev) => [mappedProduct, ...prev]);
       toast({
         title: "Success",
         description: "Product added successfully",
       });
-      return data;
+      return mappedProduct;
     } catch (error: any) {
       toast({
         title: "Error adding product",
@@ -81,14 +115,29 @@ export const useProducts = () => {
 
       if (error) throw error;
 
+      const mappedProduct: Product = {
+        id: data.id,
+        name: data.name,
+        category: data.category,
+        price: data.price,
+        unit: data.unit,
+        availability: data.availability,
+        description: data.description,
+        is_active: data.is_active,
+        status: data.status,
+        image_url: data.image_url,
+        subscribe_before: (data as any).subscribe_before || null,
+        delivery_before: (data as any).delivery_before || null,
+      };
+
       setProducts((prev) =>
-        prev.map((product) => (product.id === id ? data : product))
+        prev.map((product) => (product.id === id ? mappedProduct : product))
       );
       toast({
         title: "Success",
         description: "Product updated successfully",
       });
-      return data;
+      return mappedProduct;
     } catch (error: any) {
       toast({
         title: "Error updating product",

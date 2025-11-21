@@ -51,7 +51,9 @@ const ProductManagement = () => {
         description: newProduct.description || null,
         status: "active",
         is_active: newProduct.inStock,
-        image_url: null
+        image_url: null,
+        subscribe_before: null,
+        delivery_before: null,
       });
 
       setNewProduct({

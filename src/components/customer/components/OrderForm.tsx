@@ -476,6 +476,37 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
                     ))}
                   </SelectContent>
                 </Select>
+                
+                {/* Show subscribe before and delivery before times */}
+                {selectedProduct && selectedVendorData?.products.find(p => p.name === selectedProduct) && (() => {
+                  const product = selectedVendorData.products.find(p => p.name === selectedProduct) as any;
+                  const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+                  const isPastCutoff = product.subscribe_before && currentTime > product.subscribe_before;
+                  
+                  return (product.subscribe_before || product.delivery_before) && (
+                    <div className="mt-2 p-2 bg-blue-50 rounded-md space-y-1">
+                      {product.subscribe_before && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Subscribe before:</span>
+                          <Badge variant={isPastCutoff ? "destructive" : "secondary"} className="text-xs">
+                            {product.subscribe_before}
+                          </Badge>
+                        </div>
+                      )}
+                      {product.delivery_before && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Delivery before:</span>
+                          <Badge variant="secondary" className="text-xs">{product.delivery_before}</Badge>
+                        </div>
+                      )}
+                      {isPastCutoff && (
+                        <p className="text-xs text-destructive mt-1">
+                          ⚠️ Past cutoff time - order will require vendor approval
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               <div>

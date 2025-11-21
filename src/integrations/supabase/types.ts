@@ -232,6 +232,7 @@ export type Database = {
           dispute_reason: string | null
           id: string
           order_date: string
+          order_type: string
           placed_by_role: Database["public"]["Enums"]["app_role"] | null
           placed_by_user_id: string | null
           price_per_unit: number
@@ -256,6 +257,7 @@ export type Database = {
           dispute_reason?: string | null
           id?: string
           order_date: string
+          order_type?: string
           placed_by_role?: Database["public"]["Enums"]["app_role"] | null
           placed_by_user_id?: string | null
           price_per_unit: number
@@ -280,6 +282,7 @@ export type Database = {
           dispute_reason?: string | null
           id?: string
           order_date?: string
+          order_type?: string
           placed_by_role?: Database["public"]["Enums"]["app_role"] | null
           placed_by_user_id?: string | null
           price_per_unit?: number
