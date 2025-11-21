@@ -1257,8 +1257,10 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
               <Label>Quantity</Label>
               <Input
                 type="number"
+                min="1"
+                step="1"
                 value={editFormData.quantity}
-                onChange={(e) => setEditFormData({...editFormData, quantity: Number(e.target.value)})}
+                onChange={(e) => setEditFormData({...editFormData, quantity: parseInt(e.target.value) || 1})}
               />
             </div>
           </div>
@@ -1327,10 +1329,11 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
               <Input
                 type="number"
                 min="0"
+                step="1"
                 value={bulkEditFormData.quantity}
                 onChange={(e) => setBulkEditFormData({
                   ...bulkEditFormData, 
-                  quantity: Number(e.target.value)
+                  quantity: parseInt(e.target.value) || 0
                 })}
               />
             </div>

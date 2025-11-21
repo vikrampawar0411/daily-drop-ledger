@@ -128,6 +128,8 @@ const CustomerList = () => {
                   <Input
                     id="milk"
                     type="number"
+                    min="0"
+                    step="1"
                     value={newCustomer.milkQuantity}
                     onChange={(e) => setNewCustomer({...newCustomer, milkQuantity: parseInt(e.target.value) || 0})}
                     placeholder="0"

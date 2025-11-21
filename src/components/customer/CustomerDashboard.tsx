@@ -1859,15 +1859,16 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                                       <div className="flex items-center gap-2">
                                         <Input
                                           type="number"
+                                          min="1"
+                                          step="1"
                                           value={editQuantity}
                                           onChange={(e) => {
-                                            const value = Number(e.target.value);
+                                            const value = parseInt(e.target.value) || 1;
                                             if (value >= 1 || e.target.value === '') {
                                               setEditQuantity(value);
                                             }
                                           }}
                                           className="w-20 h-8"
-                                          min={1}
                                           autoFocus
                                         />
                                         <Button
@@ -2358,8 +2359,10 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
               <Label>Quantity</Label>
               <Input
                 type="number"
+                min="1"
+                step="1"
                 value={editFormData.quantity}
-                onChange={(e) => setEditFormData({...editFormData, quantity: Number(e.target.value)})}
+                onChange={(e) => setEditFormData({...editFormData, quantity: parseInt(e.target.value) || 1})}
               />
             </div>
           </div>
@@ -2410,10 +2413,11 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
               <Input
                 type="number"
                 min="0"
+                step="1"
                 value={bulkEditFormData.quantity}
                 onChange={(e) => setBulkEditFormData({
                   ...bulkEditFormData, 
-                  quantity: Number(e.target.value)
+                  quantity: parseInt(e.target.value) || 0
                 })}
               />
             </div>

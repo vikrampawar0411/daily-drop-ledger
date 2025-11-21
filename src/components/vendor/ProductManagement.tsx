@@ -52,7 +52,7 @@ const ProductManagement = () => {
   const [showPriceDialog, setShowPriceDialog] = useState(false);
   const [selectedProductForStock, setSelectedProductForStock] = useState<any>(null);
   const [selectedProductForPrice, setSelectedProductForPrice] = useState<any>(null);
-  const [stockQuantityToAdd, setStockQuantityToAdd] = useState("");
+  const [stockQuantityToAdd, setStockQuantityToAdd] = useState("1");
   const [newPrice, setNewPrice] = useState("");
   
   // Stock toggle state for each product
@@ -858,15 +858,15 @@ const ProductManagement = () => {
 
             <div>
               <Label htmlFor="stockQuantity">Add Quantity ({selectedProductForStock?.product?.unit})</Label>
-              <Input
-                id="stockQuantity"
-                type="number"
-                min="0"
-                step="0.01"
-                value={stockQuantityToAdd}
-                onChange={(e) => setStockQuantityToAdd(e.target.value)}
-                placeholder="Enter quantity to add"
-              />
+                <Input
+                  id="stockQuantity"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={stockQuantityToAdd}
+                  onChange={(e) => setStockQuantityToAdd(e.target.value)}
+                  placeholder="Enter quantity to add"
+                />
               <p className="text-xs text-muted-foreground mt-1">
                 This will be added to your current stock
               </p>

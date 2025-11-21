@@ -190,7 +190,7 @@ const DailyEntry = () => {
                         onChange={(e) => updateEntry(entry.id, 'deliveredMilk', parseInt(e.target.value) || 0)}
                         className="w-20 h-8"
                         min="0"
-                        step="0.5"
+                        step="1"
                       />
                       <span className="text-sm text-gray-600">L</span>
                     </div>
