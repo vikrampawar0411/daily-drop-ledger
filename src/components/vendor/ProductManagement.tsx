@@ -487,9 +487,14 @@ const ProductManagement = () => {
 
       <Tabs defaultValue="my-products">
         <TabsList>
-          <TabsTrigger value="my-products">My Products ({vendorProducts.length})</TabsTrigger>
+          <TabsTrigger value="my-products">
+            My Products ({vendorProducts.length})
+          </TabsTrigger>
+          <TabsTrigger value="edit-requests">
+            Product Changes Requested ({editRequests.filter(r => r.status === 'pending').length})
+          </TabsTrigger>
           <TabsTrigger value="requests">
-            Requests ({productRequests.filter(r => r.status === 'pending').length})
+            New Product Requests ({productRequests.filter(r => r.status === 'pending').length})
           </TabsTrigger>
         </TabsList>
 
