@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 const CustomerApp = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [navigationParams, setNavigationParams] = useState<any>({});
   const { signOut, user } = useAuth();
   const [customerName, setCustomerName] = useState("");
 
@@ -38,6 +39,11 @@ const CustomerApp = () => {
 
     loadCustomerName();
   }, [user]);
+
+  const handleNavigation = (tab: string, params?: any) => {
+    setActiveTab(tab);
+    setNavigationParams(params || {});
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -114,18 +120,19 @@ const CustomerApp = () => {
 
           <TabsContent value="dashboard">
             <CustomerDashboard 
-              onNavigate={setActiveTab} 
+              onNavigate={handleNavigation} 
               activeTab={activeTab}
               setActiveTab={setActiveTab}
+              navigationParams={navigationParams}
             />
           </TabsContent>
 
           <TabsContent value="subscriptions">
-            <SubscriptionManagement onNavigate={setActiveTab} />
+            <SubscriptionManagement onNavigate={handleNavigation} />
           </TabsContent>
 
           <TabsContent value="vendors">
-            <VendorDirectory onNavigate={setActiveTab} />
+            <VendorDirectory onNavigate={handleNavigation} />
           </TabsContent>
         </Tabs>
       </div>
