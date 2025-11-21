@@ -51,8 +51,8 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
   const [connectionCount, setConnectionCount] = useState(0);
   const [loadingWelcome, setLoadingWelcome] = useState(true);
   
-  // Calendar state
-  const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(undefined);
+  // Calendar state - Multiple dates support
+  const [calendarSelectedDates, setCalendarSelectedDates] = useState<Date[] | undefined>(undefined);
   const [filterBySpecificDate, setFilterBySpecificDate] = useState<Date | undefined>(undefined);
   
   // Date range state
@@ -156,7 +156,20 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
 
   const handleCalendarAreaClick = () => {
     setFilterBySpecificDate(undefined);
-    setCalendarSelectedDate(undefined);
+    setCalendarSelectedDates(undefined);
+    setNewOrderFormData({
+      vendor_id: '',
+      product_id: '',
+      quantity: 1,
+      order_date: new Date(),
+    });
+  };
+
+  const handleMonthCaptionClick = () => {
+    setFilterBySpecificDate(undefined);
+    setCalendarSelectedDates(undefined);
+    setSelectedVendor('');
+    setSelectedProduct('all');
     setNewOrderFormData({
       vendor_id: '',
       product_id: '',
@@ -999,7 +1012,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
               onClick={() => {
                 const today = new Date();
                 setCalendarExpanded(true);
-                setCalendarSelectedDate(today);
+                setCalendarSelectedDates([today]);
                 setFilterBySpecificDate(today);
                 setTableExpanded(true);
                 
@@ -1125,7 +1138,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                 onValueChange={(value) => {
                   setSelectedMonth(value);
                   setFilterBySpecificDate(undefined);
-                  setCalendarSelectedDate(undefined);
+                  setCalendarSelectedDates(undefined);
                   setSelectedVendor('');
                   setSelectedProduct('all');
                 }}
@@ -1300,8 +1313,8 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                 <div data-calendar-section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Calendar - Left Side */}
                   <OrderCalendarView
-                    selectedDate={calendarSelectedDate}
-                    onSelectDate={setCalendarSelectedDate}
+                    selectedDates={calendarSelectedDates}
+                    onSelectDates={setCalendarSelectedDates}
                     hasOrdersOnDate={(date) => {
                       const dateStr = format(date, 'yyyy-MM-dd');
                       return monthlyStats.orders.some(o => o.order_date === dateStr);
@@ -1315,37 +1328,51 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                       const monthStr = format(newMonth, 'yyyy-MM');
                       setSelectedMonth(monthStr);
                       setFilterBySpecificDate(undefined);
-                      setCalendarSelectedDate(undefined);
+                      setCalendarSelectedDates(undefined);
                       setSelectedVendor('');
                       setSelectedProduct('all');
                     }}
-            onDateClick={(date) => {
-              const dateMonth = format(date, 'yyyy-MM');
-              if (dateMonth !== selectedMonth) {
-                setSelectedMonth(dateMonth);
-              }
-              
-              setFilterBySpecificDate(date);
-              setCalendarSelectedDate(date);
-              setTableExpanded(true);
-              setNewOrderFormData({
-                vendor_id: selectedVendor || '',
-                product_id: selectedProduct !== 'all' ? selectedProduct : '',
-                quantity: 1,
-                order_date: date,
-              });
-            }}
+                    onDateClick={(dates) => {
+                      if (dates.length > 0) {
+                        const lastDate = dates[dates.length - 1];
+                        const dateMonth = format(lastDate, 'yyyy-MM');
+                        if (dateMonth !== selectedMonth) {
+                          setSelectedMonth(dateMonth);
+                        }
+                        
+                        setFilterBySpecificDate(lastDate);
+                        setTableExpanded(true);
+                        setNewOrderFormData({
+                          vendor_id: selectedVendor || '',
+                          product_id: selectedProduct !== 'all' ? selectedProduct : '',
+                          quantity: 1,
+                          order_date: lastDate,
+                        });
+                      }
+                    }}
                     onCalendarAreaClick={handleCalendarAreaClick}
+                    onMonthCaptionClick={handleMonthCaptionClick}
                   />
 
                   {/* Order Form - Right Side */}
-                  {calendarSelectedDate && (
+                  {calendarSelectedDates && calendarSelectedDates.length > 0 && (
                     <Card>
                       <CardHeader>
                         <CardTitle>Place New Order</CardTitle>
                         <p className="text-sm text-muted-foreground">
-                          For {format(calendarSelectedDate, 'MMMM d, yyyy')}
+                          {calendarSelectedDates.length === 1 
+                            ? `For ${format(calendarSelectedDates[0], 'MMMM d, yyyy')}`
+                            : `For ${calendarSelectedDates.length} selected dates`
+                          }
                         </p>
+                        {calendarSelectedDates.length > 1 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {calendarSelectedDates
+                              .sort((a, b) => a.getTime() - b.getTime())
+                              .map(d => format(d, 'MMM d'))
+                              .join(', ')}
+                          </p>
+                        )}
                       </CardHeader>
                       <CardContent className="space-y-4">
                         
@@ -1359,7 +1386,9 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                                 vendor_id: value,
                                 product_id: '', // Reset product when vendor changes
                                 quantity: 1,
-                                order_date: calendarSelectedDate 
+                                order_date: calendarSelectedDates && calendarSelectedDates.length > 0 
+                                  ? calendarSelectedDates[0] 
+                                  : new Date()
                               });
                             }}
                           >
@@ -1448,55 +1477,73 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                               const product = orders.find(o => o.product.id === finalProductId)?.product 
                                            || availableProducts.find(p => p.id === finalProductId);
                               
-                              if (!vendor || !product) {
+                              if (!vendor || !product || !calendarSelectedDates || calendarSelectedDates.length === 0) {
                                 toast({
                                   title: "Error",
-                                  description: "Invalid vendor or product selected",
+                                  description: "Invalid vendor, product, or dates selected",
                                   variant: "destructive",
                                 });
                                 return;
                               }
 
-                              await addCalendarOrder(calendarSelectedDate, {
-                                vendor: vendor.name,
-                                product: product.name,
-                                quantity: newOrderFormData.quantity,
-                                unit: '',
-                                status: 'pending',
-                              });
+                              // Place orders for all selected dates
+                              const orderPromises = calendarSelectedDates.map(date => 
+                                addCalendarOrder(date, {
+                                  vendor: vendor.name,
+                                  product: product.name,
+                                  quantity: newOrderFormData.quantity,
+                                  unit: '',
+                                  status: 'pending',
+                                })
+                              );
+
+                              await Promise.all(orderPromises);
                               
                               await refetch();
                               await refetchCalendar();
                               
                               toast({
-                                title: "Order Placed",
-                                description: `Order for ${format(calendarSelectedDate, 'MMM d, yyyy')} created successfully`,
+                                title: "Order(s) Placed",
+                                description: calendarSelectedDates.length === 1
+                                  ? `Order for ${format(calendarSelectedDates[0], 'MMM d, yyyy')} created successfully`
+                                  : `${calendarSelectedDates.length} orders created successfully`,
                               });
                               
                               // Reset form - keep vendor/product from filters
+                              setCalendarSelectedDates(undefined);
                               setNewOrderFormData({
                                 vendor_id: selectedVendor || '',
                                 product_id: selectedProduct !== 'all' ? selectedProduct : '',
                                 quantity: 1,
-                                order_date: calendarSelectedDate,
+                                order_date: new Date(),
                               });
                             } catch (error) {
                               toast({
                                 title: "Error",
-                                description: "Failed to place order",
+                                description: "Failed to place order(s)",
                                 variant: "destructive",
                               });
                             }
                           }}
                         >
                           <Plus className="h-4 w-4 mr-2" />
-                          Place Order
+                          Place Order{calendarSelectedDates && calendarSelectedDates.length > 1 ? 's' : ''}
                         </Button>
 
-                        {/* Show existing orders for this date */}
+                        {/* Show existing orders for selected dates */}
                         {(() => {
-                          const dateStr = format(calendarSelectedDate, 'yyyy-MM-dd');
-                          const existingOrders = monthlyStats.orders.filter(o => o.order_date === dateStr);
+                          if (!calendarSelectedDates || calendarSelectedDates.length === 0) return null;
+                          
+                          const allExistingOrders = calendarSelectedDates.flatMap(date => {
+                            const dateStr = format(date, 'yyyy-MM-dd');
+                            return monthlyStats.orders
+                              .filter(o => o.order_date === dateStr)
+                              .map(o => ({ ...o, displayDate: dateStr }));
+                          });
+                          
+                          if (allExistingOrders.length === 0) return null;
+
+                          const existingOrders = allExistingOrders;
                           
                           if (existingOrders.length > 0) {
                             return (
@@ -1558,7 +1605,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                         variant="ghost"
                         onClick={() => {
                           setFilterBySpecificDate(undefined);
-                          setCalendarSelectedDate(undefined);
+                          setCalendarSelectedDates(undefined);
                         }}
                       >
                         <X className="h-4 w-4 mr-1" />
