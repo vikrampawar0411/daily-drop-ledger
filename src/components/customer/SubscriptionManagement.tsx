@@ -980,8 +980,9 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
               <Input 
                 type="number" 
                 min="1"
+                step="1"
                 value={newSubscription.quantity}
-                onChange={(e) => setNewSubscription({...newSubscription, quantity: parseInt(e.target.value)})}
+                onChange={(e) => setNewSubscription({...newSubscription, quantity: parseInt(e.target.value) || 1})}
               />
             </div>
             
