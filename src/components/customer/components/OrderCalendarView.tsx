@@ -45,26 +45,17 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
           <CardTitle>Order View</CardTitle>
           <p className="text-xs text-muted-foreground">(Select date(s) to place new order)</p>
         </div>
-        <div className="flex gap-2">
-          {selectedDates && selectedDates.length > 0 && onCalendarAreaClick && (
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={onCalendarAreaClick}
-            >
-              Clear Selection ({selectedDates.length} date{selectedDates.length > 1 ? 's' : ''})
-            </Button>
-          )}
-          {onMonthCaptionClick && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={onMonthCaptionClick}
-            >
-              Reset All Filters
-            </Button>
-          )}
-        </div>
+        {onMonthCaptionClick && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={onMonthCaptionClick}
+          >
+            {selectedDates && selectedDates.length > 0 
+              ? `Clear Selection (${selectedDates.length} date${selectedDates.length > 1 ? 's' : ''})` 
+              : 'Reset All Filters'}
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
         <div 
