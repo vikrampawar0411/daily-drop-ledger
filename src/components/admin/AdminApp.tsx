@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { LogOut, Shield, Users, Package, Calendar, TrendingUp, MapPin } from "lucide-react";
+import { LogOut, Shield, Users, Package, Calendar, TrendingUp, MapPin, Settings } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -79,6 +79,7 @@ const AdminApp = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
+                <p className="text-sm text-gray-600 hidden md:block">Manage vendors, customers and operations</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -115,6 +116,10 @@ const AdminApp = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => setActiveTab('account')}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Account Settings
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="h-4 w-4 mr-2" />
                     Sign Out
@@ -129,7 +134,7 @@ const AdminApp = () => {
       {/* Admin Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 lg:w-fit lg:grid-cols-4 mb-8 gap-1">
+          <TabsList className="grid w-full grid-cols-5 lg:w-fit lg:grid-cols-5 mb-8 gap-1">
             <TabsTrigger value="dashboard" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
               <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -145,6 +150,10 @@ const AdminApp = () => {
             <TabsTrigger value="service-area" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
               <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Service Areas</span>
+            </TabsTrigger>
+            <TabsTrigger value="account" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
+              <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Account</span>
             </TabsTrigger>
           </TabsList>
 
@@ -188,6 +197,13 @@ const AdminApp = () => {
 
           <TabsContent value="service-area">
             <ServiceAreaManagement />
+          </TabsContent>
+
+          <TabsContent value="account">
+            <div className="bg-white rounded-lg border shadow-sm p-6">
+              <h2 className="text-2xl font-semibold mb-4">Account Settings</h2>
+              <p className="text-gray-600">Admin account settings coming soon...</p>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
