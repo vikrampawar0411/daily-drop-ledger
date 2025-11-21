@@ -104,6 +104,9 @@ const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementPro
   const getStatusBadge = (status: string) => {
     const configs = {
       pending: { className: "bg-orange-100 text-orange-800", icon: <Clock className="h-3 w-3" /> },
+      pending_approval: { className: "bg-yellow-100 text-yellow-800", icon: <Clock className="h-3 w-3" /> },
+      accepted: { className: "bg-blue-100 text-blue-800", icon: <CheckCircle className="h-3 w-3" /> },
+      rejected: { className: "bg-red-100 text-red-800", icon: <AlertCircle className="h-3 w-3" /> },
       delivered: { className: "bg-green-100 text-green-800", icon: <CheckCircle className="h-3 w-3" /> },
       cancelled: { className: "border-2 border-gray-400 text-gray-700", icon: <AlertCircle className="h-3 w-3" /> },
     };
@@ -111,17 +114,18 @@ const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementPro
     return (
       <Badge className={config.className}>
         {config.icon}
-        <span className="ml-1 capitalize">{status}</span>
+        <span className="ml-1 capitalize">{status.replace('_', ' ')}</span>
       </Badge>
     );
   };
 
   const stats = useMemo(() => {
     const pending = filteredOrders.filter(o => o.status === "pending").length;
+    const pendingApproval = filteredOrders.filter(o => o.status === "pending_approval").length;
     const delivered = filteredOrders.filter(o => o.status === "delivered").length;
     const revenue = filteredOrders.filter(o => o.status === "delivered")
       .reduce((sum, o) => sum + Number(o.total_amount), 0);
-    return { total: filteredOrders.length, pending, delivered, revenue };
+    return { total: filteredOrders.length, pending, pendingApproval, delivered, revenue };
   }, [filteredOrders]);
 
   if (loading) {
@@ -144,7 +148,7 @@ const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementPro
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
@@ -158,6 +162,14 @@ const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementPro
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">{stats.pending}</div>
               <div className="text-sm text-gray-600">Pending</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-600">{stats.pendingApproval}</div>
+              <div className="text-sm text-gray-600">Awaiting Approval</div>
             </div>
           </CardContent>
         </Card>
@@ -212,12 +224,15 @@ const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementPro
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="delivered">Delivered</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="pending_approval">Awaiting Approval</SelectItem>
+                    <SelectItem value="accepted">Accepted</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="delivered">Delivered</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
               </Select>
             </div>
 
@@ -343,6 +358,28 @@ const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementPro
                           >
                             Deliver
                           </Button>
+                        )}
+                        {order.status === "pending_approval" && (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="bg-green-50 hover:bg-green-100 text-green-700"
+                              onClick={() => updateOrderStatus(order.id, "accepted")}
+                            >
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="bg-red-50 hover:bg-red-100 text-red-700"
+                              onClick={() => updateOrderStatus(order.id, "rejected")}
+                            >
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              Reject
+                            </Button>
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>

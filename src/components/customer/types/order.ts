@@ -9,6 +9,7 @@ export interface Order {
   product_id?: string;
   order_date?: string;
   status?: string;
+  order_type?: 'auto' | 'request';
 }
 
 export interface DateOrders {

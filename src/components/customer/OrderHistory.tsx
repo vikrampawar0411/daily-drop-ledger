@@ -241,7 +241,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
     return [...new Set(orders.map(o => o.vendor.name))];
   }, [orders]);
 
-  const statuses = ["pending", "delivered", "cancelled"];
+  const statuses = ["pending", "pending_approval", "accepted", "rejected", "delivered", "cancelled"];
 
   // Set default vendor after vendors are loaded
   useEffect(() => {
@@ -371,29 +371,24 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
     };
   }, [filteredOrders]);
 
-  const getStatusIcon = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case "delivered":
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
+        return <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Delivered</Badge>;
+      case "pending":
+        return <Badge className="bg-orange-100 text-orange-800"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+      case "pending_approval":
+        return <Badge className="bg-yellow-100 text-yellow-800"><Clock className="h-3 w-3 mr-1" />Awaiting Approval</Badge>;
+      case "accepted":
+        return <Badge className="bg-blue-100 text-blue-800"><CheckCircle className="h-3 w-3 mr-1" />Accepted</Badge>;
+      case "rejected":
+        return <Badge className="bg-red-100 text-red-800"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
       case "scheduled":
-        return <Clock className="h-4 w-4 text-blue-600" />;
+        return <Badge className="bg-blue-100 text-blue-800"><Clock className="h-3 w-3 mr-1" />Scheduled</Badge>;
       case "cancelled":
-        return <XCircle className="h-4 w-4 text-gray-600" />;
+        return <Badge className="border-2 border-gray-400 text-gray-700"><XCircle className="h-3 w-3 mr-1" />Cancelled</Badge>;
       default:
-        return <Clock className="h-4 w-4 text-gray-600" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "delivered":
-        return "bg-green-100 text-green-800";
-      case "scheduled":
-        return "bg-blue-100 text-blue-800";
-      case "cancelled":
-        return "border-2 border-gray-400 text-gray-700";
-      default:
-        return "bg-gray-100 text-gray-800";
+        return <Badge className="bg-gray-100 text-gray-800"><Clock className="h-3 w-3 mr-1" />{status}</Badge>;
     }
   };
 
@@ -980,10 +975,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                                 <TableCell>{order.quantity} {order.unit}</TableCell>
                                 <TableCell className="font-semibold">₹{order.total_amount}</TableCell>
                                 <TableCell>
-                                  <Badge className={getStatusColor(order.status)}>
-                                    {getStatusIcon(order.status)}
-                                    <span className="ml-1 capitalize">{order.status}</span>
-                                  </Badge>
+                                  {getStatusBadge(order.status)}
                                 </TableCell>
                                 <TableCell onClick={(e) => e.stopPropagation()}>
                                   <div className="flex items-center gap-2">
@@ -1186,10 +1178,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                 </div>
                 <div className="col-span-2">
                   <Label className="text-sm text-muted-foreground">Status</Label>
-                  <Badge className={getStatusColor(selectedOrder.status)}>
-                    {getStatusIcon(selectedOrder.status)}
-                    <span className="ml-1 capitalize">{selectedOrder.status}</span>
-                  </Badge>
+                  <div>{getStatusBadge(selectedOrder.status)}</div>
                 </div>
               </div>
               {selectedOrder.delivered_at && (

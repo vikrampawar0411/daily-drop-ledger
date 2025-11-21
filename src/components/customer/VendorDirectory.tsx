@@ -91,7 +91,9 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
             unit: product.unit,
             availability: product.availability,
             price: vp.price_override || product.price,
-            image_url: product.image_url
+            image_url: product.image_url,
+            subscribe_before: product.subscribe_before || null,
+            delivery_before: product.delivery_before || null,
           };
         })
         .filter(p => p !== null);
@@ -261,9 +263,23 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                   <span className="text-sm font-medium">Products & Pricing:</span>
                   <div className="grid grid-cols-1 gap-2 mt-2">
                     {vendor.products.map((product) => (
-                      <div key={product.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                        <span className="text-sm">{product.name}</span>
-                        <span className="text-sm font-medium">₹{product.price} / {product.unit}</span>
+                       <div key={product.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{product.name}</span>
+                            <span className="text-sm text-primary font-semibold">₹{product.price} / {product.unit}</span>
+                          </div>
+                          {(product.subscribe_before || product.delivery_before) && (
+                            <div className="flex gap-2 mt-1">
+                              {product.subscribe_before && (
+                                <Badge variant="outline" className="text-xs">Subscribe: {product.subscribe_before}</Badge>
+                              )}
+                              {product.delivery_before && (
+                                <Badge variant="outline" className="text-xs">Delivery: {product.delivery_before}</Badge>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -391,6 +407,20 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                                 <span className="text-muted-foreground">Availability: <span className="font-medium text-foreground">{product.availability}</span></span>
                                 <span className="text-muted-foreground">Unit: <span className="font-medium text-foreground">{product.unit}</span></span>
                               </div>
+                              {(product.subscribe_before || product.delivery_before) && (
+                                <div className="flex gap-2 mb-3">
+                                  {product.subscribe_before && (
+                                    <Badge variant="outline" className="text-xs">
+                                      📅 Subscribe by: {product.subscribe_before}
+                                    </Badge>
+                                  )}
+                                  {product.delivery_before && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      🚚 Delivery by: {product.delivery_before}
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
                               <div className="flex items-center justify-between">
                                 <div>
                                   <div className="text-2xl font-bold text-primary">₹{product.price}</div>
