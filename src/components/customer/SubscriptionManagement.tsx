@@ -119,6 +119,13 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
     return vendors.filter(v => v.is_active && vendorIds.has(v.id));
   }, [vendors, vendorProducts]);
   const availableProducts = useMemo(() => {
+    // Get product IDs that are already subscribed (active or paused)
+    const subscribedProductIds = new Set(
+      subscriptions
+        .filter(sub => sub.status === 'active' || sub.status === 'paused')
+        .map(sub => sub.product_id)
+    );
+    
     // Use the vendor from the create dialog if it's set, otherwise use the filter
     const vendorIdToFilter = newSubscription.vendor_id || selectedVendorFilter;
     
@@ -131,7 +138,8 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
       
       allVendorProducts.forEach(vp => {
         const product = products.find(p => p.id === vp.product_id);
-        if (product) {
+        // Skip if product is already subscribed
+        if (product && !subscribedProductIds.has(product.id)) {
           // If we haven't seen this product yet, or if this vendor offers a better price
           if (!uniqueProductsMap.has(product.id)) {
             uniqueProductsMap.set(product.id, {
@@ -157,19 +165,19 @@ const SubscriptionManagement = ({ onNavigate }: SubscriptionManagementProps = {}
       return Array.from(uniqueProductsMap.values());
     }
     
-    // When a specific vendor is selected, show all their products
+    // When a specific vendor is selected, show all their products (except subscribed ones)
     return vendorProducts
       .filter(vp => vp.vendor_id === vendorIdToFilter && vp.is_active)
       .map(vp => {
         const product = products.find(p => p.id === vp.product_id);
-        return product ? {
+        return product && !subscribedProductIds.has(product.id) ? {
           ...product,
           price: vp.price_override || product.price,
           vendor_id: vp.vendor_id
         } : null;
       })
       .filter(p => p !== null);
-  }, [vendorProducts, products, selectedVendorFilter, newSubscription.vendor_id]);
+  }, [vendorProducts, products, selectedVendorFilter, newSubscription.vendor_id, subscriptions]);
   
   // Generate month options (last 12 months)
   const monthOptions = useMemo(() => {
