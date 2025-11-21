@@ -90,6 +90,71 @@ export type Database = {
           },
         ]
       }
+      customer_notifications: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          id: string
+          is_read: boolean | null
+          message: string
+          product_id: string
+          updated_at: string | null
+          vendor_contact: string | null
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          id?: string
+          is_read?: boolean | null
+          message: string
+          product_id: string
+          updated_at?: string | null
+          vendor_contact?: string | null
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          product_id?: string
+          updated_at?: string | null
+          vendor_contact?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_notifications_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_notifications_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_notifications_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_notifications_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string

@@ -34,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import * as XLSX from 'xlsx-js-style';
 import { OnboardingCard } from "@/components/onboarding/OnboardingCard";
+import { NotificationBanner } from "./NotificationBanner";
 
 interface CustomerDashboardProps {
   onNavigate?: (tab: string, params?: any) => void;
@@ -1007,6 +1008,9 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   return (
     <TooltipProvider>
       <div className="space-y-6">
+      {/* Notification Banner */}
+      <NotificationBanner />
+      
       {/* OOBE Card for New Users */}
       {setActiveTab && (
         <OnboardingCard
