@@ -32,10 +32,8 @@ const ProductManagement = () => {
   
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
-  const [showImageDialog, setShowImageDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<string>("");
-  const [selectedProductForImage, setSelectedProductForImage] = useState<any>(null);
   const [selectedForEdit, setSelectedForEdit] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
   const [newRequest, setNewRequest] = useState({
@@ -62,7 +60,7 @@ const ProductManagement = () => {
   
   // Local state for inline editing
   const [editingStock, setEditingStock] = useState<Record<string, number>>({});
-  const [editingPrice, setEditingPrice] = useState<Record<string, string>>({});
+  const [stockChanged, setStockChanged] = useState<Record<string, boolean>>({});
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -72,7 +70,8 @@ const ProductManagement = () => {
     description: "",
     subscribe_before: "",
     delivery_before: "",
-    price: ""
+    price_override: "",
+    image_url: ""
   });
 
   useEffect(() => {
@@ -343,6 +342,25 @@ const ProductManagement = () => {
     if (!selectedForEdit || !vendorId || !user) return;
 
     try {
+      // Update price immediately if changed
+      if (editForm.price_override !== undefined && editForm.price_override !== '') {
+        const newPrice = parseFloat(editForm.price_override);
+        if (!isNaN(newPrice) && newPrice !== selectedForEdit?.price_override) {
+          await updatePrice(selectedForEdit.id, newPrice === 0 ? null : newPrice);
+        }
+      }
+
+      // Update times immediately if changed
+      if (editForm.subscribe_before !== (selectedForEdit?.product as any)?.subscribe_before ||
+          editForm.delivery_before !== (selectedForEdit?.product as any)?.delivery_before) {
+        await handleUpdateTimesImmediate(
+          selectedForEdit.product.id,
+          editForm.subscribe_before,
+          editForm.delivery_before
+        );
+      }
+
+      // Submit edit request for name, category, unit, description, and image
       await createEditRequest({
         product_id: selectedForEdit.product.id,
         vendor_id: vendorId,
@@ -351,6 +369,7 @@ const ProductManagement = () => {
         proposed_category: editForm.category || undefined,
         proposed_unit: editForm.unit || undefined,
         proposed_description: editForm.description || undefined,
+        proposed_image_url: editForm.image_url || undefined,
       });
       
       setShowEditDialog(false);
@@ -362,15 +381,16 @@ const ProductManagement = () => {
         description: "",
         subscribe_before: "",
         delivery_before: "",
-        price: ""
+        price_override: "",
+        image_url: ""
       });
     } catch (error) {
       // Error handled by hook
     }
   };
   
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files || event.target.files.length === 0 || !selectedProductForImage) {
+  const handleImageUploadForApproval = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0 || !selectedForEdit) {
       return;
     }
 
@@ -379,7 +399,7 @@ const ProductManagement = () => {
 
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${selectedProductForImage.id}-${Date.now()}.${fileExt}`;
+      const fileName = `pending-${selectedForEdit.product.id}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
       const { error: uploadError } = await supabase.storage
@@ -392,17 +412,13 @@ const ProductManagement = () => {
         .from('product-images')
         .getPublicUrl(filePath);
 
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ image_url: publicUrl })
-        .eq('id', selectedProductForImage.id);
+      // Store in editForm for later submission
+      setEditForm(prev => ({ ...prev, image_url: publicUrl }));
 
-      if (updateError) throw updateError;
-
-      setShowImageDialog(false);
-      setSelectedProductForImage(null);
-      
-      window.location.reload();
+      toast({
+        title: "Image uploaded",
+        description: "Image will be applied after admin approval",
+      });
     } catch (error: any) {
       toast({
         title: "Error uploading image",
@@ -528,35 +544,24 @@ const ProductManagement = () => {
                       </div>
                     </div>
 
-                    {/* Time Fields */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <Label className="text-xs">Subscribe Before</Label>
-                        <Input 
-                          type="time" 
-                          value={(vp.product as any)?.subscribe_before || "23:00"}
-                          onChange={(e) => handleUpdateTimesImmediate(
-                            vp.product.id,
-                            e.target.value,
-                            (vp.product as any)?.delivery_before || "07:00"
-                          )}
-                          className="h-8 text-xs"
-                        />
+                    {/* Time Fields - Read Only */}
+                    {((vp.product as any)?.subscribe_before || (vp.product as any)?.delivery_before) && (
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        {(vp.product as any)?.subscribe_before && (
+                          <div>
+                            <span className="text-xs text-muted-foreground">Subscribe Before:</span>
+                            <div className="font-medium">{(vp.product as any).subscribe_before}</div>
+                          </div>
+                        )}
+                        {(vp.product as any)?.delivery_before && (
+                          <div>
+                            <span className="text-xs text-muted-foreground">Delivery Before:</span>
+                            <div className="font-medium">{(vp.product as any).delivery_before}</div>
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <Label className="text-xs">Delivery Before</Label>
-                        <Input 
-                          type="time" 
-                          value={(vp.product as any)?.delivery_before || "07:00"}
-                          onChange={(e) => handleUpdateTimesImmediate(
-                            vp.product.id,
-                            (vp.product as any)?.subscribe_before || "23:00",
-                            e.target.value
-                          )}
-                          className="h-8 text-xs"
-                        />
-                      </div>
-                    </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">Use Edit button to change times</p>
                     
                     {vp.product?.description && (
                       <div className="text-sm">
@@ -578,7 +583,7 @@ const ProductManagement = () => {
                      <div className="border-t pt-3 mt-3 space-y-3">
                        <div className="grid grid-cols-3 gap-2 text-sm bg-muted p-2 rounded">
                          <div>
-                           <div className="text-xs text-muted-foreground mb-1">Current Stock</div>
+                           <div className="text-xs text-muted-foreground mb-1">Current Additional Stock</div>
                            <Input
                              type="number"
                              min="0"
@@ -586,17 +591,11 @@ const ProductManagement = () => {
                              onChange={(e) => {
                                const newStock = parseInt(e.target.value) || 0;
                                setEditingStock(prev => ({ ...prev, [vp.id]: newStock }));
-                             }}
-                             onBlur={() => {
-                               if (editingStock[vp.id] !== undefined && editingStock[vp.id] !== vp.stock_quantity) {
-                                 updateStock(vp.id, editingStock[vp.id]);
-                               }
-                             }}
-                             onKeyDown={(e) => {
-                               if (e.key === 'Enter' && editingStock[vp.id] !== undefined) {
-                                 updateStock(vp.id, editingStock[vp.id]);
-                                 e.currentTarget.blur();
-                               }
+                               // Mark as changed if different from original
+                               setStockChanged(prev => ({ 
+                                 ...prev, 
+                                 [vp.id]: newStock !== (vp.stock_quantity ?? 0) 
+                               }));
                              }}
                              className="h-8 text-center font-medium"
                            />
@@ -611,41 +610,19 @@ const ProductManagement = () => {
                          </div>
                        </div>
                        
-                       {/* Price Override Section */}
-                       <div className="border-t pt-2 mt-2">
-                         <Label className="text-xs mb-1">Price Override (Updates Immediately)</Label>
-                         <div className="flex gap-2">
-                           <Input
-                             type="number"
-                             step="0.01"
-                             min="0"
-                             placeholder={`Default: ₹${vp.product?.price || 0}`}
-                             value={editingPrice[vp.id] ?? (vp.price_override || '')}
-                             onChange={(e) => {
-                               setEditingPrice(prev => ({ ...prev, [vp.id]: e.target.value }));
-                             }}
-                             onBlur={() => {
-                               if (editingPrice[vp.id] !== undefined) {
-                                 const newPrice = parseFloat(editingPrice[vp.id]) || 0;
-                                 if (newPrice !== vp.price_override) {
-                                   updatePrice(vp.id, newPrice === 0 ? null : newPrice);
-                                 }
-                               }
-                             }}
-                             onKeyDown={(e) => {
-                               if (e.key === 'Enter' && editingPrice[vp.id] !== undefined) {
-                                 const newPrice = parseFloat(editingPrice[vp.id]) || 0;
-                                 updatePrice(vp.id, newPrice === 0 ? null : newPrice);
-                                 e.currentTarget.blur();
-                               }
-                             }}
-                             className="h-8 text-xs"
-                           />
-                         </div>
-                         <p className="text-xs text-muted-foreground mt-1">
-                           Current price: ₹{vp.price_override || vp.product?.price || 0}
-                         </p>
-                       </div>
+                       {/* Update Stock Button - Only visible when changed */}
+                       {stockChanged[vp.id] && (
+                         <Button
+                           size="sm"
+                           onClick={() => {
+                             updateStock(vp.id, editingStock[vp.id]);
+                             setStockChanged(prev => ({ ...prev, [vp.id]: false }));
+                           }}
+                           className="w-full"
+                         >
+                           Update Stock
+                         </Button>
+                       )}
                      </div>
 
                     <div className="pt-2 flex gap-2">
@@ -662,7 +639,8 @@ const ProductManagement = () => {
                             description: vp.product?.description || "",
                             subscribe_before: (vp.product as any)?.subscribe_before || "",
                             delivery_before: (vp.product as any)?.delivery_before || "",
-                            price: vp.price_override?.toString() || vp.product?.price?.toString() || ""
+                            price_override: vp.price_override?.toString() || "",
+                            image_url: ""
                           });
                           setShowEditDialog(true);
                         }}
@@ -981,14 +959,14 @@ const ProductManagement = () => {
           </DialogHeader>
           <Alert>
             <AlertDescription>
-              Changes to name, category, unit, and description require admin approval. 
-              Subscribe/delivery times, images, and price changes apply immediately.
+              Changes to name, category, unit, description, and images require admin approval. 
+              Subscribe/delivery times and price changes apply immediately.
             </AlertDescription>
           </Alert>
           
           {/* Image Upload Section */}
           <div className="border rounded-lg p-4 space-y-3">
-            <Label>Product Image (Updates Immediately)</Label>
+            <Label>Product Image (Requires Admin Approval)</Label>
             {(selectedForEdit?.product as any)?.image_url && (
               <div className="w-full h-32 rounded-lg overflow-hidden bg-gray-100">
                 <img 
@@ -1001,15 +979,13 @@ const ProductManagement = () => {
             <Input
               type="file"
               accept="image/*"
-              onChange={(e) => {
-                if (e.target.files?.[0] && selectedForEdit) {
-                  setSelectedProductForImage(selectedForEdit.product);
-                  handleImageUpload(e);
-                }
-              }}
+              onChange={handleImageUploadForApproval}
               disabled={uploading}
             />
             {uploading && <p className="text-sm text-muted-foreground">Uploading...</p>}
+            {editForm.image_url && (
+              <p className="text-xs text-green-600">✓ New image uploaded (pending approval)</p>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -1042,9 +1018,24 @@ const ProductManagement = () => {
                 onChange={(e) => setEditForm({...editForm, unit: e.target.value})}
               />
             </div>
+            <div>
+              <Label htmlFor="edit-price">Price Override (Updates Immediately)</Label>
+              <Input
+                id="edit-price"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder={`Default: ₹${selectedForEdit?.product?.price || 0}`}
+                value={editForm.price_override || ''}
+                onChange={(e) => setEditForm({...editForm, price_override: e.target.value})}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Leave empty to use default price. This updates immediately without admin approval.
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="edit-subscribe-before">Subscribe Before</Label>
+                <Label htmlFor="edit-subscribe-before">Subscribe Before (Updates Immediately)</Label>
                 <Input
                   id="edit-subscribe-before"
                   type="time"
@@ -1053,7 +1044,7 @@ const ProductManagement = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="edit-delivery-before">Delivery Before</Label>
+                <Label htmlFor="edit-delivery-before">Delivery Before (Updates Immediately)</Label>
                 <Input
                   id="edit-delivery-before"
                   type="time"
@@ -1074,43 +1065,6 @@ const ProductManagement = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancel</Button>
             <Button onClick={handleSubmitEditRequest}>Submit for Approval</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Upload Image Dialog */}
-      <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Upload Product Image</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {(selectedProductForImage as any)?.image_url && (
-              <div className="w-full h-48 rounded-lg overflow-hidden bg-gray-100">
-                <img 
-                  src={(selectedProductForImage as any).image_url} 
-                  alt={selectedProductForImage?.name}
-                  className="w-full h-full object-contain"
-                />
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Select Image for {selectedProductForImage?.name}
-              </label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                disabled={uploading}
-              />
-              {uploading && (
-                <p className="text-sm text-muted-foreground mt-2">Uploading...</p>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowImageDialog(false)}>Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -140,6 +140,14 @@ const ProductManagement = () => {
     if (!selectedRequestForReview || !user) return;
     
     try {
+      // Apply image change if proposed
+      if (selectedRequestForReview.proposed_image_url) {
+        await supabase
+          .from('products')
+          .update({ image_url: selectedRequestForReview.proposed_image_url })
+          .eq('id', selectedRequestForReview.product_id);
+      }
+
       await approveEditRequest(selectedRequestForReview.id, user.id, adminNotes);
       setShowReviewDialog(false);
       setSelectedRequestForReview(null);
