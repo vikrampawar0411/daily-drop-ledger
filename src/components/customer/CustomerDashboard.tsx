@@ -52,7 +52,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
   const [loadingWelcome, setLoadingWelcome] = useState(true);
   
   // Calendar state
-  const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(new Date());
+  const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(undefined);
   const [filterBySpecificDate, setFilterBySpecificDate] = useState<Date | undefined>(undefined);
   
   // Date range state
@@ -150,7 +150,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
   const [newOrderFormData, setNewOrderFormData] = useState({
     vendor_id: '',
     product_id: '',
-    quantity: 0,
+    quantity: 1,
     order_date: new Date(),
   });
 
@@ -160,7 +160,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
     setNewOrderFormData({
       vendor_id: '',
       product_id: '',
-      quantity: 0,
+      quantity: 1,
       order_date: new Date(),
     });
   };
@@ -1312,7 +1312,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
               setNewOrderFormData({
                 vendor_id: selectedVendor || '',
                 product_id: selectedProduct !== 'all' ? selectedProduct : '',
-                quantity: 0,
+                quantity: 1,
                 order_date: date,
               });
             }}
@@ -1361,17 +1361,18 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                                   <Label>Quantity</Label>
                                   <Input
                                     type="number"
-                                    min="0"
-                                    step="0.5"
-                                    value={newOrderFormData.quantity || ''}
-                                    onChange={(e) => 
+                                    min="1"
+                                    step="1"
+                                    value={newOrderFormData.quantity}
+                                    onChange={(e) => {
+                                      const value = parseInt(e.target.value) || 1;
                                       setNewOrderFormData({ 
                                         vendor_id: selectedVendor,
                                         product_id: selectedProduct,
-                                        quantity: parseFloat(e.target.value) || 0,
+                                        quantity: value,
                                         order_date: calendarSelectedDate
                                       })
-                                    }
+                                    }}
                                     placeholder="Enter quantity"
                                     autoFocus
                                   />
@@ -1382,17 +1383,17 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                                 {/* CASE 1B: Vendor selected but product is 'all' - Show Product Dropdown */}
                                 <div className="space-y-2">
                                   <Label>Select Product</Label>
-                                  <Select
-                                    value={newOrderFormData.product_id}
-                                    onValueChange={(value) => 
-                                      setNewOrderFormData({ 
-                                        vendor_id: selectedVendor,
-                                        product_id: value,
-                                        quantity: 0,
-                                        order_date: calendarSelectedDate
-                                      })
-                                    }
-                                  >
+                  <Select
+                    value={newOrderFormData.product_id}
+                    onValueChange={(value) => 
+                      setNewOrderFormData({ 
+                        vendor_id: selectedVendor,
+                        product_id: value,
+                        quantity: 1,
+                        order_date: calendarSelectedDate
+                      })
+                    }
+                  >
                                     <SelectTrigger>
                                       <SelectValue placeholder="Choose product" />
                                     </SelectTrigger>
@@ -1412,15 +1413,16 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                                     <Label>Quantity</Label>
                                     <Input
                                       type="number"
-                                      min="0"
-                                      step="0.5"
-                                      value={newOrderFormData.quantity || ''}
-                                      onChange={(e) => 
+                                      min="1"
+                                      step="1"
+                                      value={newOrderFormData.quantity}
+                                      onChange={(e) => {
+                                        const value = parseInt(e.target.value) || 1;
                                         setNewOrderFormData({ 
                                           ...newOrderFormData, 
-                                          quantity: parseFloat(e.target.value) || 0 
+                                          quantity: value
                                         })
-                                      }
+                                      }}
                                       placeholder="Enter quantity"
                                     />
                                   </div>
@@ -1435,17 +1437,17 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                             {/* Vendor Dropdown */}
                             <div className="space-y-2">
                               <Label>Select Vendor</Label>
-                              <Select
-                                value={newOrderFormData.vendor_id}
-                                onValueChange={(value) => {
-                                  setNewOrderFormData({ 
-                                    vendor_id: value,
-                                    product_id: '',
-                                    quantity: 0,
-                                    order_date: calendarSelectedDate 
-                                  });
-                                }}
-                              >
+                  <Select
+                    value={newOrderFormData.vendor_id}
+                    onValueChange={(value) => {
+                      setNewOrderFormData({ 
+                        vendor_id: value,
+                        product_id: '',
+                        quantity: 1,
+                        order_date: calendarSelectedDate 
+                      });
+                    }}
+                  >
                                 <SelectTrigger>
                                   <SelectValue placeholder="Choose vendor" />
                                 </SelectTrigger>
@@ -1497,15 +1499,16 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                                 <Label>Quantity</Label>
                                 <Input
                                   type="number"
-                                  min="0"
-                                  step="0.5"
-                                  value={newOrderFormData.quantity || ''}
-                                  onChange={(e) => 
+                                  min="1"
+                                  step="1"
+                                  value={newOrderFormData.quantity}
+                                  onChange={(e) => {
+                                    const value = parseInt(e.target.value) || 1;
                                     setNewOrderFormData({ 
                                       ...newOrderFormData, 
-                                      quantity: parseFloat(e.target.value) || 0 
+                                      quantity: value
                                     })
-                                  }
+                                  }}
                                   placeholder="Enter quantity"
                                 />
                               </div>
@@ -1516,12 +1519,12 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                         {/* Place Order Button - Updated condition */}
                         <Button
                           className="w-full"
-                          disabled={
-                            !newOrderFormData.quantity || 
-                            newOrderFormData.quantity <= 0 ||
-                            (!selectedVendor && !newOrderFormData.vendor_id) ||
-                            (selectedProduct === 'all' && !newOrderFormData.product_id)
-                          }
+                  disabled={
+                    !newOrderFormData.quantity || 
+                    newOrderFormData.quantity < 1 ||
+                    (!selectedVendor && !newOrderFormData.vendor_id) ||
+                    (selectedProduct === 'all' && !newOrderFormData.product_id)
+                  }
                           onClick={async () => {
                             try {
                               const finalVendorId = selectedVendor || newOrderFormData.vendor_id;
@@ -1556,12 +1559,12 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                                 description: `Order for ${format(calendarSelectedDate, 'MMM d, yyyy')} created successfully`,
                               });
                               
-                              setNewOrderFormData({
-                                vendor_id: selectedVendor || '',
-                                product_id: selectedProduct !== 'all' ? selectedProduct : '',
-                                quantity: 0,
-                                order_date: calendarSelectedDate,
-                              });
+                setNewOrderFormData({
+                  vendor_id: selectedVendor || '',
+                  product_id: selectedProduct !== 'all' ? selectedProduct : '',
+                  quantity: 1,
+                  order_date: calendarSelectedDate,
+                });
                             } catch (error) {
                               toast({
                                 title: "Error",
