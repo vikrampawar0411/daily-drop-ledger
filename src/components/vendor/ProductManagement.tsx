@@ -44,7 +44,9 @@ const ProductManagement = () => {
     price: "",
     unit: "Nos",
     description: "",
-    inStock: true
+    inStock: true,
+    subscribe_before: "23:00",
+    delivery_before: "07:00"
   });
   
   // Stock and Price Management States
@@ -55,8 +57,6 @@ const ProductManagement = () => {
   const [stockQuantityToAdd, setStockQuantityToAdd] = useState("1");
   const [newPrice, setNewPrice] = useState("");
   
-  // Stock toggle state for each product
-  const [stockToggles, setStockToggles] = useState<Record<string, boolean>>({});
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -149,7 +149,9 @@ const ProductManagement = () => {
         price: "",
         unit: "Nos",
         description: "",
-        inStock: true
+        inStock: true,
+        subscribe_before: "23:00",
+        delivery_before: "07:00"
       });
       setShowRequestDialog(false);
     } catch (error) {
@@ -417,11 +419,11 @@ const ProductManagement = () => {
                         <Label className="text-xs">Subscribe Before</Label>
                         <Input 
                           type="time" 
-                          value={(vp.product as any)?.subscribe_before || ""} 
+                          value={(vp.product as any)?.subscribe_before || "23:00"}
                           onChange={(e) => handleUpdateTimesImmediate(
                             vp.product.id,
                             e.target.value,
-                            (vp.product as any)?.delivery_before || ""
+                            (vp.product as any)?.delivery_before || "07:00"
                           )}
                           className="h-8 text-xs"
                         />
@@ -430,10 +432,10 @@ const ProductManagement = () => {
                         <Label className="text-xs">Delivery Before</Label>
                         <Input 
                           type="time" 
-                          value={(vp.product as any)?.delivery_before || ""} 
+                          value={(vp.product as any)?.delivery_before || "07:00"}
                           onChange={(e) => handleUpdateTimesImmediate(
                             vp.product.id,
-                            (vp.product as any)?.subscribe_before || "",
+                            (vp.product as any)?.subscribe_before || "23:00",
                             e.target.value
                           )}
                           className="h-8 text-xs"
@@ -448,22 +450,8 @@ const ProductManagement = () => {
                       </div>
                     )}
 
-                    {/* Stock Toggle Button */}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => setStockToggles(prev => ({ ...prev, [vp.id]: !prev[vp.id] }))}
-                    >
-                      {stockToggles[vp.id] ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </Button>
-
-                    {/* STOCK MANAGEMENT SECTION - Conditionally rendered */}
-                    {stockToggles[vp.id] && (
+                    {/* STOCK MANAGEMENT SECTION - Always visible */}
+                    {(
                       <div className="border-t pt-3 mt-3 space-y-3">
                         <div className="grid grid-cols-3 gap-2 text-sm bg-muted p-2 rounded">
                           <div>

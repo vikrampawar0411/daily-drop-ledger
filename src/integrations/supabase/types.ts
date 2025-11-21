@@ -536,6 +536,7 @@ export type Database = {
           created_at: string
           created_by_role: string | null
           created_by_user_id: string | null
+          delivery_before: string | null
           description: string | null
           id: string
           image_url: string | null
@@ -543,6 +544,7 @@ export type Database = {
           name: string
           price: number
           status: string | null
+          subscribe_before: string | null
           unit: string
           updated_at: string
         }
@@ -552,6 +554,7 @@ export type Database = {
           created_at?: string
           created_by_role?: string | null
           created_by_user_id?: string | null
+          delivery_before?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
@@ -559,6 +562,7 @@ export type Database = {
           name: string
           price: number
           status?: string | null
+          subscribe_before?: string | null
           unit: string
           updated_at?: string
         }
@@ -568,6 +572,7 @@ export type Database = {
           created_at?: string
           created_by_role?: string | null
           created_by_user_id?: string | null
+          delivery_before?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
@@ -575,6 +580,7 @@ export type Database = {
           name?: string
           price?: number
           status?: string | null
+          subscribe_before?: string | null
           unit?: string
           updated_at?: string
         }
