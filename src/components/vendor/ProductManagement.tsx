@@ -6,11 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Package, Milk, Newspaper, Trash2, Upload, Image as ImageIcon, DollarSign } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Plus, Package, Milk, Newspaper, Trash2, Upload, Image as ImageIcon, DollarSign, Edit, ChevronDown, ChevronUp } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useProducts } from "@/hooks/useProducts";
 import { useVendorProducts } from "@/hooks/useVendorProducts";
 import { useProductRequests } from "@/hooks/useProductRequests";
+import { useProductEditRequests } from "@/hooks/useProductEditRequests";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -26,12 +28,15 @@ const ProductManagement = () => {
   const [vendorId, setVendorId] = useState<string | undefined>();
   const { vendorProducts, loading: vendorProductsLoading, addVendorProduct, removeVendorProduct, addStock, updateStockStatus, updatePrice } = useVendorProducts(vendorId);
   const { productRequests, loading: requestsLoading, createProductRequest } = useProductRequests(vendorId);
+  const { createEditRequest } = useProductEditRequests(vendorId);
   
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [showImageDialog, setShowImageDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [selectedProductForImage, setSelectedProductForImage] = useState<any>(null);
+  const [selectedForEdit, setSelectedForEdit] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
   const [newRequest, setNewRequest] = useState({
     name: "",
@@ -49,6 +54,20 @@ const ProductManagement = () => {
   const [selectedProductForPrice, setSelectedProductForPrice] = useState<any>(null);
   const [stockQuantityToAdd, setStockQuantityToAdd] = useState("");
   const [newPrice, setNewPrice] = useState("");
+  
+  // Stock toggle state for each product
+  const [stockToggles, setStockToggles] = useState<Record<string, boolean>>({});
+  
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    name: "",
+    category: "",
+    unit: "",
+    description: "",
+    subscribe_before: "",
+    delivery_before: "",
+    price: ""
+  });
 
   useEffect(() => {
     const fetchVendorId = async () => {
@@ -136,7 +155,7 @@ const ProductManagement = () => {
     }
   };
 
-  const handleUpdatePrice = async () => {
+  const handleUpdatePriceImmediate = async () => {
     if (!selectedProductForPrice || !newPrice) return;
     
     const price = parseFloat(newPrice);
@@ -158,6 +177,37 @@ const ProductManagement = () => {
     }
   };
 
+  const handleSubmitEditRequest = async () => {
+    if (!selectedForEdit || !vendorId || !user) return;
+
+    try {
+      await createEditRequest({
+        product_id: selectedForEdit.product.id,
+        vendor_id: vendorId,
+        requested_by_user_id: user.id,
+        proposed_name: editForm.name || undefined,
+        proposed_category: editForm.category || undefined,
+        proposed_unit: editForm.unit || undefined,
+        proposed_description: editForm.description || undefined,
+        proposed_subscribe_before: editForm.subscribe_before || undefined,
+        proposed_delivery_before: editForm.delivery_before || undefined,
+      });
+      
+      setShowEditDialog(false);
+      setSelectedForEdit(null);
+      setEditForm({
+        name: "",
+        category: "",
+        unit: "",
+        description: "",
+        subscribe_before: "",
+        delivery_before: "",
+        price: ""
+      });
+    } catch (error) {
+      // Error handled by hook
+    }
+  };
   
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0 || !selectedProductForImage) {
@@ -168,24 +218,20 @@ const ProductManagement = () => {
     setUploading(true);
 
     try {
-      // Create a unique file name
       const fileExt = file.name.split('.').pop();
       const fileName = `${selectedProductForImage.id}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      // Upload image to storage
       const { error: uploadError } = await supabase.storage
         .from('product-images')
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('product-images')
         .getPublicUrl(filePath);
 
-      // Update product with image URL
       const { error: updateError } = await supabase
         .from('products')
         .update({ image_url: publicUrl })
@@ -196,7 +242,6 @@ const ProductManagement = () => {
       setShowImageDialog(false);
       setSelectedProductForImage(null);
       
-      // Refresh products
       window.location.reload();
     } catch (error: any) {
       toast({
@@ -296,13 +341,13 @@ const ProductManagement = () => {
                       </Badge>
                     </div>
                   </CardHeader>
-                   <CardContent className="space-y-3">
+                  <CardContent className="space-y-3">
                     {(vp.product as any)?.image_url && (
-                      <div className="w-full h-32 rounded-lg overflow-hidden bg-gray-100">
+                      <div className="w-full h-48 rounded-lg overflow-hidden bg-gray-100">
                         <img 
                           src={(vp.product as any).image_url} 
                           alt={vp.product.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                         />
                       </div>
                     )}
@@ -316,6 +361,28 @@ const ProductManagement = () => {
                         <div className="text-muted-foreground">₹{vp.price_override || vp.product?.price} / {vp.product?.unit}</div>
                       </div>
                     </div>
+
+                    {/* Time Fields */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs">Subscribe Before</Label>
+                        <Input 
+                          type="time" 
+                          value={(vp.product as any)?.subscribe_before || ""} 
+                          disabled
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Delivery Before</Label>
+                        <Input 
+                          type="time" 
+                          value={(vp.product as any)?.delivery_before || ""} 
+                          disabled
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    </div>
                     
                     {vp.product?.description && (
                       <div className="text-sm">
@@ -324,73 +391,99 @@ const ProductManagement = () => {
                       </div>
                     )}
 
-                    {/* STOCK MANAGEMENT SECTION */}
-                    <div className="border-t pt-3 mt-3 space-y-3">
-                      {/* Stock Information Display */}
-                      <div className="grid grid-cols-3 gap-2 text-sm bg-muted p-2 rounded">
-                        <div>
-                          <div className="text-xs text-muted-foreground">Total</div>
-                          <div className="font-medium">{vp.stock_quantity || 0}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Reserved</div>
-                          <div className="font-medium text-orange-600">{vp.stock_reserved || 0}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Available</div>
-                          <div className="font-medium text-green-600">{vp.stock_available || 0}</div>
-                        </div>
-                      </div>
+                    {/* Stock Toggle Button */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setStockToggles(prev => ({ ...prev, [vp.id]: !prev[vp.id] }))}
+                    >
+                      {stockToggles[vp.id] ? (
+                        <>
+                          <ChevronUp className="h-4 w-4 mr-1" />
+                          Hide Stock Details
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-4 w-4 mr-1" />
+                          Show Stock Details
+                        </>
+                      )}
+                    </Button>
 
-                      {/* Action Buttons Row */}
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => {
-                            setSelectedProductForStock(vp);
-                            setStockQuantityToAdd("");
-                            setShowStockDialog(true);
-                          }}
-                        >
-                          <Package className="h-4 w-4 mr-1" />
-                          Add Stock
-                        </Button>
-                        
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => {
-                            setSelectedProductForPrice(vp);
-                            setNewPrice(vp.price_override?.toString() || "");
-                            setShowPriceDialog(true);
-                          }}
-                        >
-                          <DollarSign className="h-4 w-4 mr-1" />
-                          Edit Price
-                        </Button>
-                      </div>
+                    {/* STOCK MANAGEMENT SECTION - Conditionally rendered */}
+                    {stockToggles[vp.id] && (
+                      <div className="border-t pt-3 mt-3 space-y-3">
+                        <div className="grid grid-cols-3 gap-2 text-sm bg-muted p-2 rounded">
+                          <div>
+                            <div className="text-xs text-muted-foreground">Total</div>
+                            <div className="font-medium">{vp.stock_quantity || 0}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground">Reserved</div>
+                            <div className="font-medium text-orange-600">{vp.stock_reserved || 0}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground">Available</div>
+                            <div className="font-medium text-green-600">{vp.stock_available || 0}</div>
+                          </div>
+                        </div>
 
-                      {/* In Stock Toggle */}
-                      <div className="flex items-center justify-between p-2 bg-muted rounded">
-                        <span className="text-sm font-medium">Stock Status</span>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={vp.in_stock}
-                            onCheckedChange={(checked) => 
-                              updateStockStatus(vp.id, checked)
-                            }
-                          />
-                          <span className="text-xs font-medium">
-                            {vp.in_stock ? "In Stock" : "Out of Stock"}
-                          </span>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => {
+                              setSelectedProductForStock(vp);
+                              setStockQuantityToAdd("");
+                              setShowStockDialog(true);
+                            }}
+                          >
+                            <Package className="h-4 w-4 mr-1" />
+                            Additional Stock
+                          </Button>
+                        </div>
+
+                        <div className="flex items-center justify-between p-2 bg-muted rounded">
+                          <span className="text-sm font-medium">In Stock Toggle</span>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={vp.in_stock}
+                              onCheckedChange={(checked) => 
+                                updateStockStatus(vp.id, checked)
+                              }
+                            />
+                            <span className="text-xs font-medium">
+                              {vp.in_stock ? "In Stock" : "Out of Stock"}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="pt-2 flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="default"
+                        className="flex-1"
+                        onClick={() => {
+                          setSelectedForEdit(vp);
+                          setEditForm({
+                            name: vp.product?.name || "",
+                            category: vp.product?.category || "",
+                            unit: vp.product?.unit || "",
+                            description: vp.product?.description || "",
+                            subscribe_before: (vp.product as any)?.subscribe_before || "",
+                            delivery_before: (vp.product as any)?.delivery_before || "",
+                            price: vp.price_override?.toString() || vp.product?.price?.toString() || ""
+                          });
+                          setShowEditDialog(true);
+                        }}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
                       <Button 
                         size="sm" 
                         variant="outline"
@@ -400,17 +493,15 @@ const ProductManagement = () => {
                           setShowImageDialog(true);
                         }}
                       >
-                        <Upload className="h-4 w-4 mr-2" />
+                        <Upload className="h-4 w-4 mr-1" />
                         {(vp.product as any)?.image_url ? 'Change' : 'Add'} Image
                       </Button>
                       <Button 
                         size="sm" 
                         variant="outline"
-                        className="flex-1"
                         onClick={() => removeVendorProduct(vp.id)}
                       >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Remove
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </CardContent>
@@ -600,6 +691,106 @@ const ProductManagement = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Product Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Product - {selectedForEdit?.product?.name}</DialogTitle>
+          </DialogHeader>
+          <Alert>
+            <AlertDescription>
+              All changes except price require admin approval. Price changes apply immediately.
+            </AlertDescription>
+          </Alert>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-name">Product Name</Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-category">Category</Label>
+              <Select value={editForm.category} onValueChange={(value) => setEditForm({...editForm, category: value})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRODUCT_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="edit-unit">Unit</Label>
+              <Input
+                id="edit-unit"
+                value={editForm.unit}
+                onChange={(e) => setEditForm({...editForm, unit: e.target.value})}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-subscribe-before">Subscribe Before</Label>
+                <Input
+                  id="edit-subscribe-before"
+                  type="time"
+                  value={editForm.subscribe_before}
+                  onChange={(e) => setEditForm({...editForm, subscribe_before: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-delivery-before">Delivery Before</Label>
+                <Input
+                  id="edit-delivery-before"
+                  type="time"
+                  value={editForm.delivery_before}
+                  onChange={(e) => setEditForm({...editForm, delivery_before: e.target.value})}
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                value={editForm.description}
+                onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+              />
+            </div>
+            <div className="border-t pt-4">
+              <Label htmlFor="edit-price">Price (Applies Immediately)</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="edit-price"
+                  type="number"
+                  step="0.01"
+                  value={editForm.price}
+                  onChange={(e) => setEditForm({...editForm, price: e.target.value})}
+                />
+                <Button
+                  onClick={() => {
+                    if (selectedForEdit && editForm.price) {
+                      setSelectedProductForPrice(selectedForEdit);
+                      setNewPrice(editForm.price);
+                      setShowPriceDialog(true);
+                    }
+                  }}
+                >
+                  Update Price Now
+                </Button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancel</Button>
+            <Button onClick={handleSubmitEditRequest}>Submit for Approval</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Upload Image Dialog */}
       <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
         <DialogContent>
@@ -612,7 +803,7 @@ const ProductManagement = () => {
                 <img 
                   src={(selectedProductForImage as any).image_url} 
                   alt={selectedProductForImage?.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               </div>
             )}
@@ -730,7 +921,7 @@ const ProductManagement = () => {
             <Button variant="outline" onClick={() => setShowPriceDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdatePrice}>Update Price</Button>
+            <Button onClick={handleUpdatePriceImmediate}>Update Price</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
