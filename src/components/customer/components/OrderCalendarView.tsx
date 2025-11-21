@@ -42,7 +42,8 @@ const OrderCalendarView = ({ selectedDate, onSelectDate, hasOrdersOnDate, getOrd
   return (
     <Card onClick={handleCardClick}>
       <CardHeader>
-        <CardTitle>Select Date</CardTitle>
+        <CardTitle>Order View</CardTitle>
+        <p className="text-xs text-muted-foreground">(Select date to place new order)</p>
       </CardHeader>
       <CardContent>
         <Calendar
