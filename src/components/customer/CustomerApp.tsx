@@ -128,7 +128,7 @@ const CustomerApp = () => {
           </TabsContent>
 
           <TabsContent value="subscriptions">
-            <SubscriptionManagement onNavigate={handleNavigation} />
+            <SubscriptionManagement onNavigate={handleNavigation} navigationParams={navigationParams} />
           </TabsContent>
 
           <TabsContent value="vendors">
