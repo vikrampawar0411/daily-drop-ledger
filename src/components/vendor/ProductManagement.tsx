@@ -26,7 +26,7 @@ const ProductManagement = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [vendorId, setVendorId] = useState<string | undefined>();
-  const { vendorProducts, loading: vendorProductsLoading, addVendorProduct, removeVendorProduct, addStock, updateStock, updateStockStatus, updatePrice } = useVendorProducts(vendorId);
+  const { vendorProducts, loading: vendorProductsLoading, addVendorProduct, removeVendorProduct, addStock, updateStock, updateStockStatus, updatePrice, refetch } = useVendorProducts(vendorId);
   const { productRequests, loading: requestsLoading, createProductRequest } = useProductRequests(vendorId);
   const { editRequests, createEditRequest } = useProductEditRequests(vendorId);
   
@@ -60,6 +60,9 @@ const ProductManagement = () => {
   const [productToDeactivate, setProductToDeactivate] = useState<any>(null);
   const [activeSubscribersCount, setActiveSubscribersCount] = useState(0);
   
+  // Local state for inline editing
+  const [editingStock, setEditingStock] = useState<Record<string, number>>({});
+  const [editingPrice, setEditingPrice] = useState<Record<string, string>>({});
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -325,7 +328,8 @@ const ProductManagement = () => {
         description: "Time fields updated successfully",
       });
       
-      window.location.reload();
+      // Use refetch instead of reload
+      refetch();
     } catch (error: any) {
       toast({
         title: "Error updating times",
@@ -578,10 +582,21 @@ const ProductManagement = () => {
                            <Input
                              type="number"
                              min="0"
-                             value={vp.stock_quantity || 0}
+                             value={editingStock[vp.id] ?? vp.stock_quantity ?? 0}
                              onChange={(e) => {
                                const newStock = parseInt(e.target.value) || 0;
-                               updateStock(vp.id, newStock);
+                               setEditingStock(prev => ({ ...prev, [vp.id]: newStock }));
+                             }}
+                             onBlur={() => {
+                               if (editingStock[vp.id] !== undefined && editingStock[vp.id] !== vp.stock_quantity) {
+                                 updateStock(vp.id, editingStock[vp.id]);
+                               }
+                             }}
+                             onKeyDown={(e) => {
+                               if (e.key === 'Enter' && editingStock[vp.id] !== undefined) {
+                                 updateStock(vp.id, editingStock[vp.id]);
+                                 e.currentTarget.blur();
+                               }
                              }}
                              className="h-8 text-center font-medium"
                            />
@@ -594,6 +609,42 @@ const ProductManagement = () => {
                            <div className="text-xs text-muted-foreground">Available</div>
                            <div className="font-medium text-green-600 text-center pt-1">{vp.stock_available || 0}</div>
                          </div>
+                       </div>
+                       
+                       {/* Price Override Section */}
+                       <div className="border-t pt-2 mt-2">
+                         <Label className="text-xs mb-1">Price Override (Updates Immediately)</Label>
+                         <div className="flex gap-2">
+                           <Input
+                             type="number"
+                             step="0.01"
+                             min="0"
+                             placeholder={`Default: ₹${vp.product?.price || 0}`}
+                             value={editingPrice[vp.id] ?? (vp.price_override || '')}
+                             onChange={(e) => {
+                               setEditingPrice(prev => ({ ...prev, [vp.id]: e.target.value }));
+                             }}
+                             onBlur={() => {
+                               if (editingPrice[vp.id] !== undefined) {
+                                 const newPrice = parseFloat(editingPrice[vp.id]) || 0;
+                                 if (newPrice !== vp.price_override) {
+                                   updatePrice(vp.id, newPrice === 0 ? null : newPrice);
+                                 }
+                               }
+                             }}
+                             onKeyDown={(e) => {
+                               if (e.key === 'Enter' && editingPrice[vp.id] !== undefined) {
+                                 const newPrice = parseFloat(editingPrice[vp.id]) || 0;
+                                 updatePrice(vp.id, newPrice === 0 ? null : newPrice);
+                                 e.currentTarget.blur();
+                               }
+                             }}
+                             className="h-8 text-xs"
+                           />
+                         </div>
+                         <p className="text-xs text-muted-foreground mt-1">
+                           Current price: ₹{vp.price_override || vp.product?.price || 0}
+                         </p>
                        </div>
                      </div>
 
@@ -716,72 +767,87 @@ const ProductManagement = () => {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  {editRequests.map((request) => (
-                    <Card key={request.id}>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">
-                            Edit Request: {request.product?.name}
-                          </CardTitle>
-                          {getStatusBadge(request.status)}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          {request.proposed_name && (
-                            <div>
-                              <span className="font-medium">Proposed Name:</span>
-                              <div className="text-muted-foreground">{request.proposed_name}</div>
-                            </div>
-                          )}
-                          {request.proposed_category && (
-                            <div>
-                              <span className="font-medium">Proposed Category:</span>
-                              <div className="text-muted-foreground">{request.proposed_category}</div>
-                            </div>
-                          )}
-                          {request.proposed_unit && (
-                            <div>
-                              <span className="font-medium">Proposed Unit:</span>
-                              <div className="text-muted-foreground">{request.proposed_unit}</div>
-                            </div>
-                          )}
-                          {request.proposed_subscribe_before && (
-                            <div>
-                              <span className="font-medium">Subscribe Before:</span>
-                              <div className="text-muted-foreground">{request.proposed_subscribe_before}</div>
-                            </div>
-                          )}
-                          {request.proposed_delivery_before && (
-                            <div>
-                              <span className="font-medium">Delivery Before:</span>
-                              <div className="text-muted-foreground">{request.proposed_delivery_before}</div>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {request.proposed_description && (
-                          <div className="text-sm">
-                            <span className="font-medium">Proposed Description:</span>
-                            <div className="text-muted-foreground">{request.proposed_description}</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {editRequests.map((request) => {
+                    const proposedProduct = {
+                      name: request.proposed_name || request.product?.name,
+                      category: request.proposed_category || request.product?.category,
+                      unit: request.proposed_unit || request.product?.unit,
+                      description: request.proposed_description || request.product?.description,
+                      subscribe_before: request.proposed_subscribe_before || (request.product as any)?.subscribe_before,
+                      delivery_before: request.proposed_delivery_before || (request.product as any)?.delivery_before,
+                      image_url: request.proposed_image_url || request.product?.image_url,
+                    };
+
+                    return (
+                      <Card key={request.id}>
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg">Edit Request</CardTitle>
+                            {getStatusBadge(request.status)}
                           </div>
-                        )}
-                        
-                        {request.admin_notes && (
-                          <Alert>
-                            <AlertDescription>
-                              <span className="font-medium">Admin Notes:</span> {request.admin_notes}
-                            </AlertDescription>
-                          </Alert>
-                        )}
-                        
-                        <div className="text-xs text-muted-foreground">
-                          Requested: {new Date(request.created_at).toLocaleDateString()}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardHeader>
+                        <CardContent>
+                          {/* Display as product card with proposed changes */}
+                          <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950/20">
+                            <div className="flex items-start gap-4">
+                              {proposedProduct.image_url && (
+                                <img 
+                                  src={proposedProduct.image_url} 
+                                  alt={proposedProduct.name}
+                                  className="w-20 h-20 object-cover rounded"
+                                />
+                              )}
+                              <div className="flex-1 space-y-2">
+                                <h3 className="font-semibold text-lg">{proposedProduct.name}</h3>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                  <div>
+                                    <span className="text-muted-foreground">Category:</span>
+                                    <span className="ml-2 font-medium">{proposedProduct.category}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Unit:</span>
+                                    <span className="ml-2 font-medium">{proposedProduct.unit}</span>
+                                  </div>
+                                  {proposedProduct.subscribe_before && (
+                                    <div>
+                                      <span className="text-muted-foreground">Subscribe Before:</span>
+                                      <span className="ml-2 font-medium">{proposedProduct.subscribe_before}</span>
+                                    </div>
+                                  )}
+                                  {proposedProduct.delivery_before && (
+                                    <div>
+                                      <span className="text-muted-foreground">Delivery Before:</span>
+                                      <span className="ml-2 font-medium">{proposedProduct.delivery_before}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                {proposedProduct.description && (
+                                  <p className="text-sm text-muted-foreground">{proposedProduct.description}</p>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="mt-3 pt-3 border-t text-xs text-blue-700 dark:text-blue-400 font-medium">
+                              ✨ These changes will apply after admin approval
+                            </div>
+                          </div>
+
+                          {request.admin_notes && (
+                            <Alert className="mt-3">
+                              <AlertDescription>
+                                <span className="font-medium">Admin Notes:</span> {request.admin_notes}
+                              </AlertDescription>
+                            </Alert>
+                          )}
+
+                          <div className="text-xs text-muted-foreground mt-3">
+                            Requested: {new Date(request.created_at).toLocaleDateString()}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </TabsContent>
@@ -1003,29 +1069,6 @@ const ProductManagement = () => {
                 value={editForm.description}
                 onChange={(e) => setEditForm({...editForm, description: e.target.value})}
               />
-            </div>
-            <div className="border-t pt-4">
-              <Label htmlFor="edit-price">Price (Applies Immediately)</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="edit-price"
-                  type="number"
-                  step="0.01"
-                  value={editForm.price}
-                  onChange={(e) => setEditForm({...editForm, price: e.target.value})}
-                />
-                <Button
-                  onClick={() => {
-                    if (selectedForEdit && editForm.price) {
-                      setSelectedProductForPrice(selectedForEdit);
-                      setNewPrice(editForm.price);
-                      setShowPriceDialog(true);
-                    }
-                  }}
-                >
-                  Update Price Now
-                </Button>
-              </div>
             </div>
           </div>
           <DialogFooter>
