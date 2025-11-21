@@ -40,8 +40,8 @@ const ProductManagement = () => {
     unit: "Nos",
     description: "",
     inStock: true,
-    subscribe_before: "",
-    delivery_before: ""
+    subscribe_before: "23:00",
+    delivery_before: "07:00"
   });
 
   const [editProduct, setEditProduct] = useState({
@@ -99,8 +99,8 @@ const ProductManagement = () => {
         unit: "Nos",
         description: "",
         inStock: true,
-        subscribe_before: "",
-        delivery_before: ""
+        subscribe_before: "23:00",
+        delivery_before: "07:00"
       });
       setShowAddDialog(false);
     } catch (error) {
