@@ -169,7 +169,6 @@ export const useVendorProducts = (vendorId?: string) => {
         .from("vendor_products")
         .update({ 
           stock_quantity: quantity,
-          stock_available: quantity,
           last_stock_update: new Date().toISOString()
         })
         .eq("id", vendorProductId)
