@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Package, Milk, Newspaper, Trash2, Upload, Image as ImageIcon, DollarSign, Edit, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Package, Milk, Newspaper, Trash2, Upload, Image as ImageIcon, DollarSign, Edit, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useProducts } from "@/hooks/useProducts";
 import { useVendorProducts } from "@/hooks/useVendorProducts";
@@ -56,6 +56,9 @@ const ProductManagement = () => {
   const [selectedProductForPrice, setSelectedProductForPrice] = useState<any>(null);
   const [stockQuantityToAdd, setStockQuantityToAdd] = useState("1");
   const [newPrice, setNewPrice] = useState("");
+  const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
+  const [productToDeactivate, setProductToDeactivate] = useState<any>(null);
+  const [activeSubscribersCount, setActiveSubscribersCount] = useState(0);
   
   
   // Edit form state
@@ -200,6 +203,108 @@ const ProductManagement = () => {
       setNewPrice("");
     } catch (error) {
       // Error handled by hook
+    }
+  };
+
+  const handleToggleActive = async (vp: any) => {
+    if (vp.is_active) {
+      // Deactivating - fetch active subscribers count first
+      const { data: subscriptions, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('product_id', vp.product_id)
+        .eq('vendor_id', vp.vendor_id)
+        .eq('status', 'active');
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to check subscribers",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setActiveSubscribersCount(subscriptions?.length || 0);
+      setProductToDeactivate(vp);
+      setShowDeactivateDialog(true);
+    } else {
+      // Activating - no confirmation needed
+      await updateStockStatus(vp.id, true);
+    }
+  };
+
+  const handleConfirmDeactivate = async () => {
+    if (!productToDeactivate || !vendorId) return;
+
+    try {
+      // Deactivate the product
+      await updateStockStatus(productToDeactivate.id, false);
+
+      // Fetch vendor contact details
+      const { data: vendorData } = await supabase
+        .from('vendors')
+        .select('name, phone, email, contact_person')
+        .eq('id', vendorId)
+        .single();
+
+      const vendorContact = vendorData 
+        ? `Contact: ${vendorData.contact_person || vendorData.name}, Phone: ${vendorData.phone || 'N/A'}, Email: ${vendorData.email || 'N/A'}`
+        : 'Contact vendor for details';
+
+      // Cancel future subscription orders and create notifications
+      const { data: subscriptions } = await supabase
+        .from('subscriptions')
+        .select('customer_id')
+        .eq('product_id', productToDeactivate.product_id)
+        .eq('vendor_id', vendorId)
+        .eq('status', 'active');
+
+      if (subscriptions && subscriptions.length > 0) {
+        // Cancel future orders (orders with status pending and order_date >= today)
+        const today = new Date().toISOString().split('T')[0];
+        await supabase
+          .from('orders')
+          .update({ status: 'cancelled' })
+          .eq('product_id', productToDeactivate.product_id)
+          .eq('vendor_id', vendorId)
+          .eq('status', 'pending')
+          .gte('order_date', today);
+
+        // Create notifications for each customer
+        const notifications = subscriptions.map(sub => ({
+          customer_id: sub.customer_id,
+          product_id: productToDeactivate.product_id,
+          vendor_id: vendorId,
+          message: `${productToDeactivate.product?.name} is no longer active. Your future subscribed orders have been cancelled. Please contact the vendor to discuss alternatives.`,
+          vendor_contact: vendorContact,
+          is_read: false
+        }));
+
+        await supabase
+          .from('customer_notifications')
+          .insert(notifications);
+
+        toast({
+          title: "Product deactivated",
+          description: `${activeSubscribersCount} customer(s) have been notified`,
+        });
+      } else {
+        toast({
+          title: "Product deactivated",
+          description: "No active subscriptions to notify",
+        });
+      }
+
+      setShowDeactivateDialog(false);
+      setProductToDeactivate(null);
+      setActiveSubscribersCount(0);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -387,9 +492,15 @@ const ProductManagement = () => {
                         {getProductIcon(vp.product?.category || "")}
                         <CardTitle className="text-lg">{vp.product?.name}</CardTitle>
                       </div>
-                      <Badge variant={vp.is_active ? "default" : "secondary"}>
-                        {vp.is_active ? "Active" : "Inactive"}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">
+                          {vp.is_active ? "Active" : "Inactive"}
+                        </span>
+                        <Switch
+                          checked={vp.is_active}
+                          onCheckedChange={() => handleToggleActive(vp)}
+                        />
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -455,33 +566,48 @@ const ProductManagement = () => {
                       <div className="border-t pt-3 mt-3 space-y-3">
                         <div className="grid grid-cols-3 gap-2 text-sm bg-muted p-2 rounded">
                           <div>
-                            <div className="text-xs text-muted-foreground">Total</div>
-                            <div className="font-medium">{vp.stock_quantity || 0}</div>
+                            <div className="text-xs text-muted-foreground mb-1">Current Stock</div>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={vp.stock_quantity || 0}
+                              onChange={(e) => {
+                                const newStock = parseInt(e.target.value) || 0;
+                                supabase
+                                  .from('vendor_products')
+                                  .update({
+                                    stock_quantity: newStock,
+                                    stock_available: newStock - (vp.stock_reserved || 0),
+                                    last_stock_update: new Date().toISOString()
+                                  })
+                                  .eq('id', vp.id)
+                                  .then(({ error }) => {
+                                    if (error) {
+                                      toast({
+                                        title: "Error",
+                                        description: "Failed to update stock",
+                                        variant: "destructive",
+                                      });
+                                    } else {
+                                      toast({
+                                        title: "Success",
+                                        description: "Stock updated",
+                                      });
+                                      window.location.reload();
+                                    }
+                                  });
+                              }}
+                              className="h-8 text-center font-medium"
+                            />
                           </div>
                           <div>
                             <div className="text-xs text-muted-foreground">Reserved</div>
-                            <div className="font-medium text-orange-600">{vp.stock_reserved || 0}</div>
+                            <div className="font-medium text-orange-600 text-center pt-1">{vp.stock_reserved || 0}</div>
                           </div>
                           <div>
                             <div className="text-xs text-muted-foreground">Available</div>
-                            <div className="font-medium text-green-600">{vp.stock_available || 0}</div>
+                            <div className="font-medium text-green-600 text-center pt-1">{vp.stock_available || 0}</div>
                           </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1"
-                            onClick={() => {
-                              setSelectedProductForStock(vp);
-                              setStockQuantityToAdd("");
-                              setShowStockDialog(true);
-                            }}
-                          >
-                            <Package className="h-4 w-4 mr-1" />
-                            Additional Stock
-                          </Button>
                         </div>
                       </div>
                     )}
@@ -868,55 +994,40 @@ const ProductManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Add Stock Dialog */}
-      <Dialog open={showStockDialog} onOpenChange={setShowStockDialog}>
+      {/* Deactivate Confirmation Dialog */}
+      <Dialog open={showDeactivateDialog} onOpenChange={setShowDeactivateDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Update Stock - {selectedProductForStock?.product?.name}</DialogTitle>
+            <DialogTitle>Confirm Product Deactivation</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3 p-3 bg-muted rounded">
-              <div>
-                <div className="text-xs text-muted-foreground">Current Stock</div>
-                <div className="text-xl font-bold">
-                  {selectedProductForStock?.stock_quantity || 0}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">Reserved</div>
-                <div className="text-xl font-bold text-orange-600">
-                  {selectedProductForStock?.stock_reserved || 0}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">Available</div>
-                <div className="text-xl font-bold text-green-600">
-                  {selectedProductForStock?.stock_available || 0}
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="stockQuantity">Current Additional Stock ({selectedProductForStock?.product?.unit})</Label>
-                <Input
-                  id="stockQuantity"
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={stockQuantityToAdd}
-                  onChange={(e) => setStockQuantityToAdd(e.target.value)}
-                  placeholder="Current additional stock quantity"
-                />
-              <p className="text-xs text-muted-foreground mt-1">
-                This represents your current additional stock available
-              </p>
-            </div>
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <p className="font-semibold mb-2">
+                  {activeSubscribersCount > 0 
+                    ? `${activeSubscribersCount} active customer(s) have subscribed to this product.`
+                    : "No active subscriptions for this product."}
+                </p>
+                <p>
+                  Do you wish to deactivate this product and notify active customers?
+                </p>
+                {activeSubscribersCount > 0 && (
+                  <p className="mt-2 text-sm">
+                    Customers will be notified that their future subscribed orders are cancelled 
+                    and will receive your contact details.
+                  </p>
+                )}
+              </AlertDescription>
+            </Alert>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowStockDialog(false)}>
+            <Button variant="outline" onClick={() => setShowDeactivateDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddStock}>Add Stock</Button>
+            <Button variant="destructive" onClick={handleConfirmDeactivate}>
+              Deactivate & Notify
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
