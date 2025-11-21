@@ -856,6 +856,29 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
     };
   }, [orders, selectedMonth, selectedVendor, selectedProduct, dateRangeType, customStartDate, customEndDate, sortColumn, sortDirection, filterBySpecificDate]);
 
+  // Unfiltered orders for calendar display - shows all orders in the month
+  const calendarOrders = useMemo(() => {
+    let startDate: Date, endDate: Date;
+    
+    if (dateRangeType === 'month') {
+      const [year, month] = selectedMonth.split('-').map(Number);
+      startDate = new Date(year, month - 1, 1);
+      endDate = new Date(year, month, 0);
+    } else if (customStartDate && customEndDate) {
+      startDate = customStartDate;
+      endDate = customEndDate;
+    } else {
+      const today = new Date();
+      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    }
+    
+    return orders.filter(o => {
+      const orderDate = new Date(o.order_date);
+      return orderDate >= startDate && orderDate <= endDate && o.status !== 'cancelled';
+    });
+  }, [orders, selectedMonth, dateRangeType, customStartDate, customEndDate]);
+
   const groupedOrders = useMemo(() => {
     const groups: Record<string, any[]> = {};
     
@@ -1341,11 +1364,11 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab }: CustomerDash
                     onSelectDates={setCalendarSelectedDates}
                     hasOrdersOnDate={(date) => {
                       const dateStr = format(date, 'yyyy-MM-dd');
-                      return monthlyStats.orders.some(o => o.order_date === dateStr);
+                      return calendarOrders.some(o => o.order_date === dateStr);
                     }}
                     getOrdersForDate={(date) => {
                       const dateStr = format(date, 'yyyy-MM-dd');
-                      return monthlyStats.orders.filter(o => o.order_date === dateStr);
+                      return calendarOrders.filter(o => o.order_date === dateStr);
                     }}
                     month={new Date(selectedMonth + '-01')}
                     onMonthChange={(newMonth) => {
