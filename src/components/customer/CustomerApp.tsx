@@ -65,8 +65,8 @@ const CustomerApp = () => {
                 <p className="text-sm text-gray-600 hidden md:block">Manage your orders and vendors</p>
               </div>
             </div>
-            <div className="flex items-center space-x-2 md:space-x-4 order-3 md:order-none w-full md:w-auto">
-              <div className="flex items-center space-x-2 text-sm text-gray-600 order-last md:order-none w-full md:w-auto justify-start md:justify-center">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 text-sm text-gray-600 order-3 md:order-none w-full md:w-auto justify-start md:justify-center">
                 <Calendar className="h-4 w-4" />
                 <span>{new Date().toLocaleDateString()}</span>
               </div>
