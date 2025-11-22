@@ -819,9 +819,10 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
                     size="sm"
                     variant="outline"
                     onClick={() => {
-                      setCalendarVendorId(subscription.vendor_id);
-                      setCalendarProductId(subscription.product_id);
-                      setActiveSubTab('calendar');
+                      onNavigate?.('dashboard', {
+                        vendorId: subscription.vendor_id,
+                        productId: subscription.product_id
+                      });
                     }}
                     className="w-full"
                   >
