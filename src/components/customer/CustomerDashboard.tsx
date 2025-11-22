@@ -55,7 +55,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   
   // Calendar state - Multiple dates support
   const [calendarSelectedDates, setCalendarSelectedDates] = useState<Date[] | undefined>(undefined);
-  const [filterBySpecificDate, setFilterBySpecificDate] = useState<Date | undefined>(undefined);
   
   // Date range state
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -185,7 +184,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   // Auto-clear filters when no dates are selected
   useEffect(() => {
     if (!calendarSelectedDates || calendarSelectedDates.length === 0) {
-      setFilterBySpecificDate(undefined);
       setSelectedVendor('');
       setSelectedProduct('all');
       setNewOrderFormData({
@@ -201,7 +199,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   useEffect(() => {
     if (newOrderFormData.vendor_id && newOrderFormData.vendor_id !== selectedVendor) {
       // Keep calendar selected dates visible when vendor changes
-      setFilterBySpecificDate(undefined);
       
       // Update main vendor filter
       setSelectedVendor(newOrderFormData.vendor_id);
@@ -797,13 +794,13 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     const monthOrders = orders.filter(o => {
       const orderDate = new Date(o.order_date);
       
-      // If filtering by specific date, only show that date's orders
-      if (filterBySpecificDate) {
-        const filterDateStr = format(filterBySpecificDate, 'yyyy-MM-dd');
-        const matchesSpecificDate = o.order_date === filterDateStr;
+      // If filtering by calendar selected dates (multiple dates support)
+      if (calendarSelectedDates && calendarSelectedDates.length > 0) {
+        const selectedDateStrs = calendarSelectedDates.map(d => format(d, 'yyyy-MM-dd'));
+        const matchesSelectedDates = selectedDateStrs.includes(o.order_date);
         const matchesVendor = !selectedVendor || o.vendor.id === selectedVendor;
         const matchesProduct = selectedProduct === 'all' || o.product.id === selectedProduct;
-        return matchesSpecificDate && matchesVendor && matchesProduct && o.status !== 'cancelled';
+        return matchesSelectedDates && matchesVendor && matchesProduct && o.status !== 'cancelled';
       }
       
       // Otherwise, show full month range
@@ -881,7 +878,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
       forecastedBill: Math.round(forecastedBill),
       orders: sortedOrders
     };
-  }, [orders, selectedMonth, selectedVendor, selectedProduct, dateRangeType, customStartDate, customEndDate, sortColumn, sortDirection, filterBySpecificDate]);
+  }, [orders, selectedMonth, selectedVendor, selectedProduct, dateRangeType, customStartDate, customEndDate, sortColumn, sortDirection, calendarSelectedDates]);
 
   // Unfiltered orders for calendar display - shows all orders in the month for selected vendor
   const calendarOrders = useMemo(() => {
@@ -1173,7 +1170,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                 const today = new Date();
                 setCalendarExpanded(true);
                 setCalendarSelectedDates([today]);
-                setFilterBySpecificDate(today);
                 setTableExpanded(true);
                 
                 // Pre-fill form with current filter selections
@@ -1273,7 +1269,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                   setDateRangeType('month');
                   setCustomStartDate(undefined);
                   setCustomEndDate(undefined);
-                  setFilterBySpecificDate(undefined);
                 }}
               >
                 By Month
@@ -1297,7 +1292,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                 value={selectedMonth} 
                 onValueChange={(value) => {
                   setSelectedMonth(value);
-                  setFilterBySpecificDate(undefined);
                   setCalendarSelectedDates(undefined);
                   setSelectedVendor('');
                   setSelectedProduct('all');
@@ -1498,7 +1492,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                           setSelectedMonth(dateMonth);
                         }
                         
-                        setFilterBySpecificDate(lastDate);
                         setTableExpanded(true);
                         setNewOrderFormData({
                           vendor_id: selectedVendor || '',
@@ -1508,7 +1501,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                         });
                       } else {
                         // Dates are cleared - clear filters explicitly
-                        setFilterBySpecificDate(undefined);
                         setSelectedVendor('');
                         setSelectedProduct('all');
                         setNewOrderFormData({
@@ -1749,8 +1741,10 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                     {tableExpanded ? 'Hide' : 'Show'} Detailed Orders
                     {!tableExpanded && (
                       <span className="ml-2 text-xs text-muted-foreground">
-                        {filterBySpecificDate ? (
-                          `(${format(filterBySpecificDate, 'MMM d, yyyy')})`
+                        {calendarSelectedDates && calendarSelectedDates.length > 0 ? (
+                          calendarSelectedDates.length === 1 
+                            ? `(${format(calendarSelectedDates[0], 'MMM d, yyyy')})`
+                            : `(${calendarSelectedDates.length} dates selected)`
                         ) : dateRangeType === 'custom' && customStartDate && customEndDate ? (
                           `(${format(customStartDate, 'MMM d')} - ${format(customEndDate, 'MMM d, yyyy')})`
                         ) : (
@@ -1761,17 +1755,18 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                   </Button>
                 </CollapsibleTrigger>
                 <div className="flex gap-2 items-center flex-wrap">
-                  {filterBySpecificDate && (
+                  {calendarSelectedDates && calendarSelectedDates.length > 0 && (
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-sm">
                         <CalendarIcon className="h-3 w-3 mr-1" />
-                        Filtered: {format(filterBySpecificDate, 'MMM d, yyyy')}
+                        {calendarSelectedDates.length === 1 
+                          ? `Filtered: ${format(calendarSelectedDates[0], 'MMM d, yyyy')}`
+                          : `${calendarSelectedDates.length} dates selected`}
                       </Badge>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => {
-                          setFilterBySpecificDate(undefined);
                           setCalendarSelectedDates(undefined);
                         }}
                       >
@@ -2131,8 +2126,8 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                   </Table>
                 </div>
                 
-                {/* Summary at bottom - Hide when filtering by specific date */}
-                {!filterBySpecificDate && (
+                {/* Summary at bottom - Hide when filtering by selected dates */}
+                {(!calendarSelectedDates || calendarSelectedDates.length === 0) && (
                   <div className="mt-6 pt-6 border-t space-y-2">
                     <div className="pt-4 border-t">
                       <h4 className="font-semibold mb-2">Order Summary</h4>
