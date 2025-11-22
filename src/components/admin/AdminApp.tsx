@@ -14,6 +14,7 @@ import OrderManagement from "@/components/vendor/OrderManagement";
 import { ServiceAreaManagement } from "./ServiceAreaManagement";
 import AdminOrderHistory from "./AdminOrderHistory";
 import ProductManagement from "./ProductManagement";
+import AdminAccountSettings from "./AdminAccountSettings";
 
 const AdminApp = () => {
   const navigate = useNavigate();
@@ -72,8 +73,8 @@ const AdminApp = () => {
       {/* Header */}
       <div className="bg-white shadow-sm border-b sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap items-center justify-between min-h-16 py-2 gap-2">
+            <div className="flex items-center space-x-3 flex-shrink-0">
               <div className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-2 rounded-lg">
                 <Shield className="h-6 w-6" />
               </div>
@@ -82,7 +83,32 @@ const AdminApp = () => {
                 <p className="text-sm text-gray-600 hidden md:block">Manage vendors, customers and operations</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center space-x-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+                      {adminName ? adminName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="text-left hidden md:block">
+                    <div className="text-sm font-medium">{adminName || user?.email?.split('@')[0]}</div>
+                    <div className="text-xs text-gray-500">{user?.email}</div>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => setActiveTab('account')}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Account Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div className="flex flex-wrap items-center space-x-2 sm:space-x-4 order-3 md:order-none w-full md:w-auto justify-start md:justify-center">
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Calendar className="h-4 w-4" />
                 <span className="hidden md:inline">{new Date().toLocaleDateString()}</span>
@@ -101,31 +127,6 @@ const AdminApp = () => {
                   <span>{totalProducts} Products</span>
                 </div>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
-                        {adminName ? adminName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="text-left hidden md:block">
-                      <div className="text-sm font-medium">{adminName || user?.email?.split('@')[0]}</div>
-                      <div className="text-xs text-gray-500">{user?.email}</div>
-                    </div>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => setActiveTab('account')}>
-                    <Settings className="h-4 w-4 mr-2" />
-                    Account Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -134,7 +135,7 @@ const AdminApp = () => {
       {/* Admin Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 lg:w-fit lg:grid-cols-5 mb-8 gap-1">
+          <TabsList className="grid w-full grid-cols-4 lg:w-fit lg:grid-cols-4 mb-8 gap-1">
             <TabsTrigger value="dashboard" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
               <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -150,10 +151,6 @@ const AdminApp = () => {
             <TabsTrigger value="service-area" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
               <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Service Areas</span>
-            </TabsTrigger>
-            <TabsTrigger value="account" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
-              <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Account</span>
             </TabsTrigger>
           </TabsList>
 
@@ -200,10 +197,7 @@ const AdminApp = () => {
           </TabsContent>
 
           <TabsContent value="account">
-            <div className="bg-white rounded-lg border shadow-sm p-6">
-              <h2 className="text-2xl font-semibold mb-4">Account Settings</h2>
-              <p className="text-gray-600">Admin account settings coming soon...</p>
-            </div>
+            <AdminAccountSettings />
           </TabsContent>
         </Tabs>
       </div>
