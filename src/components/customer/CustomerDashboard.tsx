@@ -75,6 +75,9 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   // Inline editing state
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [editQuantity, setEditQuantity] = useState<number>(0);
+  
+  // Cancel order state
+  const [orderToCancel, setOrderToCancel] = useState<{ id: string; productName: string } | null>(null);
 
   // Set initial vendor after vendors load
   useEffect(() => {
@@ -1021,6 +1024,34 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
         />
       )}
 
+      {/* Cancel Order Handler */}
+      {(() => {
+        const handleCancelOrder = async () => {
+          if (!orderToCancel) return;
+          
+          try {
+            await deleteOrder(orderToCancel.id);
+            toast({
+              title: "Order Cancelled",
+              description: `Your order for ${orderToCancel.productName} has been successfully cancelled.`,
+            });
+            setOrderToCancel(null);
+            refetch();
+          } catch (error) {
+            console.error('Error canceling order:', error);
+            toast({
+              title: "Error",
+              description: "Failed to cancel the order. Please try again.",
+              variant: "destructive",
+            });
+          }
+        };
+        
+        // Store handler in component scope
+        (window as any).__handleCancelOrder = handleCancelOrder;
+        return null;
+      })()}
+
       {/* Next Due Orders Card (Issue 1 Fix) */}
       <Card className="bg-white border shadow-sm">
         <CardHeader>
@@ -1055,16 +1086,28 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
             }
 
             return sortedNextOrders.map(order => (
-              <div key={order.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3 border">
-                <div className="space-y-1">
-                  <p className="font-semibold text-gray-900">{order.product.name}</p>
-                  <p className="text-sm text-gray-500">
-                    {order.vendor.name} • {new Date(order.order_date).toLocaleDateString()}
-                  </p>
+              <div key={order.id} className="bg-gray-50 rounded-lg p-3 border space-y-2">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1 flex-1">
+                    <p className="font-semibold text-gray-900">{order.product.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {order.vendor.name} • {new Date(order.order_date).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-gray-900">{order.quantity} {order.unit}</p>
+                    <p className="text-sm text-gray-600">₹{order.total_amount}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-gray-900">{order.quantity} {order.unit}</p>
-                  <p className="text-sm text-gray-600">₹{order.total_amount}</p>
+                <div className="flex justify-end">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setOrderToCancel({ id: order.id, productName: order.product.name })}
+                    className="text-xs"
+                  >
+                    Cancel Order
+                  </Button>
                 </div>
               </div>
             ));
@@ -1078,6 +1121,45 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
         </CardContent>
       </Card>
 
+      {/* Cancel Order Confirmation Dialog */}
+      <AlertDialog open={!!orderToCancel} onOpenChange={(open) => !open && setOrderToCancel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel your order for <strong>{orderToCancel?.productName}</strong>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, keep order</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!orderToCancel) return;
+                
+                try {
+                  await deleteOrder(orderToCancel.id);
+                  toast({
+                    title: "Order Cancelled",
+                    description: `Your order for ${orderToCancel.productName} has been successfully cancelled.`,
+                  });
+                  setOrderToCancel(null);
+                  refetch();
+                } catch (error) {
+                  console.error('Error canceling order:', error);
+                  toast({
+                    title: "Error",
+                    description: "Failed to cancel the order. Please try again.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Yes, cancel order
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Quick Actions */}
       <Card>
