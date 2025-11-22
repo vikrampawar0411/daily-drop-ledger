@@ -55,8 +55,8 @@ const CustomerApp = () => {
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap items-center justify-between min-h-16 py-2 gap-2">
+            <div className="flex items-center space-x-3 flex-shrink-0">
               <div className="flex items-center space-x-2 bg-gradient-to-r from-green-600 to-blue-600 text-white px-3 py-2 rounded-lg">
                 <ShoppingCart className="h-6 w-6" />
               </div>
@@ -65,8 +65,8 @@ const CustomerApp = () => {
                 <p className="text-sm text-gray-600 hidden md:block">Manage your orders and vendors</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <div className="flex items-center space-x-2 md:space-x-4 order-3 md:order-none w-full md:w-auto">
+              <div className="flex items-center space-x-2 text-sm text-gray-600 order-last md:order-none w-full md:w-auto justify-start md:justify-center">
                 <Calendar className="h-4 w-4" />
                 <span>{new Date().toLocaleDateString()}</span>
               </div>
