@@ -78,7 +78,7 @@ const CustomerApp = () => {
                         {customerName ? customerName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="text-left">
+                    <div className="text-left hidden md:block">
                       <div className="text-sm font-medium">{customerName || user?.email?.split('@')[0]}</div>
                       <div className="text-xs text-gray-500">{user?.email}</div>
                     </div>
