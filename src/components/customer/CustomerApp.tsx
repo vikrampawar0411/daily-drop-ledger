@@ -65,36 +65,34 @@ const CustomerApp = () => {
                 <p className="text-sm text-gray-600 hidden md:block">Manage your orders and vendors</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-sm text-gray-600 order-3 md:order-none w-full md:w-auto justify-start md:justify-center">
-                <Calendar className="h-4 w-4" />
-                <span>{new Date().toLocaleDateString()}</span>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-gradient-to-br from-green-500 to-blue-500 text-white">
-                        {customerName ? customerName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="text-left hidden md:block">
-                      <div className="text-sm font-medium">{customerName || user?.email?.split('@')[0]}</div>
-                      <div className="text-xs text-gray-500">{user?.email}</div>
-                    </div>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => setActiveTab('account')}>
-                    <User className="h-4 w-4 mr-2" />
-                    Account Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center space-x-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-gradient-to-br from-green-500 to-blue-500 text-white">
+                      {customerName ? customerName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="text-left hidden md:block">
+                    <div className="text-sm font-medium">{customerName || user?.email?.split('@')[0]}</div>
+                    <div className="text-xs text-gray-500">{user?.email}</div>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => setActiveTab('account')}>
+                  <User className="h-4 w-4 mr-2" />
+                  Account Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div className="flex items-center space-x-2 text-sm text-gray-600 order-3 md:order-none w-full md:w-auto justify-start md:justify-center">
+              <Calendar className="h-4 w-4" />
+              <span>{new Date().toLocaleDateString()}</span>
             </div>
           </div>
         </div>
