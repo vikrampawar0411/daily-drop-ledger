@@ -132,6 +132,10 @@ const CustomerApp = () => {
           <TabsContent value="vendors">
             <VendorDirectory onNavigate={handleNavigation} />
           </TabsContent>
+
+          <TabsContent value="account">
+            <AccountSettings />
+          </TabsContent>
         </Tabs>
       </div>
     </div>

@@ -17,6 +17,7 @@ import AreaHierarchyView from "./AreaHierarchyView";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVendors } from "@/hooks/useVendors";
 import { supabase } from "@/integrations/supabase/client";
+import VendorAccountSettings from "./VendorAccountSettings";
 
 const VendorApp = () => {
   const navigate = useNavigate();
@@ -62,8 +63,8 @@ const VendorApp = () => {
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap items-center justify-between min-h-16 py-2 gap-2">
+            <div className="flex items-center space-x-3 flex-shrink-0">
               <div className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-green-600 text-white px-3 py-2 rounded-lg">
                 <Milk className="h-6 w-6" />
                 <Newspaper className="h-6 w-6" />
@@ -73,36 +74,34 @@ const VendorApp = () => {
                 <p className="text-sm text-gray-600 hidden md:block">Manage your distribution network</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Calendar className="h-4 w-4" />
-                <span>{new Date().toLocaleDateString()}</span>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-green-500 text-white">
-                        {vendorName ? vendorName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="text-left hidden md:block">
-                      <div className="text-sm font-medium">{vendorName || user?.email?.split('@')[0]}</div>
-                      <div className="text-xs text-gray-500">{user?.email}</div>
-                    </div>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => setActiveTab('account')}>
-                    <Settings className="h-4 w-4 mr-2" />
-                    Account Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center space-x-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-green-500 text-white">
+                      {vendorName ? vendorName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="text-left hidden md:block">
+                    <div className="text-sm font-medium">{vendorName || user?.email?.split('@')[0]}</div>
+                    <div className="text-xs text-gray-500">{user?.email}</div>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => setActiveTab('account')}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Account Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div className="flex items-center space-x-2 text-sm text-gray-600 order-3 md:order-none w-full md:w-auto justify-start md:justify-center">
+              <Calendar className="h-4 w-4" />
+              <span>{new Date().toLocaleDateString()}</span>
             </div>
           </div>
         </div>
@@ -111,7 +110,7 @@ const VendorApp = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-fit lg:grid-cols-5 gap-1">
+          <TabsList className="grid w-full grid-cols-4 lg:w-fit lg:grid-cols-4 gap-1">
             <TabsTrigger value="dashboard" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
               <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -127,10 +126,6 @@ const VendorApp = () => {
             <TabsTrigger value="service-areas" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
               <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Service Areas</span>
-            </TabsTrigger>
-            <TabsTrigger value="account" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
-              <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Account</span>
             </TabsTrigger>
           </TabsList>
 
@@ -182,14 +177,7 @@ const VendorApp = () => {
           </TabsContent>
 
           <TabsContent value="account">
-            <Card>
-              <CardHeader>
-                <CardTitle>Account Settings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Account settings for vendors coming soon...</p>
-              </CardContent>
-            </Card>
+            <VendorAccountSettings />
           </TabsContent>
         </Tabs>
       </div>
