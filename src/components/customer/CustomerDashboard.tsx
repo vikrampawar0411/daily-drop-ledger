@@ -109,12 +109,34 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
           setSelectedProduct(navigationParams.productId);
         }
         
+        // Expand calendar, select today's date, and show the form
+        setCalendarExpanded(true);
+        setTableExpanded(true);
+        const today = new Date();
+        setCalendarSelectedDates([today]);
+        
+        // Pre-fill the order form
+        setNewOrderFormData({
+          vendor_id: navigationParams.vendorId,
+          product_id: navigationParams.productId || '',
+          quantity: 1,
+          order_date: today,
+        });
+        
+        // Scroll to calendar section
+        setTimeout(() => {
+          const calendarSection = document.querySelector('[data-calendar-section]');
+          if (calendarSection) {
+            calendarSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 200);
+        
         // Clear params after processing
         setTimeout(() => {
           if (onNavigate) {
             onNavigate('dashboard', {});
           }
-        }, 100);
+        }, 300);
       }
     }
   }, [navigationParams, vendors, onNavigate]);
@@ -183,6 +205,11 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
 
   // Auto-clear filters when no dates are selected
   useEffect(() => {
+    // Don't auto-clear if we're processing navigation params
+    if (navigationParams?.vendorId) {
+      return;
+    }
+    
     if (!calendarSelectedDates || calendarSelectedDates.length === 0) {
       setSelectedVendor('');
       setSelectedProduct('all');
@@ -193,7 +220,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
         order_date: new Date(),
       });
     }
-  }, [calendarSelectedDates]);
+  }, [calendarSelectedDates, navigationParams]);
 
   // Auto-apply filters when vendor is selected in new order form
   useEffect(() => {
