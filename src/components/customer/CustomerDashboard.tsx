@@ -258,6 +258,19 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     setOrderDetailsDialogOpen(true);
   };
 
+  // Helper to check if all selected dates are in the past
+  const areAllDatesPast = (dates: Date[] | undefined): boolean => {
+    if (!dates || dates.length === 0) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset to start of day for comparison
+    
+    return dates.every(date => {
+      const compareDate = new Date(date);
+      compareDate.setHours(0, 0, 0, 0);
+      return compareDate < today;
+    });
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "delivered":
@@ -1542,216 +1555,319 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
 
                   {/* Order Form - Right Side */}
                   {calendarSelectedDates && calendarSelectedDates.length > 0 && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Place New Order</CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                          {calendarSelectedDates.length === 1 
-                            ? `For ${format(calendarSelectedDates[0], 'MMMM d, yyyy')}`
-                            : `For ${calendarSelectedDates.length} selected dates`
-                          }
-                        </p>
-                        {calendarSelectedDates.length > 1 && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {calendarSelectedDates
-                              .sort((a, b) => a.getTime() - b.getTime())
-                              .map(d => format(d, 'MMM d'))
-                              .join(', ')}
-                          </p>
-                        )}
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        
-                        {/* Vendor Dropdown - Always visible with pre-selected value */}
-                        <div className="space-y-2">
-                          <Label>Select Vendor</Label>
-                          <Select
-                            value={newOrderFormData.vendor_id || selectedVendor}
-                            onValueChange={(value) => {
-                              setNewOrderFormData({ 
-                                vendor_id: value,
-                                product_id: '', // Reset product when vendor changes
-                                quantity: 1,
-                                order_date: calendarSelectedDates && calendarSelectedDates.length > 0 
-                                  ? calendarSelectedDates[0] 
-                                  : new Date()
-                              });
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Choose vendor" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {vendors.map((vendor) => (
-                                <SelectItem key={vendor.id} value={vendor.id}>
-                                  {vendor.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Product Dropdown - Show after vendor is selected */}
-                        {(newOrderFormData.vendor_id || selectedVendor) && (
-                          <div className="space-y-2">
-                            <Label>Select Product</Label>
-                            <Select
-                              value={newOrderFormData.product_id || (selectedProduct !== 'all' ? selectedProduct : '')}
-                              onValueChange={(value) => 
-                                setNewOrderFormData({ 
-                                  ...newOrderFormData, 
-                                  product_id: value 
-                                })
+                    <>
+                      {areAllDatesPast(calendarSelectedDates) ? (
+                        /* VIEW-ONLY MODE FOR PAST DATES */
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>View Orders</CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                              {calendarSelectedDates.length === 1 
+                                ? `For ${format(calendarSelectedDates[0], 'MMMM d, yyyy')}`
+                                : `For ${calendarSelectedDates.length} selected dates`
                               }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Choose product" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableProducts
-                                  .filter(p => {
-                                    const vendorId = newOrderFormData.vendor_id || selectedVendor;
-                                    return orders.some(o => o.vendor.id === vendorId && o.product.id === p.id);
-                                  })
-                                  .map((product) => (
-                                    <SelectItem key={product.id} value={product.id}>
-                                      {product.name}
+                            </p>
+                            {calendarSelectedDates.length > 1 && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {calendarSelectedDates
+                                  .sort((a, b) => a.getTime() - b.getTime())
+                                  .map(d => format(d, 'MMM d'))
+                                  .join(', ')}
+                              </p>
+                            )}
+                            <p className="text-xs text-amber-600 mt-2 flex items-center">
+                              <CalendarIcon className="h-3 w-3 mr-1" />
+                              Past dates - viewing existing orders only
+                            </p>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            {(() => {
+                              if (!calendarSelectedDates || calendarSelectedDates.length === 0) return null;
+                              
+                              const allExistingOrders = calendarSelectedDates.flatMap(date => {
+                                const dateStr = format(date, 'yyyy-MM-dd');
+                                return monthlyStats.orders
+                                  .filter(o => o.order_date === dateStr)
+                                  .map(o => ({ ...o, displayDate: dateStr }));
+                              });
+                              
+                              if (allExistingOrders.length === 0) {
+                                return (
+                                  <div className="text-center py-8 text-muted-foreground">
+                                    <CalendarIcon className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                                    <p>No orders found for selected date{calendarSelectedDates.length > 1 ? 's' : ''}</p>
+                                  </div>
+                                );
+                              }
+
+                              // Group orders by date
+                              const ordersByDate = allExistingOrders.reduce((acc, order) => {
+                                if (!acc[order.displayDate]) {
+                                  acc[order.displayDate] = [];
+                                }
+                                acc[order.displayDate].push(order);
+                                return acc;
+                              }, {} as Record<string, typeof allExistingOrders>);
+                              
+                              return (
+                                <div className="space-y-4">
+                                  {Object.entries(ordersByDate)
+                                    .sort(([dateA], [dateB]) => dateB.localeCompare(dateA))
+                                    .map(([dateStr, orders]) => (
+                                      <div key={dateStr}>
+                                        <p className="text-sm font-semibold mb-2">
+                                          {format(new Date(dateStr), 'MMMM d, yyyy')}
+                                        </p>
+                                        <div className="space-y-2">
+                                          {orders.map(order => (
+                                            <div key={order.id} className="bg-muted p-3 rounded-lg">
+                                              <div className="flex justify-between items-start">
+                                                <div>
+                                                  <p className="font-medium">{order.product.name}</p>
+                                                  <p className="text-sm text-muted-foreground">
+                                                    {order.vendor.name}
+                                                  </p>
+                                                  <p className="text-sm">
+                                                    Quantity: {order.quantity} {order.unit}
+                                                  </p>
+                                                </div>
+                                                <div className="text-right">
+                                                  <Badge variant={
+                                                    order.status === 'delivered' ? 'default' :
+                                                    order.status === 'pending' ? 'secondary' :
+                                                    order.status === 'cancelled' ? 'destructive' : 'outline'
+                                                  }>
+                                                    {order.status}
+                                                  </Badge>
+                                                  <p className="text-sm font-medium mt-1">
+                                                    ₹{order.total_amount || 0}
+                                                  </p>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ))}
+                                </div>
+                              );
+                            })()}
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        /* PLACE NEW ORDER MODE FOR CURRENT/FUTURE DATES */
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>Place New Order</CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                              {calendarSelectedDates.length === 1 
+                                ? `For ${format(calendarSelectedDates[0], 'MMMM d, yyyy')}`
+                                : `For ${calendarSelectedDates.length} selected dates`
+                              }
+                            </p>
+                            {calendarSelectedDates.length > 1 && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {calendarSelectedDates
+                                  .sort((a, b) => a.getTime() - b.getTime())
+                                  .map(d => format(d, 'MMM d'))
+                                  .join(', ')}
+                              </p>
+                            )}
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            
+                            {/* Vendor Dropdown - Always visible with pre-selected value */}
+                            <div className="space-y-2">
+                              <Label>Select Vendor</Label>
+                              <Select
+                                value={newOrderFormData.vendor_id || selectedVendor}
+                                onValueChange={(value) => {
+                                  setNewOrderFormData({ 
+                                    vendor_id: value,
+                                    product_id: '', // Reset product when vendor changes
+                                    quantity: 1,
+                                    order_date: calendarSelectedDates && calendarSelectedDates.length > 0 
+                                      ? calendarSelectedDates[0] 
+                                      : new Date()
+                                  });
+                                }}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Choose vendor" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {vendors.map((vendor) => (
+                                    <SelectItem key={vendor.id} value={vendor.id}>
+                                      {vendor.name}
                                     </SelectItem>
                                   ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
+                                </SelectContent>
+                              </Select>
+                            </div>
 
-                        {/* Quantity Input - Show after product is selected */}
-                        {(newOrderFormData.product_id || (selectedProduct !== 'all')) && (
-                          <div className="space-y-2">
-                            <Label>Quantity</Label>
-                            <Input
-                              type="number"
-                              min="1"
-                              step="1"
-                              value={newOrderFormData.quantity}
-                              onChange={(e) => {
-                                const value = parseInt(e.target.value) || 1;
-                                setNewOrderFormData({ 
-                                  ...newOrderFormData, 
-                                  quantity: value
-                                })
-                              }}
-                              placeholder="Enter quantity"
-                              autoFocus
-                            />
-                          </div>
-                        )}
-
-                        {/* Place Order Button */}
-                        <Button
-                          className="w-full"
-                          disabled={
-                            !newOrderFormData.quantity || 
-                            newOrderFormData.quantity < 1 ||
-                            !(newOrderFormData.vendor_id || selectedVendor) ||
-                            !(newOrderFormData.product_id || (selectedProduct !== 'all'))
-                          }
-                          onClick={async () => {
-                            try {
-                              const finalVendorId = newOrderFormData.vendor_id || selectedVendor;
-                              const finalProductId = newOrderFormData.product_id || selectedProduct;
-                              
-                              const vendor = vendors.find(v => v.id === finalVendorId);
-                              const product = orders.find(o => o.product.id === finalProductId)?.product 
-                                           || availableProducts.find(p => p.id === finalProductId);
-                              
-                              if (!vendor || !product || !calendarSelectedDates || calendarSelectedDates.length === 0) {
-                                toast({
-                                  title: "Error",
-                                  description: "Invalid vendor, product, or dates selected",
-                                  variant: "destructive",
-                                });
-                                return;
-                              }
-
-                              // Place orders for all selected dates
-                              const orderPromises = calendarSelectedDates.map(date => 
-                                addCalendarOrder(date, {
-                                  vendor: vendor.name,
-                                  product: product.name,
-                                  quantity: newOrderFormData.quantity,
-                                  unit: '',
-                                  status: 'pending',
-                                })
-                              );
-
-                              await Promise.all(orderPromises);
-                              
-                              await refetch();
-                              await refetchCalendar();
-                              
-                              toast({
-                                title: "Order(s) Placed",
-                                description: calendarSelectedDates.length === 1
-                                  ? `Order for ${format(calendarSelectedDates[0], 'MMM d, yyyy')} created successfully`
-                                  : `${calendarSelectedDates.length} orders created successfully`,
-                              });
-                              
-                              // Reset form - keep vendor/product from filters
-                              setCalendarSelectedDates(undefined);
-                              setNewOrderFormData({
-                                vendor_id: selectedVendor || '',
-                                product_id: selectedProduct !== 'all' ? selectedProduct : '',
-                                quantity: 1,
-                                order_date: new Date(),
-                              });
-                            } catch (error) {
-                              toast({
-                                title: "Error",
-                                description: "Failed to place order(s)",
-                                variant: "destructive",
-                              });
-                            }
-                          }}
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Place Order{calendarSelectedDates && calendarSelectedDates.length > 1 ? 's' : ''}
-                        </Button>
-
-                        {/* Show existing orders for selected dates */}
-                        {(() => {
-                          if (!calendarSelectedDates || calendarSelectedDates.length === 0) return null;
-                          
-                          const allExistingOrders = calendarSelectedDates.flatMap(date => {
-                            const dateStr = format(date, 'yyyy-MM-dd');
-                            return monthlyStats.orders
-                              .filter(o => o.order_date === dateStr)
-                              .map(o => ({ ...o, displayDate: dateStr }));
-                          });
-                          
-                          if (allExistingOrders.length === 0) return null;
-
-                          const existingOrders = allExistingOrders;
-                          
-                          if (existingOrders.length > 0) {
-                            return (
-                              <div className="pt-4 border-t">
-                                <p className="text-sm font-medium mb-2">Existing Orders:</p>
-                                <div className="space-y-2">
-                                  {existingOrders.map(order => (
-                                    <div key={order.id} className="text-xs bg-muted p-2 rounded">
-                                      <p className="font-medium">{order.product.name}</p>
-                                      <p className="text-muted-foreground">
-                                        {order.vendor.name} • {order.quantity} {order.unit}
-                                      </p>
-                                    </div>
-                                  ))}
-                                </div>
+                            {/* Product Dropdown - Show after vendor is selected */}
+                            {(newOrderFormData.vendor_id || selectedVendor) && (
+                              <div className="space-y-2">
+                                <Label>Select Product</Label>
+                                <Select
+                                  value={newOrderFormData.product_id || (selectedProduct !== 'all' ? selectedProduct : '')}
+                                  onValueChange={(value) => 
+                                    setNewOrderFormData({ 
+                                      ...newOrderFormData, 
+                                      product_id: value 
+                                    })
+                                  }
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Choose product" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {availableProducts
+                                      .filter(p => {
+                                        const vendorId = newOrderFormData.vendor_id || selectedVendor;
+                                        return orders.some(o => o.vendor.id === vendorId && o.product.id === p.id);
+                                      })
+                                      .map((product) => (
+                                        <SelectItem key={product.id} value={product.id}>
+                                          {product.name}
+                                        </SelectItem>
+                                      ))}
+                                  </SelectContent>
+                                </Select>
                               </div>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </CardContent>
-                    </Card>
+                            )}
+
+                            {/* Quantity Input - Show after product is selected */}
+                            {(newOrderFormData.product_id || (selectedProduct !== 'all')) && (
+                              <div className="space-y-2">
+                                <Label>Quantity</Label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  step="1"
+                                  value={newOrderFormData.quantity}
+                                  onChange={(e) => {
+                                    const value = parseInt(e.target.value) || 1;
+                                    setNewOrderFormData({ 
+                                      ...newOrderFormData, 
+                                      quantity: value
+                                    })
+                                  }}
+                                  placeholder="Enter quantity"
+                                  autoFocus
+                                />
+                              </div>
+                            )}
+
+                            {/* Place Order Button */}
+                            <Button
+                              className="w-full"
+                              disabled={
+                                !newOrderFormData.quantity || 
+                                newOrderFormData.quantity < 1 ||
+                                !(newOrderFormData.vendor_id || selectedVendor) ||
+                                !(newOrderFormData.product_id || (selectedProduct !== 'all'))
+                              }
+                              onClick={async () => {
+                                try {
+                                  const finalVendorId = newOrderFormData.vendor_id || selectedVendor;
+                                  const finalProductId = newOrderFormData.product_id || selectedProduct;
+                                  
+                                  const vendor = vendors.find(v => v.id === finalVendorId);
+                                  const product = orders.find(o => o.product.id === finalProductId)?.product 
+                                               || availableProducts.find(p => p.id === finalProductId);
+                                  
+                                  if (!vendor || !product || !calendarSelectedDates || calendarSelectedDates.length === 0) {
+                                    toast({
+                                      title: "Error",
+                                      description: "Invalid vendor, product, or dates selected",
+                                      variant: "destructive",
+                                    });
+                                    return;
+                                  }
+
+                                  // Place orders for all selected dates
+                                  const orderPromises = calendarSelectedDates.map(date => 
+                                    addCalendarOrder(date, {
+                                      vendor: vendor.name,
+                                      product: product.name,
+                                      quantity: newOrderFormData.quantity,
+                                      unit: '',
+                                      status: 'pending',
+                                    })
+                                  );
+
+                                  await Promise.all(orderPromises);
+                                  
+                                  await refetch();
+                                  await refetchCalendar();
+                                  
+                                  toast({
+                                    title: "Order(s) Placed",
+                                    description: calendarSelectedDates.length === 1
+                                      ? `Order for ${format(calendarSelectedDates[0], 'MMM d, yyyy')} created successfully`
+                                      : `${calendarSelectedDates.length} orders created successfully`,
+                                  });
+                                  
+                                  // Reset form - keep vendor/product from filters
+                                  setCalendarSelectedDates(undefined);
+                                  setNewOrderFormData({
+                                    vendor_id: selectedVendor || '',
+                                    product_id: selectedProduct !== 'all' ? selectedProduct : '',
+                                    quantity: 1,
+                                    order_date: new Date(),
+                                  });
+                                } catch (error) {
+                                  toast({
+                                    title: "Error",
+                                    description: "Failed to place order(s)",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Place Order{calendarSelectedDates && calendarSelectedDates.length > 1 ? 's' : ''}
+                            </Button>
+
+                            {/* Show existing orders for selected dates */}
+                            {(() => {
+                              if (!calendarSelectedDates || calendarSelectedDates.length === 0) return null;
+                              
+                              const allExistingOrders = calendarSelectedDates.flatMap(date => {
+                                const dateStr = format(date, 'yyyy-MM-dd');
+                                return monthlyStats.orders
+                                  .filter(o => o.order_date === dateStr)
+                                  .map(o => ({ ...o, displayDate: dateStr }));
+                              });
+                              
+                              if (allExistingOrders.length === 0) return null;
+
+                              const existingOrders = allExistingOrders;
+                              
+                              if (existingOrders.length > 0) {
+                                return (
+                                  <div className="pt-4 border-t">
+                                    <p className="text-sm font-medium mb-2">Existing Orders:</p>
+                                    <div className="space-y-2">
+                                      {existingOrders.map(order => (
+                                        <div key={order.id} className="text-xs bg-muted p-2 rounded">
+                                          <p className="font-medium">{order.product.name}</p>
+                                          <p className="text-muted-foreground">
+                                            {order.vendor.name} • {order.quantity} {order.unit}
+                                          </p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </CardContent>
+                        </Card>
+                      )}
+                    </>
                   )}
                 </div>
               </CollapsibleContent>
