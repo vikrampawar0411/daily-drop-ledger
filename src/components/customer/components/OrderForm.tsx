@@ -113,6 +113,24 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
     initCustomer();
   }, [user]);
 
+  // Reset product selection when vendor changes, but keep selected dates
+  useEffect(() => {
+    if (selectedVendor && selectedProduct) {
+      // Check if the current product exists in the new vendor's product list
+      const productExists = selectedVendorData?.products.some(p => p.name === selectedProduct);
+      
+      if (!productExists) {
+        // Product doesn't exist for this vendor - clear it
+        setSelectedProduct("");
+        toast({
+          title: "Product reset",
+          description: "Please select a product for the new vendor",
+          variant: "default",
+        });
+      }
+    }
+  }, [selectedVendor]);
+
   const handleDateSelect = async (date: Date | undefined, modifiers?: any, e?: any) => {
     if (!date || !selectedVendor || !selectedProduct || quantity <= 0) {
       if (!selectedVendor || !selectedProduct) {
