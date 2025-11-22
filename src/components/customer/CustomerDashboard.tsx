@@ -1024,7 +1024,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
       {/* Next Due Orders Card (Issue 1 Fix) */}
       <Card className="bg-white border shadow-sm">
         <CardHeader>
-          <CardTitle className="text-xl">Your Next Due Orders</CardTitle>
+          <CardTitle className="text-xl">Upcoming Orders</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {(() => {
