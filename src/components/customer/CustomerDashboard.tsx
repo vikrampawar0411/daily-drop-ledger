@@ -203,24 +203,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     order_date: new Date(),
   });
 
-  // Auto-clear filters when no dates are selected
-  useEffect(() => {
-    // Don't auto-clear if we're processing navigation params
-    if (navigationParams?.vendorId) {
-      return;
-    }
-    
-    if (!calendarSelectedDates || calendarSelectedDates.length === 0) {
-      setSelectedVendor('');
-      setSelectedProduct('all');
-      setNewOrderFormData({
-        vendor_id: '',
-        product_id: '',
-        quantity: 1,
-        order_date: new Date(),
-      });
-    }
-  }, [calendarSelectedDates, navigationParams]);
 
   // Auto-apply filters when vendor is selected in new order form
   useEffect(() => {
@@ -1565,12 +1547,10 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                           order_date: lastDate,
                         });
                       } else {
-                        // Dates are cleared - clear filters explicitly
-                        setSelectedVendor('');
-                        setSelectedProduct('all');
+                        // Dates are cleared - only reset form, keep filters intact
                         setNewOrderFormData({
-                          vendor_id: '',
-                          product_id: '',
+                          vendor_id: selectedVendor || '',
+                          product_id: selectedProduct !== 'all' ? selectedProduct : '',
                           quantity: 1,
                           order_date: new Date(),
                         });
