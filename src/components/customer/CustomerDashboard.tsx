@@ -200,8 +200,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   // Auto-apply filters when vendor is selected in new order form
   useEffect(() => {
     if (newOrderFormData.vendor_id && newOrderFormData.vendor_id !== selectedVendor) {
-      // Clear calendar selection when vendor changes
-      setCalendarSelectedDates(undefined);
+      // Keep calendar selected dates visible when vendor changes
       setFilterBySpecificDate(undefined);
       
       // Update main vendor filter
