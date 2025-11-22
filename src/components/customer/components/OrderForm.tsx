@@ -129,7 +129,7 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
         });
       }
     }
-  }, [selectedVendor]);
+  }, [selectedVendor, selectedVendorData, selectedProduct, toast]);
 
   const handleDateSelect = async (date: Date | undefined, modifiers?: any, e?: any) => {
     if (!date || !selectedVendor || !selectedProduct || quantity <= 0) {
