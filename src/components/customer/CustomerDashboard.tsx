@@ -1525,7 +1525,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                     }}
                     onDateClick={(dates) => {
                       if (dates.length > 0) {
-                        // Dates are selected - set filters
+                        // Dates are selected
                         const lastDate = dates[dates.length - 1];
                         const dateMonth = format(lastDate, 'yyyy-MM');
                         if (dateMonth !== selectedMonth) {
@@ -1533,9 +1533,25 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                         }
                         
                         setTableExpanded(true);
+                        
+                        // Ensure we always have a vendor selected
+                        let vendorId = selectedVendor;
+                        if (!vendorId && vendors.length > 0) {
+                          vendorId = vendors[0].id;
+                          setSelectedVendor(vendorId);
+                        }
+                        
+                        // Ensure we always have a product selected
+                        let productId = selectedProduct !== 'all' ? selectedProduct : '';
+                        if (!productId && availableProducts.length > 0) {
+                          productId = availableProducts[0].id;
+                          setSelectedProduct(productId);
+                        }
+                        
+                        // Pre-fill the form with guaranteed values
                         setNewOrderFormData({
-                          vendor_id: selectedVendor || '',
-                          product_id: selectedProduct !== 'all' ? selectedProduct : '',
+                          vendor_id: vendorId,
+                          product_id: productId,
                           quantity: 1,
                           order_date: lastDate,
                         });
