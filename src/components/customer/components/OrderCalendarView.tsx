@@ -50,6 +50,14 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
             month={month}
             onMonthChange={onMonthChange}
             className={cn("rounded-md border pointer-events-auto")}
+            disabled={(date) => {
+              // Disable all dates before today
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const compareDate = new Date(date);
+              compareDate.setHours(0, 0, 0, 0);
+              return compareDate < today;
+            }}
             modifiers={{
               today: (date) => {
                 const today = new Date();
@@ -106,10 +114,17 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
               fontWeight: '400',
               border: '1px solid hsl(213 97% 78%)',
               opacity: 0.7
+            },
+            disabled: {
+              opacity: 1,
+              color: 'inherit',
+              cursor: 'not-allowed',
+              pointerEvents: 'none'
             }
           }}
           modifiersClassNames={{
-            selected: '!ring-4 !ring-ring !ring-offset-2'
+            selected: '!ring-4 !ring-ring !ring-offset-2',
+            disabled: 'cursor-not-allowed'
           }}
         />
         <div className="mt-4 space-y-2 text-sm text-muted-foreground">
