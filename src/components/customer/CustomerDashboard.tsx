@@ -271,6 +271,15 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     });
   };
 
+  // Helper to check if a date is in the past (before today)
+  const isDateInPast = (date: Date): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const compareDate = new Date(date);
+    compareDate.setHours(0, 0, 0, 0);
+    return compareDate < today;
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "delivered":
@@ -1802,8 +1811,31 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                                     return;
                                   }
 
-                                  // Place orders for all selected dates
-                                  const orderPromises = calendarSelectedDates.map(date => 
+                                  // Separate past dates from valid dates
+                                  const pastDates = calendarSelectedDates.filter(date => isDateInPast(date));
+                                  const validDates = calendarSelectedDates.filter(date => !isDateInPast(date));
+
+                                  // If all dates are in the past, show error
+                                  if (validDates.length === 0) {
+                                    toast({
+                                      title: "Cannot Place Orders",
+                                      description: "Orders cannot be placed for past dates. Please select today or future dates.",
+                                      variant: "destructive",
+                                    });
+                                    return;
+                                  }
+
+                                  // If some dates are in the past, show warning
+                                  if (pastDates.length > 0) {
+                                    toast({
+                                      title: "Past Dates Skipped",
+                                      description: `Skipped ${pastDates.length} past date(s). Orders will be placed only for ${validDates.length} valid date(s).`,
+                                      variant: "default",
+                                    });
+                                  }
+
+                                  // Place orders only for valid dates (today or future)
+                                  const orderPromises = validDates.map(date => 
                                     addCalendarOrder(date, {
                                       vendor: vendor.name,
                                       product: product.name,
@@ -1820,9 +1852,9 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                                   
                                   toast({
                                     title: "Order(s) Placed",
-                                    description: calendarSelectedDates.length === 1
-                                      ? `Order for ${format(calendarSelectedDates[0], 'MMM d, yyyy')} created successfully`
-                                      : `${calendarSelectedDates.length} orders created successfully`,
+                                    description: validDates.length === 1
+                                      ? `Order for ${format(validDates[0], 'MMM d, yyyy')} created successfully`
+                                      : `${validDates.length} orders created successfully`,
                                   });
                                   
                                   // Reset form - keep vendor/product from filters
