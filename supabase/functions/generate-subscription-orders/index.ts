@@ -14,22 +14,13 @@ Deno.serve(async (req) => {
 
     console.log('Starting subscription order generation...');
 
-    // Get current date and end of next month
     const today = new Date();
-    const startDate = today.toISOString().split('T')[0];
-    
-    // Calculate end of next month
-    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-    const endDate = nextMonth.toISOString().split('T')[0];
-
-    console.log(`Generating orders from ${startDate} to ${endDate}`);
 
     // Get all active subscriptions
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('subscriptions')
       .select('*')
-      .eq('status', 'active')
-      .or(`end_date.is.null,end_date.gte.${endDate}`);
+      .eq('status', 'active');
 
     if (subscriptionError) {
       throw subscriptionError;
@@ -43,11 +34,24 @@ Deno.serve(async (req) => {
     // For each subscription, generate orders
     for (const subscription of subscriptions || []) {
       try {
+        // Calculate the end date for this subscription
+        let currentDate = new Date(Math.max(new Date(subscription.start_date).getTime(), today.getTime()));
+        
+        // Use subscription's end_date if provided, otherwise use 90 days from today
+        let subscriptionEndDate: Date;
+        if (subscription.end_date) {
+          subscriptionEndDate = new Date(subscription.end_date);
+        } else {
+          // If no end date specified, generate for next 90 days only
+          subscriptionEndDate = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000);
+        }
+        
+        const finalEndDate = subscriptionEndDate;
+        
+        console.log(`Generating orders for subscription ${subscription.id} from ${currentDate.toISOString().split('T')[0]} to ${finalEndDate.toISOString().split('T')[0]}`);
+        
         // Get dates to generate orders for based on frequency
         const datesToGenerate: string[] = [];
-        let currentDate = new Date(Math.max(new Date(subscription.start_date).getTime(), today.getTime()));
-        const subscriptionEndDate = subscription.end_date ? new Date(subscription.end_date) : nextMonth;
-        const finalEndDate = new Date(Math.min(nextMonth.getTime(), subscriptionEndDate.getTime()));
 
         while (currentDate <= finalEndDate) {
           const dateStr = currentDate.toISOString().split('T')[0];
