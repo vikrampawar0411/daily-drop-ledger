@@ -925,6 +925,19 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     };
   }, [orders, selectedMonth, selectedVendor, selectedProduct, dateRangeType, customStartDate, customEndDate, sortColumn, sortDirection, calendarSelectedDates]);
 
+  // Compute existing orders for the last selected date in the new order form
+  const lastSelectedDateOrders = useMemo(() => {
+    if (!calendarSelectedDates || calendarSelectedDates.length === 0) {
+      return { date: null, orders: [] };
+    }
+    
+    const lastSelectedDate = calendarSelectedDates[calendarSelectedDates.length - 1];
+    const lastDateStr = format(lastSelectedDate, 'yyyy-MM-dd');
+    const existingOrders = monthlyStats.orders.filter(o => o.order_date === lastDateStr);
+    
+    return { date: lastSelectedDate, orders: existingOrders };
+  }, [calendarSelectedDates, monthlyStats.orders]);
+
   // Unfiltered orders for calendar display - shows all orders in the month for selected vendor
   const calendarOrders = useMemo(() => {
     let startDate: Date, endDate: Date;
@@ -1881,36 +1894,23 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                             </Button>
 
                             {/* Show existing orders for the last selected date only */}
-                            {(() => {
-                              if (!calendarSelectedDates || calendarSelectedDates.length === 0) return null;
-                              
-                              // Get the LAST (most recent) selected date
-                              const lastSelectedDate = calendarSelectedDates[calendarSelectedDates.length - 1];
-                              const lastDateStr = format(lastSelectedDate, 'yyyy-MM-dd');
-                              
-                              // Get orders ONLY for the last selected date
-                              const existingOrders = monthlyStats.orders.filter(o => o.order_date === lastDateStr);
-                              
-                              if (existingOrders.length === 0) return null;
-                              
-                              return (
-                                <div className="pt-4 border-t">
-                                  <p className="text-sm font-medium mb-2">
-                                    Existing Orders on {format(lastSelectedDate, 'MMM d, yyyy')}:
-                                  </p>
-                                  <div className="space-y-2">
-                                    {existingOrders.map(order => (
-                                      <div key={order.id} className="text-xs bg-muted p-2 rounded">
-                                        <p className="font-medium">{order.product.name}</p>
-                                        <p className="text-muted-foreground">
-                                          {order.vendor.name} • {order.quantity} {order.unit}
-                                        </p>
-                                      </div>
-                                    ))}
-                                  </div>
+                            {lastSelectedDateOrders.orders.length > 0 && lastSelectedDateOrders.date && (
+                              <div className="pt-4 border-t">
+                                <p className="text-sm font-medium mb-2">
+                                  Existing Orders on {format(lastSelectedDateOrders.date, 'MMM d, yyyy')}:
+                                </p>
+                                <div className="space-y-2">
+                                  {lastSelectedDateOrders.orders.map(order => (
+                                    <div key={order.id} className="text-xs bg-muted p-2 rounded">
+                                      <p className="font-medium">{order.product.name}</p>
+                                      <p className="text-muted-foreground">
+                                        {order.vendor.name} • {order.quantity} {order.unit}
+                                      </p>
+                                    </div>
+                                  ))}
                                 </div>
-                              );
-                            })()}
+                              </div>
+                            )}
                           </CardContent>
                         </Card>
                       )}
