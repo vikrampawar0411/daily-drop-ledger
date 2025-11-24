@@ -2486,7 +2486,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                                                 {order.status === 'delivered' ? (
                                                   <CheckCircle className="h-4 w-4 text-green-600" />
                                                 ) : (
-                                                  <XCircle className="h-4 w-4 text-amber-600" />
+                                                  <Clock className="h-4 w-4 text-amber-600" />
                                                 )}
                                               </Button>
                                             </TooltipTrigger>
@@ -2594,10 +2594,10 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                             <TableCell className="text-right">{monthlyStats.deliveredSpend}</TableCell>
                           </TableRow>
                           <TableRow>
-                            <TableCell className="text-orange-700 font-medium flex items-center gap-2">
-                              <AlertTriangle className="h-4 w-4" />
-                              Delivered (Disputed)
-                            </TableCell>
+                  <TableCell className="text-orange-700 font-medium flex items-center gap-2">
+                    Delivered (Disputed)
+                    <AlertTriangle className="h-4 w-4" />
+                  </TableCell>
                             <TableCell className="text-right">{monthlyStats.deliveredDisputedOrders}</TableCell>
                             <TableCell className="text-right">{monthlyStats.deliveredDisputedAmount}</TableCell>
                           </TableRow>
