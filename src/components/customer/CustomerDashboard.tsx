@@ -59,7 +59,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   const { orders, loading: ordersLoading, updateOrderStatus, raiseDispute, clearDispute, deleteOrder, updateOrder, refetch } = useOrders();
   const { addOrder: addCalendarOrder, refetch: refetchCalendar } = useCustomerOrders();
   const { vendors, loading: vendorsLoading } = useVendors();
-  const { createSubscription } = useSubscriptions();
+  const { subscriptions, createSubscription } = useSubscriptions();
   const { toast } = useToast();
   const [customerName, setCustomerName] = useState("");
   const [connectionCount, setConnectionCount] = useState(0);
@@ -96,6 +96,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   const [subscriptionFormData, setSubscriptionFormData] = useState({
     frequency: 'daily',
     startDate: new Date(),
+    endDate: null as Date | null,
     quantity: 1,
   });
   
@@ -1646,7 +1647,16 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                   />
 
                   {/* Action Buttons Below Calendar */}
-                  {selectedVendor && selectedProduct !== 'all' && (
+                  {selectedVendor && selectedProduct !== 'all' && (() => {
+                    // Check if there's already an active subscription for this vendor+product
+                    const hasActiveSubscription = subscriptions.some(sub => 
+                      sub.vendor_id === selectedVendor && 
+                      sub.product_id === selectedProduct && 
+                      sub.status === 'active' &&
+                      (!sub.end_date || new Date(sub.end_date) >= new Date())
+                    );
+                    return !hasActiveSubscription;
+                  })() && (
                     <Card className="lg:col-span-2">
                       <CardContent className="pt-6">
                         <div className="flex flex-col sm:flex-row gap-3">
@@ -1655,6 +1665,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                               setSubscriptionFormData({
                                 frequency: 'daily',
                                 startDate: new Date(),
+                                endDate: null,
                                 quantity: 1,
                               });
                               setSubscriptionDialogOpen(true);
@@ -2895,6 +2906,28 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
               </Popover>
             </div>
             <div className="space-y-2">
+              <Label>End Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {subscriptionFormData.endDate ? format(subscriptionFormData.endDate, 'PPP') : 'Select end date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <DatePickerCalendar
+                    mode="single"
+                    selected={subscriptionFormData.endDate || undefined}
+                    onSelect={(date) => setSubscriptionFormData(prev => ({ ...prev, endDate: date || null }))}
+                    disabled={(date) => date < subscriptionFormData.startDate}
+                  />
+                </PopoverContent>
+              </Popover>
+              <p className="text-xs text-muted-foreground">
+                Orders will be placed from start date to end date
+              </p>
+            </div>
+            <div className="space-y-2">
               <Label>Quantity</Label>
               <Input
                 type="number"
@@ -2910,6 +2943,16 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
             </Button>
             <Button onClick={async () => {
               try {
+                // Validate date range
+                if (subscriptionFormData.endDate && subscriptionFormData.endDate < subscriptionFormData.startDate) {
+                  toast({
+                    title: "Invalid Date Range",
+                    description: "End date must be after start date",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+
                 const product = availableProducts.find(p => p.id === selectedProduct);
                 
                 if (!product) {
@@ -2955,7 +2998,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                   frequency: subscriptionFormData.frequency,
                   start_date: format(subscriptionFormData.startDate, 'yyyy-MM-dd'),
                   status: 'active',
-                  end_date: null,
+                  end_date: subscriptionFormData.endDate ? format(subscriptionFormData.endDate, 'yyyy-MM-dd') : null,
                   paused_from: null,
                   paused_until: null,
                 });
