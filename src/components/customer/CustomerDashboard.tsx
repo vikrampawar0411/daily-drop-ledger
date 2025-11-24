@@ -198,6 +198,8 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
   const [disputeOrderId, setDisputeOrderId] = useState<string | null>(null);
   const [disputeReason, setDisputeReason] = useState("");
+  const [selectedCardFilter, setSelectedCardFilter] = useState<'total' | 'future' | 'delivered' | 'pending' | 'disputed' | null>(null);
+  const orderTableRef = useRef<HTMLDivElement>(null);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
     const currentMonth = format(new Date(), 'MMMM yyyy');
     return new Set([currentMonth]);
@@ -847,6 +849,8 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
 
   const monthlyStats = useMemo(() => {
     let startDate: Date, endDate: Date;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
     // Determine date range based on type
     if (dateRangeType === 'month') {
@@ -858,7 +862,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
       endDate = customEndDate;
     } else {
       // Default to current month if custom dates not set
-      const today = new Date();
       startDate = new Date(today.getFullYear(), today.getMonth(), 1);
       endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     }
@@ -882,8 +885,45 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
       return matchesDate && matchesVendor && matchesProduct && o.status !== 'cancelled';
     });
     
+    // Calculate future orders (orders with date >= today)
+    const futureOrdersList = monthOrders.filter(o => {
+      const orderDate = new Date(o.order_date);
+      orderDate.setHours(0, 0, 0, 0);
+      return orderDate >= today;
+    });
+    const futureOrdersCount = futureOrdersList.length;
+    const futureOrdersAmount = Math.round(
+      futureOrdersList.reduce((sum, o) => sum + Number(o.total_amount), 0)
+    );
+    
+    // Apply card filter if selected
+    let filteredOrders = monthOrders;
+    if (selectedCardFilter) {
+      switch (selectedCardFilter) {
+        case 'total':
+          // Show all orders (no additional filtering)
+          break;
+        case 'future':
+          filteredOrders = monthOrders.filter(o => {
+            const orderDate = new Date(o.order_date);
+            orderDate.setHours(0, 0, 0, 0);
+            return orderDate >= today;
+          });
+          break;
+        case 'delivered':
+          filteredOrders = monthOrders.filter(o => o.status === 'delivered' && !o.dispute_raised);
+          break;
+        case 'pending':
+          filteredOrders = monthOrders.filter(o => o.status === 'pending');
+          break;
+        case 'disputed':
+          filteredOrders = monthOrders.filter(o => o.status === 'delivered' && o.dispute_raised === true);
+          break;
+      }
+    }
+    
     // Sort orders based on selected column
-    const sortedOrders = [...monthOrders].sort((a, b) => {
+    const sortedOrders = [...filteredOrders].sort((a, b) => {
       let aVal: any, bVal: any;
       
       switch (sortColumn) {
@@ -948,9 +988,31 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
       deliveredSpend: Math.round(deliveredNonDisputedSpend),
       deliveredDisputedAmount: Math.round(deliveredDisputedAmount),
       forecastedBill: Math.round(forecastedBill),
+      futureOrders: futureOrdersCount,
+      futureOrdersAmount: futureOrdersAmount,
       orders: sortedOrders
     };
-  }, [orders, selectedMonth, selectedVendor, selectedProduct, dateRangeType, customStartDate, customEndDate, sortColumn, sortDirection, calendarSelectedDates]);
+  }, [orders, selectedMonth, selectedVendor, selectedProduct, dateRangeType, customStartDate, customEndDate, sortColumn, sortDirection, calendarSelectedDates, selectedCardFilter]);
+
+  // Handle card click for filtering
+  const handleCardClick = (cardType: 'total' | 'future' | 'delivered' | 'pending' | 'disputed') => {
+    // Toggle: if clicking same card, clear filter
+    setSelectedCardFilter(prev => prev === cardType ? null : cardType);
+    
+    // Expand the order table
+    setTableExpanded(true);
+    
+    // Clear calendar date selection to show full period
+    setCalendarSelectedDates(undefined);
+    
+    // Scroll to order table
+    setTimeout(() => {
+      orderTableRef.current?.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    }, 100);
+  };
 
   // Compute existing orders for the last selected date in the new order form
   const lastSelectedDateOrders = useMemo(() => {
@@ -1482,26 +1544,49 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
         </CardHeader>
         <CardContent>
           {/* Statistics Cards - Always Visible */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             <Card 
-              className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => onNavigate?.('orders')}
+              className={cn(
+                "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 cursor-pointer hover:shadow-lg transition-all",
+                selectedCardFilter === 'total' && "border-4 border-gray-400"
+              )}
+              onClick={() => handleCardClick('total')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-blue-900">Total Orders</CardTitle>
-                <ShoppingCart className="h-4 w-4 text-blue-600" />
+                <CardTitle className="text-sm font-medium text-gray-900">Total Orders</CardTitle>
+                <ShoppingCart className="h-4 w-4 text-gray-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-900">{monthlyStats.totalOrders}</div>
-                <p className="text-xs text-blue-600 mt-1">
+                <div className="text-2xl font-bold text-gray-900">{monthlyStats.totalOrders}</div>
+                <p className="text-xs text-gray-600 mt-1">
                   ₹{(monthlyStats.deliveredSpend + monthlyStats.deliveredDisputedAmount + monthlyStats.forecastedBill).toFixed(2)}
                 </p>
               </CardContent>
             </Card>
 
             <Card 
-              className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => onNavigate?.('orders')}
+              className={cn(
+                "bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 cursor-pointer hover:shadow-lg transition-all",
+                selectedCardFilter === 'future' && "border-4 border-blue-400"
+              )}
+              onClick={() => handleCardClick('future')}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-blue-900">Future Orders</CardTitle>
+                <TrendingUp className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-900">{monthlyStats.futureOrders}</div>
+                <p className="text-xs text-blue-600 mt-1">₹{monthlyStats.futureOrdersAmount.toFixed(2)}</p>
+              </CardContent>
+            </Card>
+
+            <Card 
+              className={cn(
+                "bg-gradient-to-br from-green-50 to-green-100 border-green-200 cursor-pointer hover:shadow-lg transition-all",
+                selectedCardFilter === 'delivered' && "border-4 border-green-400"
+              )}
+              onClick={() => handleCardClick('delivered')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-green-900">Delivered Orders</CardTitle>
@@ -1514,8 +1599,11 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
             </Card>
 
             <Card 
-              className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => onNavigate?.('orders')}
+              className={cn(
+                "bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 cursor-pointer hover:shadow-lg transition-all",
+                selectedCardFilter === 'pending' && "border-4 border-amber-400"
+              )}
+              onClick={() => handleCardClick('pending')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-amber-900">Pending Orders</CardTitle>
@@ -1528,8 +1616,11 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
             </Card>
 
             <Card 
-              className="bg-gradient-to-br from-red-50 to-red-100 border-red-200 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => onNavigate?.('orders')}
+              className={cn(
+                "bg-gradient-to-br from-red-50 to-red-100 border-red-200 cursor-pointer hover:shadow-lg transition-all",
+                selectedCardFilter === 'disputed' && "border-4 border-red-400"
+              )}
+              onClick={() => handleCardClick('disputed')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-red-900 flex items-center gap-2">
@@ -2072,7 +2163,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
 
           {/* Orders Table for Selected Period */}
           <Collapsible open={tableExpanded} onOpenChange={setTableExpanded}>
-            <div className="space-y-4">
+            <div ref={orderTableRef} className="space-y-4">
               <div className="flex items-center justify-between">
                 <CollapsibleTrigger asChild>
                   <Button variant="outline">
@@ -2094,6 +2185,24 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                   </Button>
                 </CollapsibleTrigger>
                 <div className="flex gap-2 items-center flex-wrap">
+                  {selectedCardFilter && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-sm">
+                        Filter: {selectedCardFilter === 'total' ? 'All Orders' : 
+                                 selectedCardFilter === 'future' ? 'Future Orders' :
+                                 selectedCardFilter === 'delivered' ? 'Delivered Orders' :
+                                 selectedCardFilter === 'pending' ? 'Pending Orders' : 'Disputed Orders'}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelectedCardFilter(null)}
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Clear Filter
+                      </Button>
+                    </div>
+                  )}
                   {calendarSelectedDates && calendarSelectedDates.length > 0 && (
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-sm">
