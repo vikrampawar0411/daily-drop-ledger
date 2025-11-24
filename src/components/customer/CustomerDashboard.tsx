@@ -1646,34 +1646,36 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                     }}
                   />
 
-                  {/* Add Missing Orders - Always Visible */}
-                  <Card className="lg:col-span-2">
-                    <CardContent className="pt-6">
-                      <Button
-                        variant="secondary"
-                        onClick={() => {
-                          if (!selectedVendor || selectedProduct === 'all') {
-                            toast({
-                              title: "Selection Required",
-                              description: "Please select a vendor and product first",
-                              variant: "destructive",
-                            });
-                            return;
-                          }
-                          setPastOrderDates([]);
-                          setPastOrderQuantity(1);
-                          setPastOrdersDialogOpen(true);
-                        }}
-                        className="w-full"
-                      >
-                        <History className="h-4 w-4 mr-2" />
-                        Add missing orders from past dates
-                      </Button>
-                      <p className="text-xs text-muted-foreground mt-2 text-center">
-                        Add orders for dates that have passed
-                      </p>
-                    </CardContent>
-                  </Card>
+                  {/* Add Missing Orders - Only When No Dates Selected */}
+                  {(!calendarSelectedDates || calendarSelectedDates.length === 0) && (
+                    <Card className="lg:col-span-2">
+                      <CardContent className="pt-6">
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            if (!selectedVendor || selectedProduct === 'all') {
+                              toast({
+                                title: "Selection Required",
+                                description: "Please select a vendor and product first",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            setPastOrderDates([]);
+                            setPastOrderQuantity(1);
+                            setPastOrdersDialogOpen(true);
+                          }}
+                          className="w-full"
+                        >
+                          <History className="h-4 w-4 mr-2" />
+                          Add missing orders from past dates
+                        </Button>
+                        <p className="text-xs text-muted-foreground mt-2 text-center">
+                          Add orders for dates that have passed
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {/* Subscribe Button - Only When No Active Subscription */}
                   {selectedVendor && selectedProduct !== 'all' && (() => {
