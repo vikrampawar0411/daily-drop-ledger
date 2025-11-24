@@ -19,9 +19,10 @@ interface OrderCalendarViewProps {
   onDateClick?: (dates: Date[]) => void;
   month?: Date;
   onMonthChange?: (month: Date) => void;
+  subscribeBeforeTime?: string | null;
 }
 
-const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getOrdersForDate, onDateClick, month, onMonthChange }: OrderCalendarViewProps) => {
+const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getOrdersForDate, onDateClick, month, onMonthChange, subscribeBeforeTime }: OrderCalendarViewProps) => {
   const handleDateSelect = (dates: Date[] | undefined) => {
     onSelectDates(dates);
     
@@ -56,12 +57,45 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
               today.setHours(0, 0, 0, 0);
               const compareDate = new Date(date);
               compareDate.setHours(0, 0, 0, 0);
-              return compareDate < today;
+              
+              if (compareDate < today) return true;
+              
+              // If subscribeBeforeTime is provided, check cutoff for today
+              if (subscribeBeforeTime && compareDate.getTime() === today.getTime()) {
+                const now = new Date();
+                const [hours, minutes] = subscribeBeforeTime.split(':').map(Number);
+                const cutoffToday = new Date(today);
+                cutoffToday.setHours(hours, minutes, 0, 0);
+                
+                // If current time is past cutoff, can't order for tomorrow
+                if (now > cutoffToday) {
+                  return true;
+                }
+              }
+              
+              return false;
             }}
             modifiers={{
               today: (date) => {
                 const today = new Date();
                 return date.toDateString() === today.toDateString();
+              },
+              pastCutoff: (date) => {
+                if (!subscribeBeforeTime) return false;
+                
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const compareDate = new Date(date);
+                compareDate.setHours(0, 0, 0, 0);
+                
+                if (compareDate.getTime() === today.getTime()) {
+                  const now = new Date();
+                  const [hours, minutes] = subscribeBeforeTime.split(':').map(Number);
+                  const cutoffToday = new Date(today);
+                  cutoffToday.setHours(hours, minutes, 0, 0);
+                  return now > cutoffToday;
+                }
+                return false;
               },
             deliveredOrder: (date) => {
               const dateStr = format(date, 'yyyy-MM-dd');
@@ -95,6 +129,12 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
             },
             selected: {
               boxShadow: '0 0 0 4px hsl(var(--ring)) inset'
+            },
+            pastCutoff: {
+              backgroundColor: 'hsl(0 84% 95%)',
+              color: 'hsl(0 74% 42%)',
+              textDecoration: 'line-through',
+              opacity: 0.6
             },
             deliveredOrder: {
               backgroundColor: 'hsl(142 76% 73%)',
@@ -140,6 +180,16 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
             <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(214 95% 93%)', border: '1px solid hsl(213 97% 78%)', opacity: 0.7 }}></div>
             <span className="font-normal text-gray-500">Future orders</span>
           </div>
+          {subscribeBeforeTime && (
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 rounded" style={{ 
+                backgroundColor: 'hsl(0 84% 95%)', 
+                border: '1px solid hsl(0 74% 42%)',
+                opacity: 0.6 
+              }}></div>
+              <span className="font-normal text-red-600">Past order cutoff time</span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

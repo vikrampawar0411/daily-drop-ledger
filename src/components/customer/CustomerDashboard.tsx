@@ -35,6 +35,16 @@ import { cn } from "@/lib/utils";
 import * as XLSX from 'xlsx-js-style';
 import { OnboardingCard } from "@/components/onboarding/OnboardingCard";
 import { NotificationBanner } from "./NotificationBanner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+// Helper function to format time from HH:MM:SS to readable format
+const formatTimeString = (timeString: string | null | undefined): string => {
+  if (!timeString) return '';
+  const [hours, minutes] = timeString.split(':').map(Number);
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12;
+  return `${displayHours}:${String(minutes).padStart(2, '0')} ${ampm}`;
+};
 
 interface CustomerDashboardProps {
   onNavigate?: (tab: string, params?: any) => void;
@@ -1548,6 +1558,13 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                       setSelectedMonth(monthStr);
                       setCalendarSelectedDates(undefined); // This triggers the useEffect to auto-clear filters
                     }}
+                    subscribeBeforeTime={(() => {
+                      const productId = newOrderFormData.product_id || (selectedProduct !== 'all' ? selectedProduct : '');
+                      if (!productId) return null;
+                      
+                      const productFromOrders = orders.find(o => o.product.id === productId)?.product;
+                      return productFromOrders?.subscribe_before || null;
+                    })()}
                     onDateClick={(dates) => {
                       // Detect which date was actually clicked by comparing arrays
                       let clickedDate: Date | null = null;
@@ -1733,6 +1750,28 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                                   .join(', ')}
                               </p>
                             )}
+                            
+                            {/* Order Cutoff Banner */}
+                            {newOrderFormData.product_id && (() => {
+                              const productFromOrders = orders.find(o => o.product.id === newOrderFormData.product_id)?.product;
+                              const subscribeBeforeTime = productFromOrders?.subscribe_before;
+                              
+                              if (subscribeBeforeTime) {
+                                return (
+                                  <Alert className="mt-3 bg-amber-50 border-amber-200">
+                                    <AlertCircle className="h-4 w-4 text-amber-600" />
+                                    <AlertTitle className="text-amber-900">Order Deadline</AlertTitle>
+                                    <AlertDescription className="text-amber-800">
+                                      Orders must be placed before <strong>{formatTimeString(subscribeBeforeTime)}</strong> daily
+                                      {productFromOrders?.delivery_before && (
+                                        <> for delivery by {formatTimeString(productFromOrders.delivery_before)} the next day</>
+                                      )}
+                                    </AlertDescription>
+                                  </Alert>
+                                );
+                              }
+                              return null;
+                            })()}
                           </CardHeader>
                           <CardContent className="space-y-4">
                             
