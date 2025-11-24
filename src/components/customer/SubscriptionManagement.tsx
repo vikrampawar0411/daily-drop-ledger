@@ -49,6 +49,8 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedSubscription, setSelectedSubscription] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("active");
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [subscriptionToCancel, setSubscriptionToCancel] = useState<string | null>(null);
   
   // Calendar filter state
   const [calendarVendorId, setCalendarVendorId] = useState<string>("");
@@ -617,6 +619,18 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
     }
   };
 
+  const handleConfirmCancel = async () => {
+    if (!subscriptionToCancel) return;
+    
+    try {
+      await cancelSubscription(subscriptionToCancel);
+      setCancelDialogOpen(false);
+      setSubscriptionToCancel(null);
+    } catch (error) {
+      // Error handling is done in the hook
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
@@ -807,7 +821,10 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
                       <Button
                         size="sm"
                         variant="destructive"
-                        onClick={() => cancelSubscription(subscription.id)}
+                        onClick={() => {
+                          setSubscriptionToCancel(subscription.id);
+                          setCancelDialogOpen(true);
+                        }}
                         className="flex-1"
                       >
                         <X className="h-4 w-4 mr-2" />
@@ -1204,6 +1221,40 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
             >
               <Play className="h-4 w-4 mr-2" />
               Resume Subscription
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Subscription Confirmation Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Subscription</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to cancel this subscription? This action cannot be undone.
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Your subscription will be cancelled immediately and no future orders will be placed.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setCancelDialogOpen(false);
+                setSubscriptionToCancel(null);
+              }}
+            >
+              Keep Subscription
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleConfirmCancel}
+            >
+              Yes, Cancel Subscription
             </Button>
           </DialogFooter>
         </DialogContent>
