@@ -1,7 +1,8 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,7 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartDate, setDragStartDate] = useState<Date | null>(null);
   const [dragSelectedDates, setDragSelectedDates] = useState<Date[]>([]);
+  const quantityInputRef = useRef<HTMLInputElement>(null);
 
   const selectedVendorData = vendors.find(v => v.name === selectedVendor);
 
@@ -52,6 +54,16 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
       setSelectedProduct(lastOrder.product);
     }
   }, [allOrders, selectedVendor, selectedProduct]);
+
+  // Auto-focus quantity input when vendor and product are both selected
+  useEffect(() => {
+    if (selectedVendor && selectedProduct && quantityInputRef.current) {
+      setTimeout(() => {
+        quantityInputRef.current?.focus();
+        quantityInputRef.current?.select();
+      }, 100);
+    }
+  }, [selectedVendor, selectedProduct]);
 
   // Get customer ID based on auth state
   useEffect(() => {
@@ -529,21 +541,28 @@ const OrderForm = ({ selectedDate, vendors, onPlaceOrder, onCancel, allOrders, o
 
               <div>
                 <label className="block text-sm font-medium mb-1">Quantity</label>
-                <Select 
-                  value={quantity.toString()} 
-                  onValueChange={(value) => setQuantity(parseInt(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3, 4, 5].map(num => (
-                      <SelectItem key={num} value={num.toString()}>
-                        {num}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  ref={quantityInputRef}
+                  type="number"
+                  min="1"
+                  max="99"
+                  step="1"
+                  value={quantity}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 1;
+                    if (value > 0 && value <= 99) {
+                      setQuantity(value);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && quantity > 0) {
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  placeholder="Enter quantity (1-99)"
+                  className="w-full"
+                  disabled={!selectedVendor || !selectedProduct}
+                />
               </div>
             </div>
 

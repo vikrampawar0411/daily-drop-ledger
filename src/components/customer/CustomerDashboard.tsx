@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -202,6 +202,20 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     quantity: 1,
     order_date: new Date(),
   });
+  const calendarQuantityRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus quantity input when vendor and product are auto-selected in calendar form
+  useEffect(() => {
+    const vendorId = newOrderFormData.vendor_id;
+    const productId = newOrderFormData.product_id || (selectedProduct !== 'all' ? selectedProduct : '');
+    
+    if (vendorId && productId && calendarQuantityRef.current) {
+      setTimeout(() => {
+        calendarQuantityRef.current?.focus();
+        calendarQuantityRef.current?.select();
+      }, 100);
+    }
+  }, [newOrderFormData.vendor_id, newOrderFormData.product_id, selectedProduct]);
 
 
   // Auto-apply filters when vendor is selected in new order form
@@ -1747,19 +1761,27 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                               <div className="space-y-2">
                                 <Label>Quantity</Label>
                                 <Input
+                                  ref={calendarQuantityRef}
                                   type="number"
                                   min="1"
+                                  max="99"
                                   step="1"
                                   value={newOrderFormData.quantity}
                                   onChange={(e) => {
                                     const value = parseInt(e.target.value) || 1;
-                                    setNewOrderFormData({ 
-                                      ...newOrderFormData, 
-                                      quantity: value
-                                    })
+                                    if (value > 0 && value <= 99) {
+                                      setNewOrderFormData({ 
+                                        ...newOrderFormData, 
+                                        quantity: value
+                                      });
+                                    }
                                   }}
-                                  placeholder="Enter quantity"
-                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && newOrderFormData.quantity > 0) {
+                                      e.currentTarget.blur();
+                                    }
+                                  }}
+                                  placeholder="Enter quantity (1-99)"
                                 />
                               </div>
                             )}
