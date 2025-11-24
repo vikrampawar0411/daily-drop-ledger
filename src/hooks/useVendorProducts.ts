@@ -51,12 +51,7 @@ export const useVendorProducts = (vendorId?: string) => {
 
       if (error) throw error;
       
-      // Remove duplicates based on product_id
-      const uniqueProducts = (data || []).filter((item, index, self) =>
-        index === self.findIndex((t) => t.product_id === item.product_id)
-      );
-      
-      setVendorProducts(uniqueProducts);
+      setVendorProducts(data || []);
     } catch (error: any) {
       toast({
         title: "Error fetching vendor products",
