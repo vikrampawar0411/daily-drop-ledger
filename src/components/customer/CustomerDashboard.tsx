@@ -55,6 +55,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   
   // Calendar state - Multiple dates support
   const [calendarSelectedDates, setCalendarSelectedDates] = useState<Date[] | undefined>(undefined);
+  const [lastClickedCalendarDate, setLastClickedCalendarDate] = useState<Date | null>(null);
   
   // Date range state
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -931,17 +932,18 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
       return { date: null, orders: [] };
     }
     
-  const lastSelectedDate = calendarSelectedDates[calendarSelectedDates.length - 1];
-  const lastDateStr = format(lastSelectedDate, 'yyyy-MM-dd');
-  const existingOrders = orders.filter(o => o.order_date === lastDateStr);
-  
-  return { date: lastSelectedDate, orders: existingOrders };
-}, [
-  // Use string representation of the last date for proper dependency tracking
-  calendarSelectedDates?.[calendarSelectedDates.length - 1]?.toISOString(),
-  calendarSelectedDates?.length,
-  orders
-]);
+    // Use the last clicked date if available, otherwise fall back to last in array
+    const dateToShow = lastClickedCalendarDate || calendarSelectedDates[calendarSelectedDates.length - 1];
+    const lastDateStr = format(dateToShow, 'yyyy-MM-dd');
+    const existingOrders = orders.filter(o => o.order_date === lastDateStr);
+    
+    return { date: dateToShow, orders: existingOrders };
+  }, [
+    // Track the actual clicked date
+    lastClickedCalendarDate?.toISOString(),
+    calendarSelectedDates?.length,
+    orders
+  ]);
 
   // Unfiltered orders for calendar display - shows all orders in the month for selected vendor
   const calendarOrders = useMemo(() => {
@@ -1547,10 +1549,30 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                       setCalendarSelectedDates(undefined); // This triggers the useEffect to auto-clear filters
                     }}
                     onDateClick={(dates) => {
+                      // Detect which date was actually clicked by comparing arrays
+                      let clickedDate: Date | null = null;
+                      
                       if (dates.length > 0) {
-                        // Dates are selected
-                        const lastDate = dates[dates.length - 1];
-                        const dateMonth = format(lastDate, 'yyyy-MM');
+                        const prevDates = calendarSelectedDates || [];
+                        
+                        if (dates.length > prevDates.length) {
+                          // A date was added - find which one
+                          clickedDate = dates.find(d => 
+                            !prevDates.some(pd => pd.toDateString() === d.toDateString())
+                          ) || dates[dates.length - 1];
+                        } else if (dates.length < prevDates.length) {
+                          // A date was removed - use the last remaining selected date
+                          clickedDate = dates[dates.length - 1];
+                        } else {
+                          // Same length - use last date as fallback
+                          clickedDate = dates[dates.length - 1];
+                        }
+                        
+                        // Update the last clicked date state
+                        setLastClickedCalendarDate(clickedDate);
+                        
+                        // Sync month with clicked date
+                        const dateMonth = format(clickedDate, 'yyyy-MM');
                         if (dateMonth !== selectedMonth) {
                           setSelectedMonth(dateMonth);
                         }
@@ -1571,15 +1593,16 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                           setSelectedProduct(productId);
                         }
                         
-                        // Pre-fill the form with guaranteed values
+                        // Pre-fill the form with clicked date
                         setNewOrderFormData({
                           vendor_id: vendorId,
                           product_id: productId,
                           quantity: 1,
-                          order_date: lastDate,
+                          order_date: clickedDate,
                         });
                       } else {
-                        // Dates are cleared - only reset form, keep filters intact
+                        // All dates cleared
+                        setLastClickedCalendarDate(null);
                         setNewOrderFormData({
                           vendor_id: selectedVendor || '',
                           product_id: selectedProduct !== 'all' ? selectedProduct : '',
