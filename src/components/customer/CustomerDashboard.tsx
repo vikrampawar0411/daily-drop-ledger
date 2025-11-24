@@ -936,7 +936,12 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     const existingOrders = monthlyStats.orders.filter(o => o.order_date === lastDateStr);
     
     return { date: lastSelectedDate, orders: existingOrders };
-  }, [calendarSelectedDates, monthlyStats.orders]);
+  }, [
+    // Use string representation of the last date for proper dependency tracking
+    calendarSelectedDates?.[calendarSelectedDates.length - 1]?.toISOString(),
+    calendarSelectedDates?.length,
+    monthlyStats.orders
+  ]);
 
   // Unfiltered orders for calendar display - shows all orders in the month for selected vendor
   const calendarOrders = useMemo(() => {
