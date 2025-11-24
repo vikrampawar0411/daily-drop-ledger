@@ -1880,39 +1880,36 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                               Place Order{calendarSelectedDates && calendarSelectedDates.length > 1 ? 's' : ''}
                             </Button>
 
-                            {/* Show existing orders for selected dates */}
+                            {/* Show existing orders for the last selected date only */}
                             {(() => {
                               if (!calendarSelectedDates || calendarSelectedDates.length === 0) return null;
                               
-                              const allExistingOrders = calendarSelectedDates.flatMap(date => {
-                                const dateStr = format(date, 'yyyy-MM-dd');
-                                return monthlyStats.orders
-                                  .filter(o => o.order_date === dateStr)
-                                  .map(o => ({ ...o, displayDate: dateStr }));
-                              });
+                              // Get the LAST (most recent) selected date
+                              const lastSelectedDate = calendarSelectedDates[calendarSelectedDates.length - 1];
+                              const lastDateStr = format(lastSelectedDate, 'yyyy-MM-dd');
                               
-                              if (allExistingOrders.length === 0) return null;
-
-                              const existingOrders = allExistingOrders;
+                              // Get orders ONLY for the last selected date
+                              const existingOrders = monthlyStats.orders.filter(o => o.order_date === lastDateStr);
                               
-                              if (existingOrders.length > 0) {
-                                return (
-                                  <div className="pt-4 border-t">
-                                    <p className="text-sm font-medium mb-2">Existing Orders:</p>
-                                    <div className="space-y-2">
-                                      {existingOrders.map(order => (
-                                        <div key={order.id} className="text-xs bg-muted p-2 rounded">
-                                          <p className="font-medium">{order.product.name}</p>
-                                          <p className="text-muted-foreground">
-                                            {order.vendor.name} • {order.quantity} {order.unit}
-                                          </p>
-                                        </div>
-                                      ))}
-                                    </div>
+                              if (existingOrders.length === 0) return null;
+                              
+                              return (
+                                <div className="pt-4 border-t">
+                                  <p className="text-sm font-medium mb-2">
+                                    Existing Orders on {format(lastSelectedDate, 'MMM d, yyyy')}:
+                                  </p>
+                                  <div className="space-y-2">
+                                    {existingOrders.map(order => (
+                                      <div key={order.id} className="text-xs bg-muted p-2 rounded">
+                                        <p className="font-medium">{order.product.name}</p>
+                                        <p className="text-muted-foreground">
+                                          {order.vendor.name} • {order.quantity} {order.unit}
+                                        </p>
+                                      </div>
+                                    ))}
                                   </div>
-                                );
-                              }
-                              return null;
+                                </div>
+                              );
                             })()}
                           </CardContent>
                         </Card>
