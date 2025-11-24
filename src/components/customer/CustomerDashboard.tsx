@@ -931,17 +931,17 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
       return { date: null, orders: [] };
     }
     
-    const lastSelectedDate = calendarSelectedDates[calendarSelectedDates.length - 1];
-    const lastDateStr = format(lastSelectedDate, 'yyyy-MM-dd');
-    const existingOrders = monthlyStats.orders.filter(o => o.order_date === lastDateStr);
-    
-    return { date: lastSelectedDate, orders: existingOrders };
-  }, [
-    // Use string representation of the last date for proper dependency tracking
-    calendarSelectedDates?.[calendarSelectedDates.length - 1]?.toISOString(),
-    calendarSelectedDates?.length,
-    monthlyStats.orders
-  ]);
+  const lastSelectedDate = calendarSelectedDates[calendarSelectedDates.length - 1];
+  const lastDateStr = format(lastSelectedDate, 'yyyy-MM-dd');
+  const existingOrders = orders.filter(o => o.order_date === lastDateStr);
+  
+  return { date: lastSelectedDate, orders: existingOrders };
+}, [
+  // Use string representation of the last date for proper dependency tracking
+  calendarSelectedDates?.[calendarSelectedDates.length - 1]?.toISOString(),
+  calendarSelectedDates?.length,
+  orders
+]);
 
   // Unfiltered orders for calendar display - shows all orders in the month for selected vendor
   const calendarOrders = useMemo(() => {
