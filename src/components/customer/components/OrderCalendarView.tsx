@@ -74,26 +74,11 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
               // If current time is past the cutoff, this date cannot be selected
               return now > cutoffDateTime;
             }}
-            modifiers={{
-              today: (date) => {
-                const today = new Date();
-                return date.toDateString() === today.toDateString();
-              },
-              pastCutoff: (date) => {
-                if (!subscribeBeforeTime) return false;
-                
-                const compareDate = new Date(date);
-                compareDate.setHours(0, 0, 0, 0);
-                const now = new Date();
-                const [hours, minutes] = subscribeBeforeTime.split(':').map(Number);
-                
-                const cutoffDateTime = new Date(compareDate);
-                cutoffDateTime.setDate(cutoffDateTime.getDate() - 1);
-                cutoffDateTime.setHours(hours, minutes, 0, 0);
-                
-                // Show as past cutoff if we're past the deadline
-                return now > cutoffDateTime;
-              },
+          modifiers={{
+            today: (date) => {
+              const today = new Date();
+              return date.toDateString() === today.toDateString();
+            },
             deliveredOrder: (date) => {
               const dateStr = format(date, 'yyyy-MM-dd');
               const orders = getOrdersForDate(date);
@@ -126,12 +111,6 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
             },
             selected: {
               boxShadow: '0 0 0 4px hsl(var(--ring)) inset'
-            },
-            pastCutoff: {
-              backgroundColor: 'hsl(0 84% 95%)',
-              color: 'hsl(0 74% 42%)',
-              textDecoration: 'line-through',
-              opacity: 0.6
             },
             deliveredOrder: {
               backgroundColor: 'hsl(142 76% 73%)',
@@ -177,16 +156,6 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
             <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(214 95% 93%)', border: '1px solid hsl(213 97% 78%)', opacity: 0.7 }}></div>
             <span className="font-normal text-gray-500">Future orders</span>
           </div>
-          {subscribeBeforeTime && (
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 rounded" style={{ 
-                backgroundColor: 'hsl(0 84% 95%)', 
-                border: '1px solid hsl(0 74% 42%)',
-                opacity: 0.6 
-              }}></div>
-              <span className="font-normal text-red-600">Past order cutoff time</span>
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>
