@@ -3,7 +3,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Users, ShoppingCart, Calendar as CalendarIcon, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock, Download, FileDown, ChevronDown, ChevronUp, AlertTriangle, MoreVertical, Edit, Trash2, Eye, Pencil, Check, X, AlertCircle } from "lucide-react";
+import { Users, ShoppingCart, Calendar as CalendarIcon, Package, Plus, Bell, TrendingUp, CheckCircle2, Clock, Download, FileDown, ChevronDown, ChevronUp, AlertTriangle, MoreVertical, Edit, Trash2, Eye, Pencil, Check, X, AlertCircle, History, Repeat } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { VendorOrderTabs } from "./components/VendorOrderTabs";
@@ -12,6 +12,7 @@ import { useOrders } from "@/hooks/useOrders";
 import { useOrders as useCustomerOrders } from "@/components/customer/hooks/useOrders";
 import { useVendors } from "@/hooks/useVendors";
 import { useVendorProducts } from "@/hooks/useVendorProducts";
+import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,6 +59,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   const { orders, loading: ordersLoading, updateOrderStatus, raiseDispute, clearDispute, deleteOrder, updateOrder, refetch } = useOrders();
   const { addOrder: addCalendarOrder, refetch: refetchCalendar } = useCustomerOrders();
   const { vendors, loading: vendorsLoading } = useVendors();
+  const { createSubscription } = useSubscriptions();
   const { toast } = useToast();
   const [customerName, setCustomerName] = useState("");
   const [connectionCount, setConnectionCount] = useState(0);
@@ -88,6 +90,19 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   
   // Cancel order state
   const [orderToCancel, setOrderToCancel] = useState<{ id: string; productName: string } | null>(null);
+  
+  // Subscription dialog state
+  const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
+  const [subscriptionFormData, setSubscriptionFormData] = useState({
+    frequency: 'daily',
+    startDate: new Date(),
+    quantity: 1,
+  });
+  
+  // Past orders dialog state
+  const [pastOrdersDialogOpen, setPastOrdersDialogOpen] = useState(false);
+  const [pastOrderDates, setPastOrderDates] = useState<Date[]>([]);
+  const [pastOrderQuantity, setPastOrderQuantity] = useState(1);
 
   // Set initial vendor after vendors load
   useEffect(() => {
@@ -1630,6 +1645,45 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                     }}
                   />
 
+                  {/* Action Buttons Below Calendar */}
+                  {selectedVendor && selectedProduct !== 'all' && (
+                    <Card className="lg:col-span-2">
+                      <CardContent className="pt-6">
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <Button
+                            onClick={() => {
+                              setSubscriptionFormData({
+                                frequency: 'daily',
+                                startDate: new Date(),
+                                quantity: 1,
+                              });
+                              setSubscriptionDialogOpen(true);
+                            }}
+                            className="flex-1"
+                          >
+                            <Repeat className="h-4 w-4 mr-2" />
+                            Subscribe to this product
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              setPastOrderDates([]);
+                              setPastOrderQuantity(1);
+                              setPastOrdersDialogOpen(true);
+                            }}
+                            className="flex-1"
+                          >
+                            <History className="h-4 w-4 mr-2" />
+                            Add missing orders from past dates
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-3 text-center">
+                          {availableProducts.find(p => p.id === selectedProduct)?.name} from {vendors.find(v => v.id === selectedVendor)?.name}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {/* Order Form - Right Side */}
                   {calendarSelectedDates && calendarSelectedDates.length > 0 && (
                     <>
@@ -2776,6 +2830,250 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
             </Button>
             <Button onClick={handleBulkModify}>
               Update {selectedOrderIds.length} Orders
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Subscription Dialog */}
+      <Dialog open={subscriptionDialogOpen} onOpenChange={setSubscriptionDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Subscription</DialogTitle>
+            <DialogDescription>
+              Subscribe to receive this product regularly
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Vendor</Label>
+              <Input 
+                value={vendors.find(v => v.id === selectedVendor)?.name || ''} 
+                disabled 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Product</Label>
+              <Input 
+                value={availableProducts.find(p => p.id === selectedProduct)?.name || ''} 
+                disabled 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Frequency</Label>
+              <Select 
+                value={subscriptionFormData.frequency}
+                onValueChange={(value) => setSubscriptionFormData(prev => ({ ...prev, frequency: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Start Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {format(subscriptionFormData.startDate, 'PPP')}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <DatePickerCalendar
+                    mode="single"
+                    selected={subscriptionFormData.startDate}
+                    onSelect={(date) => date && setSubscriptionFormData(prev => ({ ...prev, startDate: date }))}
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label>Quantity</Label>
+              <Input
+                type="number"
+                min="1"
+                value={subscriptionFormData.quantity}
+                onChange={(e) => setSubscriptionFormData(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSubscriptionDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={async () => {
+              try {
+                const product = availableProducts.find(p => p.id === selectedProduct);
+                
+                if (!product) {
+                  toast({
+                    title: "Error",
+                    description: "Product information not found",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+
+                // Get customer ID
+                const { data: customer } = await supabase
+                  .from("customers")
+                  .select("id")
+                  .eq("user_id", user?.id)
+                  .maybeSingle();
+
+                if (!customer) {
+                  toast({
+                    title: "Error",
+                    description: "Customer profile not found",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+
+                // Get vendor product for price
+                const { data: vendorProduct } = await supabase
+                  .from("vendor_products")
+                  .select("price_override, product:products(unit)")
+                  .eq("vendor_id", selectedVendor)
+                  .eq("product_id", selectedProduct)
+                  .maybeSingle();
+
+                await createSubscription({
+                  customer_id: customer.id,
+                  vendor_id: selectedVendor,
+                  product_id: selectedProduct,
+                  quantity: subscriptionFormData.quantity,
+                  unit: (vendorProduct?.product as any)?.unit || 'unit',
+                  price_per_unit: vendorProduct?.price_override || product.price,
+                  frequency: subscriptionFormData.frequency,
+                  start_date: format(subscriptionFormData.startDate, 'yyyy-MM-dd'),
+                  status: 'active',
+                  end_date: null,
+                  paused_from: null,
+                  paused_until: null,
+                });
+
+                setSubscriptionDialogOpen(false);
+                toast({
+                  title: "Success",
+                  description: "Subscription created! Redirecting to Subscription Management...",
+                });
+                
+                // Navigate to subscription management tab
+                if (onNavigate) {
+                  setTimeout(() => {
+                    onNavigate('subscriptions');
+                  }, 1000);
+                }
+              } catch (error: any) {
+                console.error('Error creating subscription:', error);
+              }
+            }}>
+              Create Subscription
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Past Orders Dialog */}
+      <Dialog open={pastOrdersDialogOpen} onOpenChange={setPastOrdersDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Missing Orders</DialogTitle>
+            <DialogDescription>
+              Select past dates to add orders that were missed
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Vendor</Label>
+              <Input 
+                value={vendors.find(v => v.id === selectedVendor)?.name || ''} 
+                disabled 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Product</Label>
+              <Input 
+                value={availableProducts.find(p => p.id === selectedProduct)?.name || ''} 
+                disabled 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Select Past Dates</Label>
+              <DatePickerCalendar
+                mode="multiple"
+                selected={pastOrderDates}
+                onSelect={(dates) => setPastOrderDates(dates || [])}
+                disabled={(date) => date >= new Date(new Date().setHours(0, 0, 0, 0))}
+                className="rounded-md border"
+              />
+              {pastOrderDates.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {pastOrderDates.length} date{pastOrderDates.length > 1 ? 's' : ''} selected
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Quantity per order</Label>
+              <Input
+                type="number"
+                min="1"
+                value={pastOrderQuantity}
+                onChange={(e) => setPastOrderQuantity(parseInt(e.target.value) || 1)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPastOrdersDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              disabled={pastOrderDates.length === 0}
+              onClick={async () => {
+                try {
+                  // Get the full product details from orders
+                  const productOrder = orders.find(o => o.product.id === selectedProduct);
+                  
+                  if (!productOrder) {
+                    toast({
+                      title: "Error",
+                      description: "Product information not found",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  
+                  for (const date of pastOrderDates) {
+                    await addCalendarOrder(date, {
+                      vendor: productOrder.vendor.name,
+                      product: productOrder.product.name,
+                      quantity: pastOrderQuantity,
+                      unit: productOrder.unit,
+                    });
+                  }
+                  
+                  setPastOrdersDialogOpen(false);
+                  refetch();
+                  refetchCalendar();
+                  
+                  toast({
+                    title: "Success",
+                    description: `Created ${pastOrderDates.length} order${pastOrderDates.length > 1 ? 's' : ''} for past dates`,
+                  });
+                } catch (error: any) {
+                  console.error('Error creating past orders:', error);
+                }
+              }}
+            >
+              Create {pastOrderDates.length} Order{pastOrderDates.length !== 1 ? 's' : ''}
             </Button>
           </DialogFooter>
         </DialogContent>
