@@ -1646,7 +1646,36 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                     }}
                   />
 
-                  {/* Action Buttons Below Calendar */}
+                  {/* Add Missing Orders - Always Visible */}
+                  <Card className="lg:col-span-2">
+                    <CardContent className="pt-6">
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          if (!selectedVendor || selectedProduct === 'all') {
+                            toast({
+                              title: "Selection Required",
+                              description: "Please select a vendor and product first",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          setPastOrderDates([]);
+                          setPastOrderQuantity(1);
+                          setPastOrdersDialogOpen(true);
+                        }}
+                        className="w-full"
+                      >
+                        <History className="h-4 w-4 mr-2" />
+                        Add missing orders from past dates
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-2 text-center">
+                        Add orders for dates that have passed
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Subscribe Button - Only When No Active Subscription */}
                   {selectedVendor && selectedProduct !== 'all' && (() => {
                     // Check if there's already an active subscription for this vendor+product
                     const hasActiveSubscription = subscriptions.some(sub => 
@@ -1659,35 +1688,21 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                   })() && (
                     <Card className="lg:col-span-2">
                       <CardContent className="pt-6">
-                        <div className="flex flex-col sm:flex-row gap-3">
-                          <Button
-                            onClick={() => {
-                              setSubscriptionFormData({
-                                frequency: 'daily',
-                                startDate: new Date(),
-                                endDate: null,
-                                quantity: 1,
-                              });
-                              setSubscriptionDialogOpen(true);
-                            }}
-                            className="flex-1"
-                          >
-                            <Repeat className="h-4 w-4 mr-2" />
-                            Subscribe to this product
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            onClick={() => {
-                              setPastOrderDates([]);
-                              setPastOrderQuantity(1);
-                              setPastOrdersDialogOpen(true);
-                            }}
-                            className="flex-1"
-                          >
-                            <History className="h-4 w-4 mr-2" />
-                            Add missing orders from past dates
-                          </Button>
-                        </div>
+                        <Button
+                          onClick={() => {
+                            setSubscriptionFormData({
+                              frequency: 'daily',
+                              startDate: new Date(),
+                              endDate: null,
+                              quantity: 1,
+                            });
+                            setSubscriptionDialogOpen(true);
+                          }}
+                          className="w-full"
+                        >
+                          <Repeat className="h-4 w-4 mr-2" />
+                          Subscribe to this product
+                        </Button>
                         <p className="text-xs text-muted-foreground mt-3 text-center">
                           {availableProducts.find(p => p.id === selectedProduct)?.name} from {vendors.find(v => v.id === selectedVendor)?.name}
                         </p>
