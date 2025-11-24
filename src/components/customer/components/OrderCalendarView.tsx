@@ -52,28 +52,27 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
             onMonthChange={onMonthChange}
             className={cn("rounded-md border pointer-events-auto")}
             disabled={(date) => {
-              // Disable all dates before today
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
               const compareDate = new Date(date);
               compareDate.setHours(0, 0, 0, 0);
               
-              if (compareDate < today) return true;
-              
-              // If subscribeBeforeTime is provided, check cutoff for today
-              if (subscribeBeforeTime && compareDate.getTime() === today.getTime()) {
-                const now = new Date();
-                const [hours, minutes] = subscribeBeforeTime.split(':').map(Number);
-                const cutoffToday = new Date(today);
-                cutoffToday.setHours(hours, minutes, 0, 0);
-                
-                // If current time is past cutoff, can't order for tomorrow
-                if (now > cutoffToday) {
-                  return true;
-                }
+              // If no cutoff time is set, only disable past dates
+              if (!subscribeBeforeTime) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return compareDate < today;
               }
               
-              return false;
+              // Calculate cutoff datetime for this specific date
+              // Cutoff = (orderDate - 1 day) at subscribe_before time
+              const now = new Date();
+              const [hours, minutes] = subscribeBeforeTime.split(':').map(Number);
+              
+              const cutoffDateTime = new Date(compareDate);
+              cutoffDateTime.setDate(cutoffDateTime.getDate() - 1); // Day before delivery
+              cutoffDateTime.setHours(hours, minutes, 0, 0);
+              
+              // If current time is past the cutoff, this date cannot be selected
+              return now > cutoffDateTime;
             }}
             modifiers={{
               today: (date) => {
@@ -83,19 +82,17 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
               pastCutoff: (date) => {
                 if (!subscribeBeforeTime) return false;
                 
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
                 const compareDate = new Date(date);
                 compareDate.setHours(0, 0, 0, 0);
+                const now = new Date();
+                const [hours, minutes] = subscribeBeforeTime.split(':').map(Number);
                 
-                if (compareDate.getTime() === today.getTime()) {
-                  const now = new Date();
-                  const [hours, minutes] = subscribeBeforeTime.split(':').map(Number);
-                  const cutoffToday = new Date(today);
-                  cutoffToday.setHours(hours, minutes, 0, 0);
-                  return now > cutoffToday;
-                }
-                return false;
+                const cutoffDateTime = new Date(compareDate);
+                cutoffDateTime.setDate(cutoffDateTime.getDate() - 1);
+                cutoffDateTime.setHours(hours, minutes, 0, 0);
+                
+                // Show as past cutoff if we're past the deadline
+                return now > cutoffDateTime;
               },
             deliveredOrder: (date) => {
               const dateStr = format(date, 'yyyy-MM-dd');
