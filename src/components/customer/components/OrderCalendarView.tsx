@@ -126,10 +126,10 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
             },
             futureOrder: {
               backgroundColor: 'hsl(214 95% 93%)',
-              color: 'hsl(213 97% 70%)',
+              color: 'hsl(215 20% 25%)',
               fontWeight: '400',
               border: '1px solid hsl(213 97% 78%)',
-              opacity: 0.7
+              opacity: 1
             }
           }}
           modifiersClassNames={{
@@ -147,8 +147,8 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
             <span className="font-normal">Pending orders (action needed)</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(214 95% 93%)', border: '1px solid hsl(213 97% 78%)', opacity: 0.7 }}></div>
-            <span className="font-normal text-gray-500">Future orders</span>
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(214 95% 93%)', border: '1px solid hsl(213 97% 78%)' }}></div>
+            <span className="font-normal">Future orders</span>
           </div>
         </div>
       </CardContent>
