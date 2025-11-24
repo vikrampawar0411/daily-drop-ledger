@@ -130,12 +130,6 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
               fontWeight: '400',
               border: '1px solid hsl(213 97% 78%)',
               opacity: 0.7
-            },
-            disabled: {
-              opacity: 1,
-              color: 'inherit',
-              cursor: 'not-allowed',
-              pointerEvents: 'none'
             }
           }}
           modifiersClassNames={{
