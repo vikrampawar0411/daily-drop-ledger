@@ -45,6 +45,8 @@ export interface OrderWithDetails {
     name: string;
     category: string;
     price: number;
+    subscribe_before?: string | null;
+    delivery_before?: string | null;
   };
   updated_by?: {
     id: string;
@@ -88,7 +90,7 @@ export const useOrders = () => {
             societies:society_id(id, name)
           ),
           vendor:vendors(id, name, category),
-          product:products(id, name, category, price)
+          product:products(id, name, category, price, subscribe_before, delivery_before)
         `);
 
       // Filter based on user role
