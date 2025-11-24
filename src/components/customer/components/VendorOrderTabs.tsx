@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Package } from "lucide-react";
@@ -36,6 +36,7 @@ interface VendorStats {
 
 export const VendorOrderTabs = ({ onNavigateToHistory }: VendorOrderTabsProps) => {
   const { orders, loading } = useOrders();
+  const [selectedVendorTab, setSelectedVendorTab] = useState<string>("");
 
   const vendorStats: VendorStats[] = useMemo(() => {
     // Group orders by vendor
@@ -113,6 +114,13 @@ export const VendorOrderTabs = ({ onNavigateToHistory }: VendorOrderTabsProps) =
     });
   }, [orders]);
 
+  // Initialize selected vendor tab when vendor stats are available
+  useMemo(() => {
+    if (vendorStats.length > 0 && !selectedVendorTab) {
+      setSelectedVendorTab(vendorStats[0].name);
+    }
+  }, [vendorStats, selectedVendorTab]);
+
   if (loading) {
     return (
       <Card>
@@ -148,7 +156,7 @@ export const VendorOrderTabs = ({ onNavigateToHistory }: VendorOrderTabsProps) =
         <CardTitle>Vendor Order Details</CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue={vendorStats[0].name} className="w-full">
+        <Tabs value={selectedVendorTab} onValueChange={setSelectedVendorTab} className="w-full">
           <TabsList className="w-full justify-start">
             {vendorStats.map((vendor) => (
               <TabsTrigger key={vendor.name} value={vendor.name}>
