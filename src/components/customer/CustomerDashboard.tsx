@@ -1236,12 +1236,21 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
 
             return sortedNextOrders.map(order => (
               <div key={order.id} className="bg-gray-50 rounded-lg p-3 border space-y-2">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1 flex-1">
-                    <p className="font-semibold text-gray-900">{order.product.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {order.vendor.name} • {new Date(order.order_date).toLocaleDateString()}
-                    </p>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 flex-1">
+                    {order.product.image_url && (
+                      <img 
+                        src={order.product.image_url} 
+                        alt={order.product.name}
+                        className="w-12 h-12 rounded-md object-cover border border-border flex-shrink-0"
+                      />
+                    )}
+                    <div className="space-y-1 flex-1">
+                      <p className="font-semibold text-gray-900">{order.product.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {order.vendor.name} • {new Date(order.order_date).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-gray-900">{order.quantity} {order.unit}</p>
