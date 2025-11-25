@@ -16,22 +16,24 @@ const OrderDetailsView = ({ selectedDate, orders, onDeleteOrder, onShowOrderForm
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          {selectedDate ? `Orders for ${selectedDate.toLocaleDateString()}` : "Select a date"}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <CardTitle className="text-lg">
+            {selectedDate ? `Orders for ${selectedDate.toLocaleDateString()}` : "Select a date"}
+          </CardTitle>
           {selectedDate && orders.length > 0 && (
-            <Badge variant="outline" className="text-sm">
+            <Badge variant="outline" className="text-sm self-start sm:self-auto">
               {orders.length} orders
             </Badge>
           )}
-        </CardTitle>
+        </div>
       </CardHeader>
       <CardContent>
         {selectedDate ? (
           <div className="space-y-4">
             {orders.length > 0 ? (
-              <div className="space-y-3">
+                <div className="space-y-3">
                 {orders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={order.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-3">
                       {order.product.toLowerCase().includes('milk') ? (
                         <Milk className="h-5 w-5 text-blue-600" />
