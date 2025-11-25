@@ -233,18 +233,29 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   });
   const calendarQuantityRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus quantity input when vendor and product are auto-selected in calendar form
+  // Calculate default date based on product's subscribe_before deadline
   useEffect(() => {
-    const vendorId = newOrderFormData.vendor_id;
-    const productId = newOrderFormData.product_id || (selectedProduct !== 'all' ? selectedProduct : '');
+    const productId = selectedProduct !== 'all' ? selectedProduct : '';
+    if (!productId) return;
+
+    const productFromOrders = orders.find(o => o.product.id === productId)?.product;
+    const subscribeBeforeTime = productFromOrders?.subscribe_before;
     
-    if (vendorId && productId && calendarQuantityRef.current) {
-      setTimeout(() => {
-        calendarQuantityRef.current?.focus();
-        calendarQuantityRef.current?.select();
-      }, 100);
+    if (subscribeBeforeTime && (!calendarSelectedDates || calendarSelectedDates.length === 0)) {
+      const now = new Date();
+      const [hours, minutes] = subscribeBeforeTime.split(':').map(Number);
+      
+      // Check if current time is past today's deadline
+      const todayCutoff = new Date();
+      todayCutoff.setHours(hours, minutes, 0, 0);
+      
+      // If we're past the deadline, default to tomorrow
+      const defaultDate = now > todayCutoff ? new Date(now.getTime() + 24 * 60 * 60 * 1000) : new Date();
+      defaultDate.setHours(0, 0, 0, 0);
+      
+      setCalendarSelectedDates([defaultDate]);
     }
-  }, [newOrderFormData.vendor_id, newOrderFormData.product_id, selectedProduct]);
+  }, [selectedProduct, orders]);
 
 
   // Auto-apply filters when vendor is selected in new order form
