@@ -1,3 +1,4 @@
+import { useRef, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,18 @@ const OrderCalendarView = ({
   onProductChange,
   orders
 }: OrderCalendarViewProps) => {
+  const calendarRef = useRef<HTMLDivElement>(null);
+
+  // Autofocus calendar when vendor and product are selected
+  useEffect(() => {
+    if (selectedVendor && selectedProduct && selectedProduct !== 'all' && calendarRef.current) {
+      const calendarButton = calendarRef.current.querySelector('button[name="day"]');
+      if (calendarButton) {
+        (calendarButton as HTMLElement).focus();
+      }
+    }
+  }, [selectedVendor, selectedProduct]);
+
   const handleDateSelect = (dates: Date[] | undefined) => {
     onSelectDates(dates);
     
@@ -132,14 +145,15 @@ const OrderCalendarView = ({
         )}
         
 
-        <Calendar
-            mode="multiple"
-            selected={selectedDates}
-            onSelect={handleDateSelect}
-            month={month}
-            onMonthChange={onMonthChange}
-            className={cn("rounded-md border pointer-events-auto")}
-            disabled={(date) => {
+        <div ref={calendarRef}>
+          <Calendar
+              mode="multiple"
+              selected={selectedDates}
+              onSelect={handleDateSelect}
+              month={month}
+              onMonthChange={onMonthChange}
+              className={cn("rounded-md border pointer-events-auto")}
+              disabled={(date) => {
               const compareDate = new Date(date);
               compareDate.setHours(0, 0, 0, 0);
               
@@ -225,6 +239,7 @@ const OrderCalendarView = ({
             disabled: 'cursor-not-allowed'
           }}
         />
+        </div>
         <div className="mt-4 space-y-2 text-sm text-muted-foreground">
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(142 76% 73%)', border: '2px solid hsl(142 71% 45%)' }}></div>
