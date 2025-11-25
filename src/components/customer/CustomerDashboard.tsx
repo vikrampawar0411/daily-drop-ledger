@@ -1262,10 +1262,13 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
             ));
           })()}
           <div className="flex items-center space-x-4 text-gray-600 pt-2 border-t border-gray-200">
-            <div className="flex items-center space-x-2">
+            <button 
+              onClick={() => setActiveTab?.("vendors")}
+              className="flex items-center space-x-2 hover:text-primary transition-colors cursor-pointer"
+            >
               <Users className="h-4 w-4" />
-              <span>{connectionCount} Connected Vendors</span>
-            </div>
+              <span className="underline">{connectionCount} Connected Vendors</span>
+            </button>
           </div>
         </CardContent>
       </Card>
@@ -2169,6 +2172,19 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                   <Button variant="outline">
                     {tableExpanded ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
                     {tableExpanded ? 'Hide' : 'Show'} Detailed Orders
+                    {(() => {
+                      const vendorName = selectedVendor ? vendors.find(v => v.id === selectedVendor)?.name : null;
+                      const productName = selectedProduct && selectedProduct !== 'all' ? availableProducts.find(p => p.id === selectedProduct)?.name : null;
+                      
+                      if (vendorName && productName) {
+                        return <span className="ml-2 text-xs text-muted-foreground">({vendorName} - {productName})</span>;
+                      } else if (vendorName) {
+                        return <span className="ml-2 text-xs text-muted-foreground">({vendorName})</span>;
+                      } else if (productName) {
+                        return <span className="ml-2 text-xs text-muted-foreground">({productName})</span>;
+                      }
+                      return null;
+                    })()}
                     {!tableExpanded && (
                       <span className="ml-2 text-xs text-muted-foreground">
                         {calendarSelectedDates && calendarSelectedDates.length > 0 ? (
