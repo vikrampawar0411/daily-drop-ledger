@@ -1,6 +1,8 @@
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -8,6 +10,18 @@ interface Order {
   id: string;
   order_date: string;
   status: string;
+  [key: string]: any;
+}
+
+interface Vendor {
+  id: string;
+  name: string;
+  [key: string]: any;
+}
+
+interface Product {
+  id: string;
+  name: string;
   [key: string]: any;
 }
 
@@ -22,9 +36,34 @@ interface OrderCalendarViewProps {
   subscribeBeforeTime?: string | null;
   subscriptionCount?: number;
   onNavigateToSubscriptions?: () => void;
+  vendors: Vendor[];
+  availableProducts: Product[];
+  selectedVendor: string;
+  selectedProduct: string;
+  onVendorChange: (vendorId: string) => void;
+  onProductChange: (productId: string) => void;
+  orders: any[];
 }
 
-const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getOrdersForDate, onDateClick, month, onMonthChange, subscribeBeforeTime, subscriptionCount, onNavigateToSubscriptions }: OrderCalendarViewProps) => {
+const OrderCalendarView = ({ 
+  selectedDates, 
+  onSelectDates, 
+  hasOrdersOnDate, 
+  getOrdersForDate, 
+  onDateClick, 
+  month, 
+  onMonthChange, 
+  subscribeBeforeTime, 
+  subscriptionCount, 
+  onNavigateToSubscriptions,
+  vendors,
+  availableProducts,
+  selectedVendor,
+  selectedProduct,
+  onVendorChange,
+  onProductChange,
+  orders
+}: OrderCalendarViewProps) => {
   const handleDateSelect = (dates: Date[] | undefined) => {
     onSelectDates(dates);
     
@@ -45,7 +84,54 @@ const OrderCalendarView = ({ selectedDates, onSelectDates, hasOrdersOnDate, getO
         <CardTitle>Order View</CardTitle>
         <p className="text-xs text-muted-foreground">(Select date(s) to place new order)</p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {/* Vendor Dropdown */}
+        <div className="space-y-2">
+          <Label>Select Vendor</Label>
+          <Select
+            value={selectedVendor}
+            onValueChange={onVendorChange}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose vendor" />
+            </SelectTrigger>
+            <SelectContent className="bg-background z-50">
+              {vendors.map((vendor) => (
+                <SelectItem key={vendor.id} value={vendor.id}>
+                  {vendor.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Product Dropdown - Show after vendor is selected */}
+        {selectedVendor && (
+          <div className="space-y-2">
+            <Label>Select Product</Label>
+            <Select
+              value={selectedProduct !== 'all' ? selectedProduct : ''}
+              onValueChange={onProductChange}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Choose product" />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                {availableProducts
+                  .filter(p => {
+                    return orders.some(o => o.vendor.id === selectedVendor && o.product.id === p.id);
+                  })
+                  .map((product) => (
+                    <SelectItem key={product.id} value={product.id}>
+                      {product.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        
+
         <Calendar
             mode="multiple"
             selected={selectedDates}
