@@ -1677,6 +1677,30 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                     })()}
                     subscriptionCount={subscriptions.filter(sub => sub.status === 'active').length}
                     onNavigateToSubscriptions={() => setActiveTab?.("subscriptions")}
+                    vendors={vendors}
+                    availableProducts={availableProducts}
+                    selectedVendor={selectedVendor}
+                    selectedProduct={selectedProduct}
+                    onVendorChange={(value) => {
+                      setSelectedVendor(value);
+                      setSelectedProduct('all');
+                      setNewOrderFormData({ 
+                        vendor_id: value,
+                        product_id: '', // Reset product when vendor changes
+                        quantity: 1,
+                        order_date: calendarSelectedDates && calendarSelectedDates.length > 0 
+                          ? calendarSelectedDates[0] 
+                          : new Date()
+                      });
+                    }}
+                    onProductChange={(value) => {
+                      setSelectedProduct(value);
+                      setNewOrderFormData({ 
+                        ...newOrderFormData, 
+                        product_id: value 
+                      });
+                    }}
+                    orders={orders}
                     onDateClick={(dates) => {
                       // Detect which date was actually clicked by comparing arrays
                       let clickedDate: Date | null = null;
@@ -1930,8 +1954,8 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                             )}
                             
                             {/* Order Cutoff Banner */}
-                            {newOrderFormData.product_id && (() => {
-                              const productFromOrders = orders.find(o => o.product.id === newOrderFormData.product_id)?.product;
+                            {selectedProduct && selectedProduct !== 'all' && (() => {
+                              const productFromOrders = orders.find(o => o.product.id === selectedProduct)?.product;
                               const subscribeBeforeTime = productFromOrders?.subscribe_before;
                               
                               if (subscribeBeforeTime) {
@@ -1952,70 +1976,8 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                             })()}
                           </CardHeader>
                           <CardContent className="space-y-4">
-                            
-                            {/* Vendor Dropdown - Always visible with pre-selected value */}
-                            <div className="space-y-2">
-                              <Label>Select Vendor</Label>
-                              <Select
-                                value={newOrderFormData.vendor_id || selectedVendor}
-                                onValueChange={(value) => {
-                                  setNewOrderFormData({ 
-                                    vendor_id: value,
-                                    product_id: '', // Reset product when vendor changes
-                                    quantity: 1,
-                                    order_date: calendarSelectedDates && calendarSelectedDates.length > 0 
-                                      ? calendarSelectedDates[0] 
-                                      : new Date()
-                                  });
-                                }}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Choose vendor" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {vendors.map((vendor) => (
-                                    <SelectItem key={vendor.id} value={vendor.id}>
-                                      {vendor.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            {/* Product Dropdown - Show after vendor is selected */}
-                            {(newOrderFormData.vendor_id || selectedVendor) && (
-                              <div className="space-y-2">
-                                <Label>Select Product</Label>
-                                <Select
-                                  value={newOrderFormData.product_id || (selectedProduct !== 'all' ? selectedProduct : '')}
-                                  onValueChange={(value) => 
-                                    setNewOrderFormData({ 
-                                      ...newOrderFormData, 
-                                      product_id: value 
-                                    })
-                                  }
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Choose product" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {availableProducts
-                                      .filter(p => {
-                                        const vendorId = newOrderFormData.vendor_id || selectedVendor;
-                                        return orders.some(o => o.vendor.id === vendorId && o.product.id === p.id);
-                                      })
-                                      .map((product) => (
-                                        <SelectItem key={product.id} value={product.id}>
-                                          {product.name}
-                                        </SelectItem>
-                                      ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            )}
-
-                            {/* Quantity Input - Show after product is selected */}
-                            {(newOrderFormData.product_id || (selectedProduct !== 'all')) && (
+                            {/* Quantity Input - Show after vendor and product are selected */}
+                            {selectedVendor && selectedProduct !== 'all' && (
                               <div className="space-y-2">
                                 <Label>Quantity</Label>
                                 <Input
@@ -2050,8 +2012,9 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                               disabled={
                                 !newOrderFormData.quantity || 
                                 newOrderFormData.quantity < 1 ||
-                                !(newOrderFormData.vendor_id || selectedVendor) ||
-                                !(newOrderFormData.product_id || (selectedProduct !== 'all'))
+                                !selectedVendor ||
+                                !selectedProduct || 
+                                selectedProduct === 'all'
                               }
                               onClick={async () => {
                                 try {
