@@ -2152,65 +2152,73 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
           {/* Orders Table for Selected Period */}
           <Collapsible open={tableExpanded} onOpenChange={setTableExpanded}>
             <div ref={orderTableRef} className="space-y-4">
-              <div className="flex items-center justify-between">
-                <CollapsibleTrigger asChild>
-                  <Button variant="outline">
-                    {tableExpanded ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
-                    {tableExpanded ? 'Hide' : 'Show'} Detailed Orders
-                    {(() => {
-                      const vendorName = selectedVendor ? vendors.find(v => v.id === selectedVendor)?.name : null;
-                      const productName = selectedProduct && selectedProduct !== 'all' ? availableProducts.find(p => p.id === selectedProduct)?.name : null;
-                      
-                      if (vendorName && productName) {
-                        return <span className="ml-2 text-xs text-muted-foreground">({vendorName} - {productName})</span>;
-                      } else if (vendorName) {
-                        return <span className="ml-2 text-xs text-muted-foreground">({vendorName})</span>;
-                      } else if (productName) {
-                        return <span className="ml-2 text-xs text-muted-foreground">({productName})</span>;
-                      }
-                      return null;
-                    })()}
-                    {!tableExpanded && (
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        {calendarSelectedDates && calendarSelectedDates.length > 0 ? (
-                          calendarSelectedDates.length === 1 
-                            ? `(${format(calendarSelectedDates[0], 'MMM d, yyyy')})`
-                            : `(${calendarSelectedDates.length} dates selected)`
-                        ) : dateRangeType === 'custom' && customStartDate && customEndDate ? (
-                          `(${format(customStartDate, 'MMM d')} - ${format(customEndDate, 'MMM d, yyyy')})`
-                        ) : (
-                          `(${format(new Date(selectedMonth + '-01'), 'MMMM yyyy')})`
-                        )}
-                      </span>
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex flex-col gap-2">
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full sm:w-auto justify-start">
+                      {tableExpanded ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
+                      <span className="truncate">{tableExpanded ? 'Hide' : 'Show'} Detailed Orders</span>
+                    </Button>
+                  </CollapsibleTrigger>
+                  {(() => {
+                    const vendorName = selectedVendor ? vendors.find(v => v.id === selectedVendor)?.name : null;
+                    const productName = selectedProduct && selectedProduct !== 'all' ? availableProducts.find(p => p.id === selectedProduct)?.name : null;
+                    
+                    if (vendorName || productName) {
+                      return (
+                        <div className="text-xs text-muted-foreground px-3">
+                          {vendorName && productName ? `${vendorName} - ${productName}` :
+                           vendorName ? vendorName :
+                           productName ? productName : null}
+                        </div>
+                      );
+                    }
+                    
+                    if (!tableExpanded) {
+                      return (
+                        <div className="text-xs text-muted-foreground px-3">
+                          {calendarSelectedDates && calendarSelectedDates.length > 0 ? (
+                            calendarSelectedDates.length === 1 
+                              ? format(calendarSelectedDates[0], 'MMM d, yyyy')
+                              : `${calendarSelectedDates.length} dates selected`
+                          ) : dateRangeType === 'custom' && customStartDate && customEndDate ? (
+                            `${format(customStartDate, 'MMM d')} - ${format(customEndDate, 'MMM d, yyyy')}`
+                          ) : (
+                            format(new Date(selectedMonth + '-01'), 'MMMM yyyy')
+                          )}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
                 <div className="flex gap-2 items-center flex-wrap">
                   {selectedCardFilter && (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-sm">
-                        Filter: {selectedCardFilter === 'total' ? 'All Orders' : 
-                                 selectedCardFilter === 'future' ? 'Future Orders' :
-                                 selectedCardFilter === 'delivered' ? 'Delivered Orders' :
-                                 selectedCardFilter === 'pending' ? 'Pending Orders' : 'Disputed Orders'}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="secondary" className="text-xs sm:text-sm whitespace-nowrap">
+                        Filter: {selectedCardFilter === 'total' ? 'All' : 
+                                 selectedCardFilter === 'future' ? 'Future' :
+                                 selectedCardFilter === 'delivered' ? 'Delivered' :
+                                 selectedCardFilter === 'pending' ? 'Pending' : 'Disputed'}
                       </Badge>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => setSelectedCardFilter(null)}
+                        className="h-8"
                       >
-                        <X className="h-4 w-4 mr-1" />
-                        Clear Filter
+                        <X className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Clear</span>
                       </Button>
                     </div>
                   )}
                   {calendarSelectedDates && calendarSelectedDates.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-sm">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="secondary" className="text-xs sm:text-sm whitespace-nowrap">
                         <CalendarIcon className="h-3 w-3 mr-1" />
                         {calendarSelectedDates.length === 1 
-                          ? `Filtered: ${format(calendarSelectedDates[0], 'MMM d, yyyy')}`
-                          : `${calendarSelectedDates.length} dates selected`}
+                          ? format(calendarSelectedDates[0], 'MMM d')
+                          : `${calendarSelectedDates.length} dates`}
                       </Badge>
                       <Button
                         size="sm"
@@ -2218,9 +2226,10 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                         onClick={() => {
                           setCalendarSelectedDates(undefined);
                         }}
+                        className="h-8"
                       >
-                        <X className="h-4 w-4 mr-1" />
-                        Clear Date Filter
+                        <X className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Clear</span>
                       </Button>
                     </div>
                   )}
@@ -2258,20 +2267,22 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
 
                     return (
                       <>
-                        <Button onClick={() => setBulkUpdateDialogOpen(true)} className={statusButtonClass} size="sm">
-                          <StatusIcon className="h-4 w-4 mr-2" />
-                          {statusButtonText}
+                        <Button onClick={() => setBulkUpdateDialogOpen(true)} className={`${statusButtonClass} h-8`} size="sm">
+                          <StatusIcon className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">{statusButtonText}</span>
+                          <span className="sm:hidden">Mark {selectedOrderIds.length}</span>
                         </Button>
                         {selectedOrderIds.length === 1 && (
-                          <Button onClick={() => setBulkEditDialogOpen(true)} variant="outline" size="sm">
-                            <Edit className="h-4 w-4 mr-2" />
-                            Modify
+                          <Button onClick={() => setBulkEditDialogOpen(true)} variant="outline" size="sm" className="h-8">
+                            <Edit className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">Modify</span>
                           </Button>
                         )}
                         {!hasAnyPastDateSelected && (
-                          <Button onClick={() => setBulkDeleteDialogOpen(true)} variant="destructive" size="sm">
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete {selectedOrderIds.length}
+                          <Button onClick={() => setBulkDeleteDialogOpen(true)} variant="destructive" size="sm" className="h-8">
+                            <Trash2 className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">Delete {selectedOrderIds.length}</span>
+                            <span className="sm:hidden">{selectedOrderIds.length}</span>
                           </Button>
                         )}
                       </>
@@ -2280,9 +2291,9 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                   {monthlyStats.orders.length > 0 && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Download className="h-4 w-4 mr-2" />
-                          Export
+                        <Button variant="outline" size="sm" className="h-8">
+                          <Download className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Export</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>

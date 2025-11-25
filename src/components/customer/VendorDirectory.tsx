@@ -224,8 +224,8 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
         {filteredVendors.map((vendor) => (
           <Card key={vendor.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div className="flex-1">
                   <CardTitle className="text-xl">{vendor.name}</CardTitle>
                   {isConnected(vendor.id) && (
                     <Badge className="mt-1" variant="default">
@@ -234,7 +234,7 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                     </Badge>
                   )}
                 </div>
-                <Badge variant="secondary">{vendor.category}</Badge>
+                <Badge variant="secondary" className="self-start">{vendor.category}</Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -263,9 +263,9 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                   <span className="text-sm font-medium">Products & Pricing:</span>
                   <div className="grid grid-cols-1 gap-2 mt-2">
                     {vendor.products.map((product) => (
-                       <div key={product.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                       <div key={product.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-gray-50 rounded-lg px-3 py-2 gap-2">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className="text-sm font-medium">{product.name}</span>
                             <span className="text-sm text-primary font-semibold">₹{product.price} / {product.unit}</span>
                           </div>

@@ -858,10 +858,10 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
       {availableProducts.length > 0 && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <CardTitle>Subscribe to New Products</CardTitle>
               <Select value={selectedVendorFilter} onValueChange={setSelectedVendorFilter}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="Filter by vendor" />
                 </SelectTrigger>
                 <SelectContent>

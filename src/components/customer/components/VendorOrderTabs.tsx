@@ -216,11 +216,11 @@ export const VendorOrderTabs = ({ onNavigateToHistory }: VendorOrderTabsProps) =
                       key={idx}
                       className="p-4 bg-muted/50 rounded-lg"
                     >
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                         <div className="font-medium text-base">{product.product}</div>
                         <div className="text-lg font-bold text-primary">₹{product.totalAmount}</div>
                       </div>
-                      <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                         <div>
                           <div className="text-muted-foreground">Total Quantity</div>
                           <div className="font-semibold">{product.totalQuantity} {product.unit}</div>
@@ -249,7 +249,7 @@ export const VendorOrderTabs = ({ onNavigateToHistory }: VendorOrderTabsProps) =
                   {vendor.dailyOrders.map((order, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-muted/50 rounded-lg"
                     >
                       <div>
                         <div className="font-medium">{order.product}</div>
