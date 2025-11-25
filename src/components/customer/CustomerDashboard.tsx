@@ -1675,6 +1675,8 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                       const productFromOrders = orders.find(o => o.product.id === productId)?.product;
                       return productFromOrders?.subscribe_before || null;
                     })()}
+                    subscriptionCount={subscriptions.filter(sub => sub.status === 'active').length}
+                    onNavigateToSubscriptions={() => setActiveTab?.("subscriptions")}
                     onDateClick={(dates) => {
                       // Detect which date was actually clicked by comparing arrays
                       let clickedDate: Date | null = null;
