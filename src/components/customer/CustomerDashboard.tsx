@@ -241,7 +241,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     const productFromOrders = orders.find(o => o.product.id === productId)?.product;
     const subscribeBeforeTime = productFromOrders?.subscribe_before;
     
-    if (subscribeBeforeTime && (!calendarSelectedDates || calendarSelectedDates.length === 0)) {
+    if (subscribeBeforeTime) {
       const now = new Date();
       const [hours, minutes] = subscribeBeforeTime.split(':').map(Number);
       
@@ -253,6 +253,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
       const defaultDate = now > todayCutoff ? new Date(now.getTime() + 24 * 60 * 60 * 1000) : new Date();
       defaultDate.setHours(0, 0, 0, 0);
       
+      // Always reset to the correct default date when product changes
       setCalendarSelectedDates([defaultDate]);
     }
   }, [selectedProduct, orders]);
