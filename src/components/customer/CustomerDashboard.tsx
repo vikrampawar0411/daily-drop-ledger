@@ -1474,8 +1474,10 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                 onValueChange={(value) => {
                   setSelectedMonth(value);
                   setCalendarSelectedDates(undefined);
+                  setIntentionalVendorClear(true);
                   setSelectedVendor('');
                   setSelectedProduct('all');
+                  setSelectedCardFilter(null);
                 }}
               >
                 <SelectTrigger className="w-full h-10">
