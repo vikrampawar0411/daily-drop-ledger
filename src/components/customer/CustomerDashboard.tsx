@@ -104,15 +104,19 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   const [pastOrdersDialogOpen, setPastOrdersDialogOpen] = useState(false);
   const [pastOrderDates, setPastOrderDates] = useState<Date[]>([]);
   const [pastOrderQuantity, setPastOrderQuantity] = useState(1);
+  const [intentionalVendorClear, setIntentionalVendorClear] = useState(false);
 
   // Set initial vendor after vendors load
   useEffect(() => {
-    if (vendors.length > 0 && !selectedVendor) {
+    if (vendors.length > 0 && !selectedVendor && !intentionalVendorClear) {
       const savedVendor = localStorage.getItem('lastSelectedVendor');
       const validVendor = savedVendor && vendors.find(v => v.id === savedVendor);
       setSelectedVendor(validVendor ? savedVendor : vendors[0].id);
     }
-  }, [vendors, selectedVendor]);
+    if (intentionalVendorClear) {
+      setIntentionalVendorClear(false);
+    }
+  }, [vendors, selectedVendor, intentionalVendorClear]);
 
   // Get available products from filtered orders
   const availableProducts = useMemo(() => {
@@ -1687,7 +1691,11 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                     onMonthChange={(newMonth) => {
                       const monthStr = format(newMonth, 'yyyy-MM');
                       setSelectedMonth(monthStr);
-                      setCalendarSelectedDates(undefined); // This triggers the useEffect to auto-clear filters
+                      setCalendarSelectedDates(undefined);
+                      setIntentionalVendorClear(true);
+                      setSelectedVendor('');
+                      setSelectedProduct('all');
+                      setSelectedCardFilter(null);
                     }}
                     subscribeBeforeTime={(() => {
                       const productId = newOrderFormData.product_id || (selectedProduct !== 'all' ? selectedProduct : '');
