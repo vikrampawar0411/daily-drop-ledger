@@ -105,9 +105,13 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   const [pastOrderDates, setPastOrderDates] = useState<Date[]>([]);
   const [pastOrderQuantity, setPastOrderQuantity] = useState(1);
   const [intentionalVendorClear, setIntentionalVendorClear] = useState(false);
+  const [isMonthChangeInProgress, setIsMonthChangeInProgress] = useState(false);
 
   // Set initial vendor after vendors load
   useEffect(() => {
+    // Skip during month change
+    if (isMonthChangeInProgress) return;
+    
     if (vendors.length > 0 && !selectedVendor && !intentionalVendorClear) {
       const savedVendor = localStorage.getItem('lastSelectedVendor');
       const validVendor = savedVendor && vendors.find(v => v.id === savedVendor);
@@ -116,7 +120,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     if (intentionalVendorClear) {
       setIntentionalVendorClear(false);
     }
-  }, [vendors, selectedVendor, intentionalVendorClear]);
+  }, [vendors, selectedVendor, intentionalVendorClear, isMonthChangeInProgress]);
 
   // Get available products from filtered orders
   const availableProducts = useMemo(() => {
@@ -174,6 +178,9 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
 
   // Auto-select most used product when vendor changes (Issue 2 Fix)
   useEffect(() => {
+    // Skip during month change
+    if (isMonthChangeInProgress) return;
+    
     if (selectedVendor && availableProducts.length > 0) {
       const productFrequency = orders
         .filter(o => o.vendor.id === selectedVendor)
@@ -191,7 +198,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
         setSelectedProduct('all');
       }
     }
-  }, [selectedVendor, orders, availableProducts]);
+  }, [selectedVendor, orders, availableProducts, isMonthChangeInProgress]);
 
   const [orderDetailsDialogOpen, setOrderDetailsDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -239,6 +246,9 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
 
   // Calculate default date based on product's subscribe_before deadline
   useEffect(() => {
+    // Skip auto-setting dates when month change is in progress
+    if (isMonthChangeInProgress) return;
+    
     const productId = selectedProduct !== 'all' ? selectedProduct : '';
     if (!productId) return;
 
@@ -260,7 +270,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
       // Always reset to the correct default date when product changes
       setCalendarSelectedDates([defaultDate]);
     }
-  }, [selectedProduct, orders]);
+  }, [selectedProduct, orders, isMonthChangeInProgress]);
 
 
   // Auto-apply filters when vendor is selected in new order form
@@ -1472,12 +1482,16 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
               <Select 
                 value={selectedMonth} 
                 onValueChange={(value) => {
+                  setIsMonthChangeInProgress(true);
                   setSelectedMonth(value);
                   setCalendarSelectedDates(undefined);
                   setIntentionalVendorClear(true);
                   setSelectedVendor('');
                   setSelectedProduct('all');
                   setSelectedCardFilter('total');
+                  
+                  // Reset flag after all state updates have settled
+                  setTimeout(() => setIsMonthChangeInProgress(false), 100);
                 }}
               >
                 <SelectTrigger className="w-full h-10">
@@ -1692,12 +1706,15 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                     month={new Date(selectedMonth + '-01')}
                     onMonthChange={(newMonth) => {
                       const monthStr = format(newMonth, 'yyyy-MM');
+                      setIsMonthChangeInProgress(true);
                       setSelectedMonth(monthStr);
                       setCalendarSelectedDates(undefined);
                       setIntentionalVendorClear(true);
                       setSelectedVendor('');
                       setSelectedProduct('all');
                       setSelectedCardFilter('total');
+                      
+                      setTimeout(() => setIsMonthChangeInProgress(false), 100);
                     }}
                     subscribeBeforeTime={(() => {
                       const productId = newOrderFormData.product_id || (selectedProduct !== 'all' ? selectedProduct : '');
