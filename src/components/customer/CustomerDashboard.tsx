@@ -1477,7 +1477,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                   setIntentionalVendorClear(true);
                   setSelectedVendor('');
                   setSelectedProduct('all');
-                  setSelectedCardFilter(null);
+                  setSelectedCardFilter('total');
                 }}
               >
                 <SelectTrigger className="w-full h-10">
@@ -1697,7 +1697,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                       setIntentionalVendorClear(true);
                       setSelectedVendor('');
                       setSelectedProduct('all');
-                      setSelectedCardFilter(null);
+                      setSelectedCardFilter('total');
                     }}
                     subscribeBeforeTime={(() => {
                       const productId = newOrderFormData.product_id || (selectedProduct !== 'all' ? selectedProduct : '');
