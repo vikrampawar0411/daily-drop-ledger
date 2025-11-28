@@ -117,9 +117,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
       const validVendor = savedVendor && vendors.find(v => v.id === savedVendor);
       setSelectedVendor(validVendor ? savedVendor : vendors[0].id);
     }
-    if (intentionalVendorClear) {
-      setIntentionalVendorClear(false);
-    }
   }, [vendors, selectedVendor, intentionalVendorClear, isMonthChangeInProgress]);
 
   // Get available products from filtered orders
@@ -1031,6 +1028,9 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     // Clear calendar date selection to show full period
     setCalendarSelectedDates(undefined);
     
+    // Reset intentional vendor clear flag on user interaction
+    setIntentionalVendorClear(false);
+    
     // Scroll to order table
     setTimeout(() => {
       orderTableRef.current?.scrollIntoView({ 
@@ -1362,6 +1362,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                 setCalendarExpanded(true);
                 setCalendarSelectedDates([today]);
                 setTableExpanded(true);
+                setIntentionalVendorClear(false);
                 
                 // Pre-fill form with current filter selections
                 setNewOrderFormData({
@@ -1732,6 +1733,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                     onVendorChange={(value) => {
                       setSelectedVendor(value);
                       setSelectedProduct('all');
+                      setIntentionalVendorClear(false);
                       setNewOrderFormData({ 
                         vendor_id: value,
                         product_id: '', // Reset product when vendor changes
