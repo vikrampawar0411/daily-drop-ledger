@@ -1358,18 +1358,44 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2"
               onClick={() => {
-                const today = new Date();
+                const now = new Date();
+                let defaultDate = new Date();
+                defaultDate.setHours(0, 0, 0, 0);
+                
+                // Apply cut-off logic based on selected product
+                const productId = selectedProduct !== 'all' ? selectedProduct : '';
+                if (productId) {
+                  const productFromOrders = orders.find(o => o.product.id === productId)?.product;
+                  const subscribeBeforeTime = productFromOrders?.subscribe_before;
+                  
+                  if (subscribeBeforeTime) {
+                    const [hours, minutes] = subscribeBeforeTime.split(':').map(Number);
+                    const todayCutoff = new Date();
+                    todayCutoff.setHours(hours, minutes, 0, 0);
+                    
+                    // If past the cut-off, default to tomorrow
+                    if (now > todayCutoff) {
+                      defaultDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+                      defaultDate.setHours(0, 0, 0, 0);
+                    }
+                  }
+                } else {
+                  // No product selected - default to tomorrow as safe option
+                  defaultDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+                  defaultDate.setHours(0, 0, 0, 0);
+                }
+                
                 setCalendarExpanded(true);
-                setCalendarSelectedDates([today]);
+                setCalendarSelectedDates([defaultDate]);
                 setTableExpanded(true);
                 setIntentionalVendorClear(false);
                 
                 // Pre-fill form with current filter selections
                 setNewOrderFormData({
                   vendor_id: selectedVendor || '',
-                  product_id: selectedProduct !== 'all' ? selectedProduct : '',
+                  product_id: productId,
                   quantity: 1,
-                  order_date: today,
+                  order_date: defaultDate,
                 });
                 
                 // Scroll to calendar after state updates
