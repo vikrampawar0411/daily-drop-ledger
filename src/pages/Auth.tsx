@@ -35,9 +35,6 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [signinRole, setSigninRole] = useState<'customer' | 'vendor'>('customer');
-  const [signupRole, setSignupRole] = useState<'customer' | 'vendor'>('customer');
-  const [isAdminLogin, setIsAdminLogin] = useState(false);
   const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' });
 
   // Customer signup form data
@@ -72,7 +69,7 @@ const Auth = () => {
   const { areas } = useAreas();
   const { societies } = useSocieties(selectedAreaId);
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleCustomerSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -88,30 +85,25 @@ const Auth = () => {
       return;
     }
 
-    // Check if user exists in customers or vendors table based on selected role
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
-      // First check by user_id
-      const tableToCheck = signinRole === 'customer' ? 'customers' : 'vendors';
       const { data: recordByUserId } = await supabase
-        .from(tableToCheck)
+        .from('customers')
         .select('id, user_id')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      // If no record found by user_id, check by email and link it
       if (!recordByUserId) {
         const { data: recordByEmail } = await supabase
-          .from(tableToCheck)
+          .from('customers')
           .select('id, user_id, email')
           .eq('email', user.email)
           .maybeSingle();
 
         if (recordByEmail && !recordByEmail.user_id) {
-          // Link the record to the user
           await supabase
-            .from(tableToCheck)
+            .from('customers')
             .update({ user_id: user.id })
             .eq('id', recordByEmail.id);
 
@@ -122,7 +114,65 @@ const Auth = () => {
           await supabase.auth.signOut();
           toast({
             title: "Account Not Found",
-            description: `No ${signinRole} account found with this email. Please sign up or select the correct role.`,
+            description: "No customer account found with this email. Please sign up or select the correct role.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+    }
+
+    navigate("/");
+    setIsLoading(false);
+  };
+
+  const handleVendorSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    const { error } = await signIn(email, password);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      const { data: recordByUserId } = await supabase
+        .from('vendors')
+        .select('id, user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!recordByUserId) {
+        const { data: recordByEmail } = await supabase
+          .from('vendors')
+          .select('id, user_id, email')
+          .eq('email', user.email)
+          .maybeSingle();
+
+        if (recordByEmail && !recordByEmail.user_id) {
+          await supabase
+            .from('vendors')
+            .update({ user_id: user.id })
+            .eq('id', recordByEmail.id);
+
+          navigate("/");
+          setIsLoading(false);
+          return;
+        } else if (!recordByEmail) {
+          await supabase.auth.signOut();
+          toast({
+            title: "Account Not Found",
+            description: "No vendor account found with this email. Please sign up or select the correct role.",
             variant: "destructive",
           });
           setIsLoading(false);
@@ -140,7 +190,6 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      // Use proper Supabase authentication - no hardcoded credentials
       const { error: signInError } = await signIn(
         adminCredentials.username, 
         adminCredentials.password
@@ -156,18 +205,15 @@ const Auth = () => {
         return;
       }
 
-      // Verify admin role after successful authentication
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        // Check if user has admin role
         const { data: isAdmin } = await supabase.rpc('has_role', {
           _user_id: user.id,
           _role: 'admin'
         });
 
         if (!isAdmin) {
-          // Not an admin, sign them out
           await supabase.auth.signOut();
           toast({
             title: "Access Denied",
@@ -194,11 +240,6 @@ const Auth = () => {
     }
 
     setIsLoading(false);
-  };
-
-  const handleSignUp = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Form validation happens in the submit handlers below
   };
 
   const handleCustomerSignup = async (e: React.FormEvent) => {
@@ -232,7 +273,6 @@ const Auth = () => {
         description: error.message,
         variant: "destructive",
       });
-      // Reset form
       setEmail('');
       setPassword('');
       setCustomerForm({
@@ -279,7 +319,6 @@ const Auth = () => {
         variant: "destructive",
       });
     } else {
-      // Reset form
       setEmail('');
       setPassword('');
       setVendorForm({
@@ -310,100 +349,78 @@ const Auth = () => {
         </div>
 
         <Card className="max-h-[90vh] overflow-y-auto">
-          <Tabs defaultValue="signin" className="w-full">
+          <Tabs defaultValue="customer" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsTrigger value="customer">
+                <Users className="h-4 w-4 mr-1" />
+                Customer
+              </TabsTrigger>
+              <TabsTrigger value="vendor">
+                <Store className="h-4 w-4 mr-1" />
+                Vendor
+              </TabsTrigger>
               <TabsTrigger value="admin">
                 <Shield className="h-4 w-4 mr-1" />
                 Admin
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="signin">
-              <CardHeader>
-                <CardTitle>Sign In</CardTitle>
-                <CardDescription>
-                  Enter your credentials to access your account
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-role">I am a</Label>
-                    <Select value={signinRole} onValueChange={(value) => setSigninRole(value as 'customer' | 'vendor')}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="customer">
-                          <div className="flex items-center">
-                            <Users className="h-4 w-4 mr-2" />
-                            Customer
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="vendor">
-                          <div className="flex items-center">
-                            <Store className="h-4 w-4 mr-2" />
-                            Vendor
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <Input
-                      id="signin-email"
-                      type="email"
-                      placeholder="your@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
-                    <Input
-                      id="signin-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Signing in..." : "Sign In"}
-                  </Button>
-                </form>
-              </CardContent>
-            </TabsContent>
+            {/* Customer Tab */}
+            <TabsContent value="customer">
+              <Tabs defaultValue="signin" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mx-4 mt-4" style={{ width: 'calc(100% - 2rem)' }}>
+                  <TabsTrigger value="signin">Sign In</TabsTrigger>
+                  <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                </TabsList>
 
-            <TabsContent value="signup">
-              <CardHeader>
-                <CardTitle>Create Account</CardTitle>
-                <CardDescription>
-                  Choose your account type and complete the form
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Tabs value={signupRole} onValueChange={(value) => setSignupRole(value as 'customer' | 'vendor')} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-4">
-                    <TabsTrigger value="customer">
-                      <Users className="h-4 w-4 mr-2" />
-                      Customer
-                    </TabsTrigger>
-                    <TabsTrigger value="vendor">
-                      <Store className="h-4 w-4 mr-2" />
-                      Vendor
-                    </TabsTrigger>
-                  </TabsList>
+                <TabsContent value="signin">
+                  <CardHeader className="pt-4">
+                    <CardTitle>Customer Sign In</CardTitle>
+                    <CardDescription>
+                      Enter your credentials to access your customer account
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleCustomerSignIn} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="customer-signin-email">Email</Label>
+                        <Input
+                          id="customer-signin-email"
+                          type="email"
+                          placeholder="your@email.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="customer-signin-password">Password</Label>
+                        <Input
+                          id="customer-signin-password"
+                          type="password"
+                          placeholder="••••••••"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? "Signing in..." : "Sign In as Customer"}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </TabsContent>
 
-                  {/* Customer Signup Form */}
-                  <TabsContent value="customer" className="mt-0">
+                <TabsContent value="signup">
+                  <CardHeader className="pt-4">
+                    <CardTitle>Customer Sign Up</CardTitle>
+                    <CardDescription>
+                      Create a new customer account
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
                     <form onSubmit={handleCustomerSignup}>
-                      <ScrollArea className="h-[60vh] pr-4">
+                      <ScrollArea className="h-[50vh] pr-4">
                         <div className="space-y-4">
                           <div className="space-y-2">
                             <Label htmlFor="customer-email">Email *</Label>
@@ -565,12 +582,67 @@ const Auth = () => {
                         </Button>
                       </div>
                     </form>
-                  </TabsContent>
+                  </CardContent>
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
 
-                  {/* Vendor Signup Form */}
-                  <TabsContent value="vendor" className="mt-0">
+            {/* Vendor Tab */}
+            <TabsContent value="vendor">
+              <Tabs defaultValue="signin" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mx-4 mt-4" style={{ width: 'calc(100% - 2rem)' }}>
+                  <TabsTrigger value="signin">Sign In</TabsTrigger>
+                  <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="signin">
+                  <CardHeader className="pt-4">
+                    <CardTitle>Vendor Sign In</CardTitle>
+                    <CardDescription>
+                      Enter your credentials to access your vendor account
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleVendorSignIn} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="vendor-signin-email">Email</Label>
+                        <Input
+                          id="vendor-signin-email"
+                          type="email"
+                          placeholder="your@email.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="vendor-signin-password">Password</Label>
+                        <Input
+                          id="vendor-signin-password"
+                          type="password"
+                          placeholder="••••••••"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? "Signing in..." : "Sign In as Vendor"}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </TabsContent>
+
+                <TabsContent value="signup">
+                  <CardHeader className="pt-4">
+                    <CardTitle>Vendor Sign Up</CardTitle>
+                    <CardDescription>
+                      Create a new vendor account
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
                     <form onSubmit={handleVendorSignup}>
-                      <ScrollArea className="h-[60vh] pr-4">
+                      <ScrollArea className="h-[50vh] pr-4">
                         <div className="space-y-4">
                           <div className="space-y-2">
                             <Label htmlFor="vendor-email">Email *</Label>
@@ -675,11 +747,12 @@ const Auth = () => {
                         </Button>
                       </div>
                     </form>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
+                  </CardContent>
+                </TabsContent>
+              </Tabs>
             </TabsContent>
 
+            {/* Admin Tab */}
             <TabsContent value="admin">
               <CardHeader>
                 <CardTitle className="flex items-center">
