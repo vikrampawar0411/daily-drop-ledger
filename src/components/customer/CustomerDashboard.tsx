@@ -241,7 +241,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   });
   const calendarQuantityRef = useRef<HTMLInputElement>(null);
 
-  // Calculate default date based on product's subscribe_before deadline
+  // Calculate default date based on product's subscribe_before deadline (next-day delivery)
   useEffect(() => {
     // Skip auto-setting dates when month change is in progress
     if (isMonthChangeInProgress) return;
@@ -252,21 +252,25 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     const productFromOrders = orders.find(o => o.product.id === productId)?.product;
     const subscribeBeforeTime = productFromOrders?.subscribe_before;
     
+    const now = new Date();
+    
+    // Default to tomorrow (next-day delivery)
+    let defaultDate = new Date();
+    defaultDate.setDate(defaultDate.getDate() + 1);
+    defaultDate.setHours(0, 0, 0, 0);
+    
     if (subscribeBeforeTime) {
-      const now = new Date();
       const [hours, minutes] = subscribeBeforeTime.split(':').map(Number);
-      
-      // Check if current time is past today's deadline
       const todayCutoff = new Date();
       todayCutoff.setHours(hours, minutes, 0, 0);
       
-      // If we're past the deadline, default to tomorrow
-      const defaultDate = now > todayCutoff ? new Date(now.getTime() + 24 * 60 * 60 * 1000) : new Date();
-      defaultDate.setHours(0, 0, 0, 0);
-      
-      // Always reset to the correct default date when product changes
-      setCalendarSelectedDates([defaultDate]);
+      // If past today's cut-off, delivery becomes day after tomorrow
+      if (now > todayCutoff) {
+        defaultDate.setDate(defaultDate.getDate() + 1);
+      }
     }
+    
+    setCalendarSelectedDates([defaultDate]);
   }, [selectedProduct, orders, isMonthChangeInProgress]);
 
 
@@ -1359,11 +1363,14 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
               className="h-20 flex flex-col items-center justify-center space-y-2"
               onClick={() => {
                 const now = new Date();
+                const productId = selectedProduct !== 'all' ? selectedProduct : '';
+                
+                // Default to tomorrow (next-day delivery)
                 let defaultDate = new Date();
+                defaultDate.setDate(defaultDate.getDate() + 1);
                 defaultDate.setHours(0, 0, 0, 0);
                 
                 // Apply cut-off logic based on selected product
-                const productId = selectedProduct !== 'all' ? selectedProduct : '';
                 if (productId) {
                   const productFromOrders = orders.find(o => o.product.id === productId)?.product;
                   const subscribeBeforeTime = productFromOrders?.subscribe_before;
@@ -1373,16 +1380,11 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                     const todayCutoff = new Date();
                     todayCutoff.setHours(hours, minutes, 0, 0);
                     
-                    // If past the cut-off, default to tomorrow
+                    // If past today's cut-off, delivery becomes day after tomorrow
                     if (now > todayCutoff) {
-                      defaultDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-                      defaultDate.setHours(0, 0, 0, 0);
+                      defaultDate.setDate(defaultDate.getDate() + 1);
                     }
                   }
-                } else {
-                  // No product selected - default to tomorrow as safe option
-                  defaultDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-                  defaultDate.setHours(0, 0, 0, 0);
                 }
                 
                 setCalendarExpanded(true);
