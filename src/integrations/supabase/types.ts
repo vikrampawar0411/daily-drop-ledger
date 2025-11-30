@@ -1062,6 +1062,16 @@ export type Database = {
     Functions: {
       admin_exists: { Args: never; Returns: boolean }
       bootstrap_admin: { Args: { admin_user_id: string }; Returns: undefined }
+      complete_customer_signup: {
+        Args: {
+          p_area_id: string
+          p_flat_plot_house_number: string
+          p_full_address: string
+          p_society_id: string
+          p_wing_number: string
+        }
+        Returns: undefined
+      }
       create_vendor_customer_connections_for_all: {
         Args: never
         Returns: undefined

@@ -44,117 +44,86 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signUp = async (email: string, password: string, role: 'vendor' | 'customer' | 'admin', additionalData?: any) => {
     const redirectUrl = `${window.location.origin}/`;
     
+    // Pass all data via user metadata - the trigger will handle record creation
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          role: role
+          role: role,
+          name: additionalData?.name || additionalData?.contactPerson,
+          phone: additionalData?.phone,
+          // Vendor specific
+          businessName: additionalData?.businessName,
+          category: additionalData?.category,
+          contactPerson: additionalData?.contactPerson,
+          address: additionalData?.address,
         }
       }
     });
 
-    if (!error && data.user) {
-      // Create profile and assign role
+    if (!error && data.user && role === 'customer' && additionalData) {
+      // For customers, complete signup with additional location details
       setTimeout(async () => {
         try {
-          const userName = role === 'customer' 
-            ? additionalData?.name 
-            : role === 'vendor' 
-              ? additionalData?.contactPerson 
-              : 'Admin';
-
-          await supabase.from('profiles').insert({
-            id: data.user!.id,
-            email: email,
-            user_type: role,
-            name: userName
-          });
-
-          await supabase.from('user_roles').insert({
-            user_id: data.user!.id,
-            role: role
-          });
-
-          // Insert into customers or vendors table based on role (skip for admin)
-          if (role === 'customer' && additionalData) {
-            const selectedArea = await supabase
-              .from('areas')
-              .select('name, city_id')
-              .eq('id', additionalData.area_id)
+          // Build full address
+          const selectedArea = await supabase
+            .from('areas')
+            .select('name, city_id')
+            .eq('id', additionalData.area_id)
+            .maybeSingle();
+          
+          const selectedSociety = await supabase
+            .from('societies')
+            .select('name')
+            .eq('id', additionalData.society_id)
+            .maybeSingle();
+          
+          let cityName = '';
+          let stateName = '';
+          
+          if (selectedArea.data?.city_id) {
+            const selectedCity = await supabase
+              .from('cities')
+              .select('name, state_id')
+              .eq('id', selectedArea.data.city_id)
               .maybeSingle();
             
-            const selectedSociety = await supabase
-              .from('societies')
-              .select('name')
-              .eq('id', additionalData.society_id)
-              .maybeSingle();
+            cityName = selectedCity.data?.name || '';
             
-            let cityName = '';
-            let stateName = '';
-            
-            if (selectedArea.data?.city_id) {
-              const selectedCity = await supabase
-                .from('cities')
-                .select('name, state_id')
-                .eq('id', selectedArea.data.city_id)
+            if (selectedCity.data?.state_id) {
+              const selectedState = await supabase
+                .from('states')
+                .select('name')
+                .eq('id', selectedCity.data.state_id)
                 .maybeSingle();
               
-              cityName = selectedCity.data?.name || '';
-              
-              if (selectedCity.data?.state_id) {
-                const selectedState = await supabase
-                  .from('states')
-                  .select('name')
-                  .eq('id', selectedCity.data.state_id)
-                  .maybeSingle();
-                
-                stateName = selectedState.data?.name || '';
-              }
+              stateName = selectedState.data?.name || '';
             }
-            
-            const address = [
-              additionalData.flat_plot_house_number,
-              additionalData.wing_number,
-              selectedSociety.data?.name,
-              selectedArea.data?.name,
-              cityName,
-              stateName
-            ].filter(Boolean).join(", ");
-
-            await supabase.from('customers').insert({
-              user_id: data.user!.id,
-              name: additionalData.name,
-              phone: additionalData.phone,
-              email: email,
-              address: address,
-              area_id: additionalData.area_id,
-              society_id: additionalData.society_id,
-              wing_number: additionalData.wing_number,
-              flat_plot_house_number: additionalData.flat_plot_house_number,
-              password: password,
-              created_by_user_id: data.user!.id,
-              created_by_role: 'customer',
-            });
-          } else if (role === 'vendor' && additionalData) {
-            await supabase.from('vendors').insert({
-              user_id: data.user!.id,
-              name: additionalData.businessName,
-              category: additionalData.category,
-              contact_person: additionalData.contactPerson,
-              phone: additionalData.phone,
-              email: additionalData.businessEmail,
-              address: additionalData.address,
-              password: password,
-              created_by_user_id: data.user!.id,
-              created_by_role: 'vendor',
-            });
           }
+          
+          const fullAddress = [
+            additionalData.flat_plot_house_number,
+            additionalData.wing_number,
+            selectedSociety.data?.name,
+            selectedArea.data?.name,
+            cityName,
+            stateName
+          ].filter(Boolean).join(", ");
+
+          // Call the RPC function to complete customer signup
+          await supabase.rpc('complete_customer_signup', {
+            p_area_id: additionalData.area_id,
+            p_society_id: additionalData.society_id,
+            p_wing_number: additionalData.wing_number || null,
+            p_flat_plot_house_number: additionalData.flat_plot_house_number,
+            p_full_address: fullAddress
+          });
         } catch (err) {
-          console.error('Error creating profile:', err);
+          console.error('Error completing customer signup:', err);
         }
-      }, 0);
+      }, 1000); // Small delay to ensure the trigger has completed
     }
 
     return { error, user: data.user };
@@ -177,14 +146,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const getUserRole = async (): Promise<'admin' | 'staff' | 'vendor' | 'customer' | null> => {
     if (!user) return null;
     
-    const { data, error } = await supabase
+    // First try user_roles table
+    const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
       .single();
     
-    if (error || !data) return null;
-    return data.role as 'admin' | 'staff' | 'vendor' | 'customer';
+    if (roleData?.role) {
+      return roleData.role as 'admin' | 'staff' | 'vendor' | 'customer';
+    }
+    
+    // Fallback to profiles.user_type
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('user_type')
+      .eq('id', user.id)
+      .single();
+    
+    if (profileData?.user_type) {
+      return profileData.user_type as 'admin' | 'staff' | 'vendor' | 'customer';
+    }
+    
+    return null;
   };
 
   return (
