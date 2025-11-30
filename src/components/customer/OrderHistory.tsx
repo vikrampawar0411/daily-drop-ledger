@@ -409,15 +409,16 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
   const stats = getOrderStats();
 
   const exportToCSV = () => {
-    const csvData = filteredOrders.map(order => ({
-      'Order ID': order.id.slice(0, 8),
-      'Date': new Date(order.order_date).toLocaleDateString(),
-      'Vendor': order.vendor.name,
-      'Product': order.product.name,
-      'Quantity': `${order.quantity} ${order.unit}`,
-      'Price/Unit': order.product.price,
-      'Total': order.total_amount,
-      'Status': order.status,
+    try {
+      const csvData = filteredOrders.map(order => ({
+        'Order ID': order.id.slice(0, 8),
+        'Date': new Date(order.order_date).toLocaleDateString(),
+        'Vendor': order.vendor.name,
+        'Product': order.product.name,
+        'Quantity': `${order.quantity} ${order.unit}`,
+        'Price/Unit': order.product.price,
+        'Total': order.total_amount,
+        'Status': order.status,
       'Delivered At': order.delivered_at ? format(new Date(order.delivered_at), "PPp") : '-',
     }));
     
@@ -426,16 +427,25 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
       ...csvData.map(row => Object.values(row).join(','))
     ].join('\n');
     
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `order-history-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `order-history-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast({ title: "Export successful", description: "CSV file downloaded" });
+    } catch (error) {
+      console.error('CSV export error:', error);
+      toast({ title: "Export failed", description: "Could not export CSV file", variant: "destructive" });
+    }
   };
 
   const exportToExcel = () => {
-    const titleRowCount = 6;
+    try {
+      const titleRowCount = 6;
     
     // Get unique statuses
     const statuses = [...new Set(filteredOrders.map(o => o.status))];
@@ -677,9 +687,25 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
       }
 
       const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Order History');
-  XLSX.writeFile(wb, `order-history-${new Date().toISOString().split('T')[0]}.xlsx`);
-};
+      XLSX.utils.book_append_sheet(wb, ws, 'Order History');
+      
+      // Use browser-compatible export method
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `order-history-${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast({ title: "Export successful", description: "Excel file downloaded" });
+    } catch (error) {
+      console.error('Excel export error:', error);
+      toast({ title: "Export failed", description: "Could not export Excel file", variant: "destructive" });
+    }
+  };
 
   const handleModifyOrder = (order: any) => {
     setSelectedOrder(order);
