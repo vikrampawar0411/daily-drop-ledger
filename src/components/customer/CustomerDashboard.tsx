@@ -68,6 +68,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   // Calendar state - Multiple dates support
   const [calendarSelectedDates, setCalendarSelectedDates] = useState<Date[] | undefined>(undefined);
   const [lastClickedCalendarDate, setLastClickedCalendarDate] = useState<Date | null>(null);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   
   // Date range state
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -242,9 +243,10 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   const calendarQuantityRef = useRef<HTMLInputElement>(null);
 
   // Calculate default date based on product's subscribe_before deadline (next-day delivery)
+  // Only auto-select dates after user has interacted (not on initial load)
   useEffect(() => {
-    // Skip auto-setting dates when month change is in progress
-    if (isMonthChangeInProgress) return;
+    // Skip auto-setting dates when month change is in progress or on initial load
+    if (isMonthChangeInProgress || !hasUserInteracted) return;
     
     const productId = selectedProduct !== 'all' ? selectedProduct : '';
     if (!productId) return;
@@ -271,7 +273,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     }
     
     setCalendarSelectedDates([defaultDate]);
-  }, [selectedProduct, orders, isMonthChangeInProgress]);
+  }, [selectedProduct, orders, isMonthChangeInProgress, hasUserInteracted]);
 
 
   // Auto-apply filters when vendor is selected in new order form
@@ -1759,6 +1761,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                     selectedVendor={selectedVendor}
                     selectedProduct={selectedProduct}
                     onVendorChange={(value) => {
+                      setHasUserInteracted(true);
                       setSelectedVendor(value);
                       setSelectedProduct('all');
                       setIntentionalVendorClear(false);
@@ -1772,6 +1775,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                       });
                     }}
                     onProductChange={(value) => {
+                      setHasUserInteracted(true);
                       setSelectedProduct(value);
                       setNewOrderFormData({ 
                         ...newOrderFormData, 
