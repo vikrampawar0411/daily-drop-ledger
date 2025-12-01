@@ -36,6 +36,8 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' });
+  const [customerView, setCustomerView] = useState<'signin' | 'signup'>('signin');
+  const [vendorView, setVendorView] = useState<'signin' | 'signup'>('signin');
 
   // Customer signup form data
   const [customerForm, setCustomerForm] = useState({
@@ -367,13 +369,8 @@ const Auth = () => {
 
             {/* Customer Tab */}
             <TabsContent value="customer">
-              <Tabs defaultValue="signin" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mx-4 mt-4" style={{ width: 'calc(100% - 2rem)' }}>
-                  <TabsTrigger value="signin">Sign In</TabsTrigger>
-                  <TabsTrigger value="signup">Sign Up</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="signin">
+              {customerView === 'signin' ? (
+                <>
                   <CardHeader className="pt-4">
                     <CardTitle>Customer Sign In</CardTitle>
                     <CardDescription>
@@ -408,10 +405,20 @@ const Auth = () => {
                         {isLoading ? "Signing in..." : "Sign In as Customer"}
                       </Button>
                     </form>
+                    <p className="text-center text-sm text-muted-foreground mt-4">
+                      New User?{" "}
+                      <button
+                        type="button"
+                        onClick={() => setCustomerView('signup')}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        Sign Up
+                      </button>
+                    </p>
                   </CardContent>
-                </TabsContent>
-
-                <TabsContent value="signup">
+                </>
+              ) : (
+                <>
                   <CardHeader className="pt-4">
                     <CardTitle>Customer Sign Up</CardTitle>
                     <CardDescription>
@@ -444,7 +451,7 @@ const Auth = () => {
                               required
                               minLength={6}
                             />
-                            <p className="text-xs text-gray-500">Must be at least 6 characters</p>
+                            <p className="text-xs text-muted-foreground">Must be at least 6 characters</p>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="customer-name">Full Name *</Label>
@@ -582,20 +589,25 @@ const Auth = () => {
                         </Button>
                       </div>
                     </form>
+                    <p className="text-center text-sm text-muted-foreground mt-4">
+                      Already have an account?{" "}
+                      <button
+                        type="button"
+                        onClick={() => setCustomerView('signin')}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        Sign In
+                      </button>
+                    </p>
                   </CardContent>
-                </TabsContent>
-              </Tabs>
+                </>
+              )}
             </TabsContent>
 
             {/* Vendor Tab */}
             <TabsContent value="vendor">
-              <Tabs defaultValue="signin" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mx-4 mt-4" style={{ width: 'calc(100% - 2rem)' }}>
-                  <TabsTrigger value="signin">Sign In</TabsTrigger>
-                  <TabsTrigger value="signup">Sign Up</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="signin">
+              {vendorView === 'signin' ? (
+                <>
                   <CardHeader className="pt-4">
                     <CardTitle>Vendor Sign In</CardTitle>
                     <CardDescription>
@@ -630,10 +642,20 @@ const Auth = () => {
                         {isLoading ? "Signing in..." : "Sign In as Vendor"}
                       </Button>
                     </form>
+                    <p className="text-center text-sm text-muted-foreground mt-4">
+                      New User?{" "}
+                      <button
+                        type="button"
+                        onClick={() => setVendorView('signup')}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        Sign Up
+                      </button>
+                    </p>
                   </CardContent>
-                </TabsContent>
-
-                <TabsContent value="signup">
+                </>
+              ) : (
+                <>
                   <CardHeader className="pt-4">
                     <CardTitle>Vendor Sign Up</CardTitle>
                     <CardDescription>
@@ -666,7 +688,7 @@ const Auth = () => {
                               required
                               minLength={6}
                             />
-                            <p className="text-xs text-gray-500">Must be at least 6 characters</p>
+                            <p className="text-xs text-muted-foreground">Must be at least 6 characters</p>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="vendor-business-name">Business Name *</Label>
@@ -747,9 +769,19 @@ const Auth = () => {
                         </Button>
                       </div>
                     </form>
+                    <p className="text-center text-sm text-muted-foreground mt-4">
+                      Already have an account?{" "}
+                      <button
+                        type="button"
+                        onClick={() => setVendorView('signin')}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        Sign In
+                      </button>
+                    </p>
                   </CardContent>
-                </TabsContent>
-              </Tabs>
+                </>
+              )}
             </TabsContent>
 
             {/* Admin Tab */}
