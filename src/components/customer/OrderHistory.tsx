@@ -1023,14 +1023,16 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                                       </Button>
                                     ) : (
                                       <>
-                                        <Button
-                                          size="sm"
-                                          variant={order.status === 'delivered' ? 'default' : 'secondary'}
-                                          onClick={() => handleStatusToggle(order)}
-                                        >
-                                          {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
-                                          {order.status === 'pending' ? 'Pending' : 'Delivered'}
-                                        </Button>
+                                        {new Date(order.order_date) <= new Date() && (
+                                          <Button
+                                            size="sm"
+                                            variant={order.status === 'delivered' ? 'default' : 'secondary'}
+                                            onClick={() => handleStatusToggle(order)}
+                                          >
+                                            {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
+                                            {order.status === 'pending' ? 'Pending' : 'Delivered'}
+                                          </Button>
+                                        )}
                                         {order.status === 'pending' && (
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
