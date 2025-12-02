@@ -1024,8 +1024,9 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                                     ) : (
                                       <>
                                         {(() => {
-                                          const orderDate = new Date(order.order_date);
-                                          orderDate.setHours(0, 0, 0, 0);
+                                          // Parse date directly to avoid timezone issues
+                                          const [year, month, day] = order.order_date.split('-').map(Number);
+                                          const orderDate = new Date(year, month - 1, day);
                                           const today = new Date();
                                           today.setHours(0, 0, 0, 0);
                                           const isFutureOrder = orderDate > today;
