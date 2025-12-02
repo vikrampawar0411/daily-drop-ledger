@@ -1023,6 +1023,21 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                                       </Button>
                                     ) : (
                                       <>
+                                        {/* Delete button - always visible for pending orders, shown first */}
+                                        {order.status === 'pending' && (
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => {
+                                              setDeleteOrderId(order.id);
+                                              setDeleteDialogOpen(true);
+                                            }}
+                                            className="text-destructive hover:text-destructive"
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        )}
+                                        {/* Status button - only for past/today orders */}
                                         {new Date(order.order_date) <= new Date() && (
                                           <Button
                                             size="sm"
@@ -1033,7 +1048,8 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                                             {order.status === 'pending' ? 'Pending' : 'Delivered'}
                                           </Button>
                                         )}
-                                        {order.status === 'pending' && (
+                                        {/* More options dropdown - only for past/today pending orders */}
+                                        {order.status === 'pending' && new Date(order.order_date) <= new Date() && (
                                           <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                               <Button variant="ghost" size="sm">
@@ -1044,16 +1060,6 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                                               <DropdownMenuItem onClick={() => handleEditOrder(order)}>
                                                 <Edit className="h-4 w-4 mr-2" />
                                                 Edit Order
-                                              </DropdownMenuItem>
-                                              <DropdownMenuItem 
-                                                onClick={() => {
-                                                  setDeleteOrderId(order.id);
-                                                  setDeleteDialogOpen(true);
-                                                }}
-                                                className="text-red-600"
-                                              >
-                                                <Trash2 className="h-4 w-4 mr-2" />
-                                                Delete Order
                                               </DropdownMenuItem>
                                               {order.updated_by_user_id && 
                                                order.customer?.user_id && 
