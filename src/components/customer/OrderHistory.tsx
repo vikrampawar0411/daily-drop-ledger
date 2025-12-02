@@ -1023,63 +1023,75 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                                       </Button>
                                     ) : (
                                       <>
-                                        {/* Delete button - always visible for pending orders, shown first */}
-                                        {order.status === 'pending' && (
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() => {
-                                              setDeleteOrderId(order.id);
-                                              setDeleteDialogOpen(true);
-                                            }}
-                                            className="text-destructive hover:text-destructive"
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        )}
-                                        {/* Status button - only for past/today orders */}
-                                        {new Date(order.order_date) <= new Date() && (
-                                          <Button
-                                            size="sm"
-                                            variant={order.status === 'delivered' ? 'default' : 'secondary'}
-                                            onClick={() => handleStatusToggle(order)}
-                                          >
-                                            {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
-                                            {order.status === 'pending' ? 'Pending' : 'Delivered'}
-                                          </Button>
-                                        )}
-                                        {/* More options dropdown - only for past/today pending orders */}
-                                        {order.status === 'pending' && new Date(order.order_date) <= new Date() && (
-                                          <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                              <Button variant="ghost" size="sm">
-                                                <MoreVertical className="h-4 w-4" />
-                                              </Button>
-                                            </DropdownMenuTrigger>
-                                             <DropdownMenuContent align="end">
-                                              <DropdownMenuItem onClick={() => handleEditOrder(order)}>
-                                                <Edit className="h-4 w-4 mr-2" />
-                                                Edit Order
-                                              </DropdownMenuItem>
-                                              {order.updated_by_user_id && 
-                                               order.customer?.user_id && 
-                                               order.updated_by_user_id !== order.customer.user_id && 
-                                               !order.dispute_raised && (
-                                                <DropdownMenuItem 
+                                        {(() => {
+                                          const orderDate = new Date(order.order_date);
+                                          orderDate.setHours(0, 0, 0, 0);
+                                          const today = new Date();
+                                          today.setHours(0, 0, 0, 0);
+                                          const isFutureOrder = orderDate > today;
+                                          
+                                          return (
+                                            <>
+                                              {/* Delete button - first, always visible for pending orders */}
+                                              {order.status === 'pending' && (
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
                                                   onClick={() => {
-                                                    setSelectedOrderId(order.id);
-                                                    setDisputeReason("");
-                                                    setDisputeDialogOpen(true);
+                                                    setDeleteOrderId(order.id);
+                                                    setDeleteDialogOpen(true);
                                                   }}
-                                                  className="text-yellow-600"
+                                                  className="text-destructive hover:text-destructive"
                                                 >
-                                                  <AlertTriangle className="h-4 w-4 mr-2" />
-                                                  Raise Dispute
-                                                </DropdownMenuItem>
+                                                  <Trash2 className="h-4 w-4" />
+                                                </Button>
                                               )}
-                                            </DropdownMenuContent>
-                                          </DropdownMenu>
-                                        )}
+                                              {/* Status button - only for past/today orders, not future */}
+                                              {!isFutureOrder && (
+                                                <Button
+                                                  size="sm"
+                                                  variant={order.status === 'delivered' ? 'default' : 'secondary'}
+                                                  onClick={() => handleStatusToggle(order)}
+                                                >
+                                                  {order.status === 'delivered' ? <CheckCircle className="h-4 w-4 mr-1" /> : <Clock className="h-4 w-4 mr-1" />}
+                                                  {order.status === 'pending' ? 'Pending' : 'Delivered'}
+                                                </Button>
+                                              )}
+                                              {/* More options dropdown - only for past/today pending orders */}
+                                              {order.status === 'pending' && !isFutureOrder && (
+                                                <DropdownMenu>
+                                                  <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="sm">
+                                                      <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                  </DropdownMenuTrigger>
+                                                  <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => handleEditOrder(order)}>
+                                                      <Edit className="h-4 w-4 mr-2" />
+                                                      Edit Order
+                                                    </DropdownMenuItem>
+                                                    {order.updated_by_user_id && 
+                                                     order.customer?.user_id && 
+                                                     order.updated_by_user_id !== order.customer.user_id && 
+                                                     !order.dispute_raised && (
+                                                      <DropdownMenuItem 
+                                                        onClick={() => {
+                                                          setSelectedOrderId(order.id);
+                                                          setDisputeReason("");
+                                                          setDisputeDialogOpen(true);
+                                                        }}
+                                                        className="text-yellow-600"
+                                                      >
+                                                        <AlertTriangle className="h-4 w-4 mr-2" />
+                                                        Raise Dispute
+                                                      </DropdownMenuItem>
+                                                    )}
+                                                  </DropdownMenuContent>
+                                                </DropdownMenu>
+                                              )}
+                                            </>
+                                          );
+                                        })()}
                                       </>
                                     )}
                                   </div>
