@@ -465,26 +465,6 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-purple-500">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Delivered Revenue</CardTitle>
-            <DollarSign className="h-5 w-5 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{statisticsSummary.deliveredRevenue.toFixed(2)}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-rose-500">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Revenue</CardTitle>
-            <TrendingUp className="h-5 w-5 text-rose-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{statisticsSummary.pendingRevenue.toFixed(2)}</div>
-          </CardContent>
-        </Card>
-
         <Card className="border-l-4 border-l-cyan-500">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Coverage</CardTitle>
