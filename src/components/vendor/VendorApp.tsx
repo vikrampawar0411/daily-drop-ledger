@@ -4,13 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Milk, Newspaper, Users, Receipt, TrendingUp, Calendar, MapPin, ArrowLeft, LogOut, Package, User, Settings } from "lucide-react";
+import { Milk, Newspaper, Users, Receipt, TrendingUp, Calendar, MapPin, ArrowLeft, LogOut, Package, User, Settings, DollarSign } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import VendorDashboard from "./VendorDashboard";
 import CustomerManagement from "./CustomerManagement";
 import OrderManagement from "./OrderManagement";
 import ProductManagement from "./ProductManagement";
+import VendorBilling from "./VendorBilling";
 import { AreaSocietyManagement } from "./AreaSocietyManagement";
 import SocietyHierarchyView from "./SocietyHierarchyView";
 import AreaHierarchyView from "./AreaHierarchyView";
@@ -110,7 +111,7 @@ const VendorApp = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-fit lg:grid-cols-4 gap-1">
+          <TabsList className="grid w-full grid-cols-5 lg:w-fit lg:grid-cols-5 gap-1">
             <TabsTrigger value="dashboard" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
               <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -122,6 +123,10 @@ const VendorApp = () => {
             <TabsTrigger value="products-orders" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
               <Package className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Products & Orders</span>
+            </TabsTrigger>
+            <TabsTrigger value="billing" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
+              <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Billing</span>
             </TabsTrigger>
             <TabsTrigger value="service-areas" className="flex items-center space-x-1 text-xs sm:text-sm px-2 sm:px-4">
               <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -153,6 +158,10 @@ const VendorApp = () => {
                 />
               </TabsContent>
             </Tabs>
+          </TabsContent>
+
+          <TabsContent value="billing">
+            <VendorBilling />
           </TabsContent>
 
           <TabsContent value="service-areas" className="space-y-6">
