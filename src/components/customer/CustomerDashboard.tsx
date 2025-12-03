@@ -2423,11 +2423,13 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                               </TableCell>
                             </TableRow>
                             {expandedMonths.has(month) && (monthOrders as any[]).map((order: any) => {
-                              const orderDate = new Date(order.order_date);
-                              orderDate.setHours(0, 0, 0, 0);
+                              // Parse date directly to avoid timezone issues
+                              const [year, monthNum, day] = order.order_date.split('-').map(Number);
+                              const orderDate = new Date(year, monthNum - 1, day);
                               const today = new Date();
                               today.setHours(0, 0, 0, 0);
                               const isPastDate = orderDate < today;
+                              const isFutureOrder = orderDate > today;
                               const isSunday = orderDate.getDay() === 0;
                               const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                               const dayName = days[orderDate.getDay()];
@@ -2541,8 +2543,24 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
                                     <div className="flex items-center gap-2">
-                                      {/* Toggle Status Button - Hide for vendor-delivered orders */}
-                                      {!(isVendorUpdated && order.status === 'delivered') && (
+                                      {/* Delete Button - First */}
+                                      {canModify && !(isPastDate && order.status === 'delivered') && (
+                                        <Button
+                                          variant="ghost" 
+                                          size="sm"
+                                          onClick={() => {
+                                            setDeleteOrderId(order.id);
+                                            setDeleteDialogOpen(true);
+                                          }}
+                                          className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
+                                          title="Delete Order"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      )}
+
+                                      {/* Toggle Status Button - Hide for future orders and vendor-delivered orders */}
+                                      {!(isVendorUpdated && order.status === 'delivered') && !isFutureOrder && (
                                         <TooltipProvider>
                                           <Tooltip>
                                             <TooltipTrigger asChild>
@@ -2592,22 +2610,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                                             </DropdownMenuItem>
                                           </DropdownMenuContent>
                                         </DropdownMenu>
-                                      )}
-
-                                      {/* Delete Button */}
-                                      {canModify && !(isPastDate && order.status === 'delivered') && (
-                                        <Button
-                                          variant="ghost" 
-                                          size="sm"
-                                          onClick={() => {
-                                            setDeleteOrderId(order.id);
-                                            setDeleteDialogOpen(true);
-                                          }}
-                                          className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
-                                          title="Delete Order"
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
                                       )}
 
                                       {order.dispute_raised && (
