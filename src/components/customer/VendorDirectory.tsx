@@ -222,7 +222,7 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
       {/* Vendor List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredVendors.map((vendor) => (
-          <Card key={vendor.id} className="hover:shadow-lg transition-shadow">
+          <Card key={vendor.id} className="hover:shadow-lg transition-shadow h-full flex flex-col">
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div className="flex-1">
@@ -237,17 +237,17 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                 <Badge variant="secondary" className="self-start">{vendor.category}</Badge>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 flex-1 flex flex-col">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {vendor.address && (
                   <div className="flex items-center space-x-2 col-span-2">
-                    <MapPin className="h-4 w-4 text-gray-600" />
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">{vendor.address}</span>
                   </div>
                 )}
                 {vendor.phone && (
                   <div className="flex items-center space-x-2">
-                    <Phone className="h-4 w-4 text-gray-600" />
+                    <Phone className="h-4 w-4 text-muted-foreground" />
                     <span>{vendor.phone}</span>
                   </div>
                 )}
@@ -259,34 +259,19 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
               </div>
 
               {vendor.products.length > 0 && (
-                <div>
-                  <span className="text-sm font-medium">Products & Pricing:</span>
-                  <div className="grid grid-cols-1 gap-2 mt-2">
+                <div className="flex-1">
+                  <span className="text-sm font-medium">Products:</span>
+                  <div className="flex flex-wrap gap-2 mt-2">
                     {vendor.products.map((product) => (
-                       <div key={product.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-gray-50 rounded-lg px-3 py-2 gap-2">
-                        <div className="flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-medium">{product.name}</span>
-                            <span className="text-sm text-primary font-semibold">₹{product.price} / {product.unit}</span>
-                          </div>
-                          {(product.subscribe_before || product.delivery_before) && (
-                            <div className="flex gap-2 mt-1">
-                              {product.subscribe_before && (
-                                <Badge variant="outline" className="text-xs">Subscribe: {product.subscribe_before}</Badge>
-                              )}
-                              {product.delivery_before && (
-                                <Badge variant="outline" className="text-xs">Delivery: {product.delivery_before}</Badge>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <Badge key={product.id} variant="secondary" className="text-sm">
+                        {product.name}
+                      </Badge>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="flex space-x-2 pt-2">
+              <div className="flex space-x-2 pt-2 mt-auto">
                 <Button 
                   size="sm" 
                   variant="outline"
@@ -298,13 +283,13 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                 <Button 
                   size="sm" 
                   className="flex-1"
-                  variant={isConnected(vendor.id) ? "destructive" : "default"}
+                  variant="outline"
                   onClick={() => handleVendorConnection(vendor.id)}
                 >
                   {isConnected(vendor.id) ? (
                     <>
-                      <X className="h-4 w-4 mr-2" />
-                      Disconnect
+                      <X className="h-4 w-4 mr-2 text-destructive" />
+                      <span className="text-destructive">Disconnect</span>
                     </>
                   ) : (
                     <>
