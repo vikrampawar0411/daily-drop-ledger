@@ -476,26 +476,39 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2 pt-4 border-t">
+              <div className="flex justify-between items-center gap-2 pt-4 border-t">
+                {isConnected(selectedVendor.id) ? (
+                  <Button 
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={() => {
+                      handleVendorConnection(selectedVendor.id);
+                      setShowDetailsDialog(false);
+                    }}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Disconnect
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      handleVendorConnection(selectedVendor.id);
+                      setShowDetailsDialog(false);
+                    }}
+                  >
+                    <Check className="h-4 w-4 mr-1" />
+                    Connect
+                  </Button>
+                )}
+                
                 <Button 
-                  variant={isConnected(selectedVendor.id) ? "destructive" : "default"}
-                  onClick={() => {
-                    handleVendorConnection(selectedVendor.id);
-                    setShowDetailsDialog(false);
-                  }}
-                  className="flex-1"
+                  variant="outline"
+                  onClick={() => setShowDetailsDialog(false)}
                 >
-                  {isConnected(selectedVendor.id) ? (
-                    <>
-                      <X className="h-4 w-4 mr-2" />
-                      Disconnect from Vendor
-                    </>
-                  ) : (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Connect with Vendor
-                    </>
-                  )}
+                  Close
                 </Button>
               </div>
             </div>
