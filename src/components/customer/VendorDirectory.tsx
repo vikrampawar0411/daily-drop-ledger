@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Search, Filter, MapPin, Phone, Plus, Check, X, Info, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts } from "@/hooks/useProducts";
@@ -36,6 +37,9 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
   const [vendorsLoading, setVendorsLoading] = useState(true);
   const [selectedVendor, setSelectedVendor] = useState<any>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
+  const [vendorToDisconnect, setVendorToDisconnect] = useState<{id: string; name: string} | null>(null);
+  const [futureOrdersCount, setFutureOrdersCount] = useState(0);
   const { products: allProducts, loading: productsLoading } = useProducts();
   const { vendorProducts, loading: vendorProductsLoading } = useVendorProducts();
   const { 
@@ -43,7 +47,9 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
     isConnected, 
     connectToVendor, 
     disconnectFromVendor, 
-    loading: connectionsLoading 
+    loading: connectionsLoading,
+    getFutureOrdersCount,
+    cancelFutureOrders,
   } = useVendorConnections();
   const { subscriptions, loading: subscriptionsLoading } = useSubscriptions();
 
@@ -128,11 +134,25 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
     );
   }
 
-  const handleVendorConnection = async (vendorId: string) => {
+  const handleVendorConnection = async (vendorId: string, vendorName: string) => {
     if (isConnected(vendorId)) {
-      await disconnectFromVendor(vendorId);
+      // Show confirmation dialog for disconnect
+      const count = await getFutureOrdersCount(vendorId);
+      setFutureOrdersCount(count);
+      setVendorToDisconnect({ id: vendorId, name: vendorName });
+      setShowDisconnectConfirm(true);
     } else {
       await connectToVendor(vendorId);
+    }
+  };
+
+  const handleDisconnectConfirm = async () => {
+    if (vendorToDisconnect) {
+      const cancelledCount = await cancelFutureOrders(vendorToDisconnect.id);
+      await disconnectFromVendor(vendorToDisconnect.id, cancelledCount);
+      setShowDisconnectConfirm(false);
+      setVendorToDisconnect(null);
+      setShowDetailsDialog(false);
     }
   };
 
@@ -284,7 +304,7 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                   size="sm" 
                   className="flex-1"
                   variant="outline"
-                  onClick={() => handleVendorConnection(vendor.id)}
+                  onClick={() => handleVendorConnection(vendor.id, vendor.name)}
                 >
                   {isConnected(vendor.id) ? (
                     <>
@@ -482,10 +502,7 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                     variant="ghost"
                     size="sm"
                     className="text-muted-foreground hover:text-destructive"
-                    onClick={() => {
-                      handleVendorConnection(selectedVendor.id);
-                      setShowDetailsDialog(false);
-                    }}
+                    onClick={() => handleVendorConnection(selectedVendor.id, selectedVendor.name)}
                   >
                     <X className="h-4 w-4 mr-1" />
                     Disconnect
@@ -495,7 +512,7 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      handleVendorConnection(selectedVendor.id);
+                      handleVendorConnection(selectedVendor.id, selectedVendor.name);
                       setShowDetailsDialog(false);
                     }}
                   >
@@ -515,6 +532,39 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Disconnect Confirmation Dialog */}
+      <AlertDialog open={showDisconnectConfirm} onOpenChange={setShowDisconnectConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disconnect from {vendorToDisconnect?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {futureOrdersCount > 0 ? (
+                <>
+                  This will cancel <strong>{futureOrdersCount} pending future order(s)</strong> with this vendor.
+                  This action cannot be undone.
+                </>
+              ) : (
+                "Are you sure you want to disconnect from this vendor?"
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowDisconnectConfirm(false);
+              setVendorToDisconnect(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDisconnectConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Disconnect
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
