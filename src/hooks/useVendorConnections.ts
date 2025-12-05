@@ -101,7 +101,68 @@ export const useVendorConnections = () => {
     }
   };
 
-  const disconnectFromVendor = async (vendorId: string) => {
+  const getFutureOrdersCount = async (vendorId: string): Promise<number> => {
+    try {
+      if (!user) return 0;
+
+      const { data: customerData } = await supabase
+        .from("customers")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!customerData) return 0;
+
+      const today = new Date().toISOString().split('T')[0];
+
+      const { count } = await supabase
+        .from("orders")
+        .select("id", { count: 'exact', head: true })
+        .eq("vendor_id", vendorId)
+        .eq("customer_id", customerData.id)
+        .gt("order_date", today)
+        .in("status", ['pending', 'pending_approval']);
+
+      return count || 0;
+    } catch (error) {
+      console.error("Error fetching future orders count:", error);
+      return 0;
+    }
+  };
+
+  const cancelFutureOrders = async (vendorId: string): Promise<number> => {
+    try {
+      if (!user) return 0;
+
+      const { data: customerData } = await supabase
+        .from("customers")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!customerData) return 0;
+
+      const today = new Date().toISOString().split('T')[0];
+
+      const { data, error } = await supabase
+        .from("orders")
+        .update({ status: 'cancelled' })
+        .eq("vendor_id", vendorId)
+        .eq("customer_id", customerData.id)
+        .gt("order_date", today)
+        .in("status", ['pending', 'pending_approval'])
+        .select();
+
+      if (error) throw error;
+
+      return data?.length || 0;
+    } catch (error) {
+      console.error("Error cancelling future orders:", error);
+      return 0;
+    }
+  };
+
+  const disconnectFromVendor = async (vendorId: string, cancelledOrdersCount?: number) => {
     try {
       if (!user) return;
 
@@ -123,9 +184,14 @@ export const useVendorConnections = () => {
       if (error) throw error;
 
       setConnectedVendorIds(prev => prev.filter(id => id !== vendorId));
+      
+      const orderMessage = cancelledOrdersCount && cancelledOrdersCount > 0 
+        ? `. ${cancelledOrdersCount} future order(s) were cancelled.`
+        : "";
+      
       toast({
         title: "Success",
-        description: "Disconnected from vendor",
+        description: `Disconnected from vendor${orderMessage}`,
       });
     } catch (error: any) {
       toast({
@@ -145,5 +211,7 @@ export const useVendorConnections = () => {
     disconnectFromVendor,
     isConnected,
     refetch: fetchConnections,
+    getFutureOrdersCount,
+    cancelFutureOrders,
   };
 };
