@@ -723,8 +723,9 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
             </Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Render active and paused subscriptions individually */}
             {subscriptions
-              .filter(sub => showCancelled || sub.status !== 'cancelled')
+              .filter(sub => sub.status !== 'cancelled')
               .map((subscription) => (
               <Card key={subscription.id} id={`subscription-${subscription.id}`} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
@@ -850,6 +851,112 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
               </CardContent>
             </Card>
           ))}
+
+            {/* Render cancelled subscriptions grouped by vendor+product */}
+            {showCancelled && (() => {
+              const cancelledSubs = subscriptions.filter(sub => sub.status === 'cancelled');
+              const groupedCancelled = cancelledSubs.reduce((acc, sub) => {
+                const key = `${sub.vendor_id}-${sub.product_id}`;
+                if (!acc[key]) {
+                  acc[key] = [];
+                }
+                acc[key].push(sub);
+                return acc;
+              }, {} as Record<string, typeof cancelledSubs>);
+
+              return Object.entries(groupedCancelled).map(([key, subs]) => {
+                const firstSub = subs[0];
+                return (
+                  <Card key={key} className="hover:shadow-lg transition-shadow border-gray-300">
+                    <CardHeader>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1">
+                          <div className="aspect-square w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
+                            {firstSub.product?.image_url ? (
+                              <img src={firstSub.product.image_url} alt={firstSub.product?.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <Package className="h-8 w-8 text-gray-400" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-lg truncate">{firstSub.vendor?.name}</CardTitle>
+                            <p className="text-sm text-muted-foreground">{firstSub.product?.name}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          {getStatusBadge('cancelled')}
+                          {subs.length > 1 && (
+                            <Badge variant="outline" className="text-xs">
+                              {subs.length} subscriptions
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {subs.map((subscription, index) => (
+                        <div 
+                          key={subscription.id} 
+                          id={`subscription-${subscription.id}`}
+                          className={cn(
+                            "text-sm space-y-2 p-3 rounded-lg bg-muted/50",
+                            index > 0 && "border-t"
+                          )}
+                        >
+                          {subs.length > 1 && (
+                            <div className="text-xs font-medium text-muted-foreground mb-2">
+                              Subscription #{index + 1}
+                            </div>
+                          )}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <span className="font-medium">Quantity:</span>
+                              <div className="text-muted-foreground">{subscription.quantity} {subscription.unit}</div>
+                            </div>
+                            <div>
+                              <span className="font-medium">Price:</span>
+                              <div className="text-muted-foreground">₹{subscription.price_per_unit}/{subscription.unit}</div>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="font-medium">Frequency:</span>
+                            <div className="text-muted-foreground">{getFrequencyLabel(subscription.frequency)}</div>
+                          </div>
+                          <div>
+                            <span className="font-medium">Originally Started:</span>
+                            <div className="text-muted-foreground">
+                              {format(new Date(subscription.original_start_date || subscription.start_date), 'MMM dd, yyyy')}
+                            </div>
+                          </div>
+                          {subscription.end_date && (
+                            <div>
+                              <span className="font-medium">Ended:</span>
+                              <div className="text-muted-foreground">
+                                {format(new Date(subscription.end_date), 'MMM dd, yyyy')}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          onNavigate?.('dashboard', {
+                            vendorId: firstSub.vendor_id,
+                            productId: firstSub.product_id
+                          });
+                        }}
+                        className="w-full"
+                      >
+                        <CalendarIcon className="h-4 w-4 mr-2" />
+                        See Calendar
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              });
+            })()}
         </div>
         </div>
       )}
