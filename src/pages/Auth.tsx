@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Milk, Newspaper, Shield, Store, Users, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useStates } from "@/hooks/useStates";
 import { useCities } from "@/hooks/useCities";
 import { useAreas } from "@/hooks/useAreas";
@@ -38,6 +39,9 @@ const Auth = () => {
   const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' });
   const [customerView, setCustomerView] = useState<'signin' | 'signup'>('signin');
   const [vendorView, setVendorView] = useState<'signin' | 'signup'>('signin');
+  const [showForgotDialog, setShowForgotDialog] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   // Customer signup form data
   const [customerForm, setCustomerForm] = useState({
@@ -185,6 +189,27 @@ const Auth = () => {
 
     navigate("/");
     setIsLoading(false);
+  };
+
+  const handleForgotPassword = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!forgotEmail) {
+      toast({ title: "Enter email", description: "Please enter your email to reset password", variant: "destructive" });
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const redirectTo = window.location.origin + "/";
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, { redirectTo });
+      if (error) throw error;
+      toast({ title: "Reset email sent", description: "Check your inbox for password reset instructions." });
+      setShowForgotDialog(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message ?? String(err), variant: "destructive" });
+    } finally {
+      setForgotLoading(false);
+    }
   };
 
   const handleAdminSignIn = async (e: React.FormEvent) => {
@@ -400,6 +425,15 @@ const Auth = () => {
                           onChange={(e) => setPassword(e.target.value)}
                           required
                         />
+                        <div className="text-right mt-2">
+                          <button
+                            type="button"
+                            className="text-sm text-primary hover:underline"
+                            onClick={() => { setForgotEmail(email); setShowForgotDialog(true); }}
+                          >
+                            Forgot password?
+                          </button>
+                        </div>
                       </div>
                       <Button type="submit" className="w-full" disabled={isLoading}>
                         {isLoading ? "Signing in..." : "Sign In as Customer"}
@@ -637,6 +671,15 @@ const Auth = () => {
                           onChange={(e) => setPassword(e.target.value)}
                           required
                         />
+                        <div className="text-right mt-2">
+                          <button
+                            type="button"
+                            className="text-sm text-primary hover:underline"
+                            onClick={() => { setForgotEmail(email); setShowForgotDialog(true); }}
+                          >
+                            Forgot password?
+                          </button>
+                        </div>
                       </div>
                       <Button type="submit" className="w-full" disabled={isLoading}>
                         {isLoading ? "Signing in..." : "Sign In as Vendor"}
@@ -828,6 +871,31 @@ const Auth = () => {
           </Tabs>
         </Card>
       </div>
+      {/* Forgot Password Dialog */}
+      <Dialog open={showForgotDialog} onOpenChange={setShowForgotDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset your password</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <div>
+              <Label htmlFor="forgot-email">Email</Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowForgotDialog(false)}>Cancel</Button>
+              <Button type="submit" disabled={forgotLoading}>{forgotLoading ? "Sending..." : "Send reset email"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

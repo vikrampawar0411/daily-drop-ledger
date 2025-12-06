@@ -24,6 +24,8 @@ const AdminApp = () => {
   const [totalCustomers, setTotalCustomers] = useState(0);
   const [totalProducts, setTotalProducts] = useState(0);
   const [adminName, setAdminName] = useState("");
+  const [editCustomer, setEditCustomer] = useState<any>(null);
+  const [orderFilterCustomer, setOrderFilterCustomer] = useState<{id: string, name: string} | null>(null);
 
   useEffect(() => {
     const loadAdminData = async () => {
@@ -165,7 +167,29 @@ const AdminApp = () => {
                 <TabsTrigger value="vendors">Vendors</TabsTrigger>
               </TabsList>
               <TabsContent value="customers">
-                <CustomerManagement />
+                <CustomerManagement
+                  onEditCustomer={(customer) => setEditCustomer(customer)}
+                  onViewOrders={(customer) => {
+                    setOrderFilterCustomer({ id: customer.id, name: customer.name });
+                    setActiveTab("products-orders");
+                  }}
+                />
+                {/* Edit Customer Dialog (simple example) */}
+                {editCustomer && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+                    <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+                      <h2 className="text-lg font-bold mb-4">Edit Customer</h2>
+                      <div className="mb-2"><b>Name:</b> {editCustomer.name}</div>
+                      <div className="mb-2"><b>Email:</b> {editCustomer.email}</div>
+                      <div className="mb-2"><b>Phone:</b> {editCustomer.phone}</div>
+                      {/* Add real edit fields here as needed */}
+                      <div className="flex justify-end space-x-2 mt-4">
+                        <Button variant="outline" onClick={() => setEditCustomer(null)}>Close</Button>
+                        {/* <Button onClick={handleSaveCustomerEdit}>Save</Button> */}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </TabsContent>
               <TabsContent value="vendors">
                 <VendorManagement />
@@ -184,7 +208,10 @@ const AdminApp = () => {
                 <ProductManagement />
               </TabsContent>
               <TabsContent value="orders">
-                <OrderManagement />
+                <OrderManagement
+                  initialCustomerId={orderFilterCustomer?.id}
+                  initialCustomerName={orderFilterCustomer?.name}
+                />
               </TabsContent>
               <TabsContent value="history">
                 <AdminOrderHistory />

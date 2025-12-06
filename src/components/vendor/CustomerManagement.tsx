@@ -19,7 +19,12 @@ import { useAreas } from "@/hooks/useAreas";
 import { useSocieties } from "@/hooks/useSocieties";
 import { useProducts } from "@/hooks/useProducts";
 
-const CustomerManagement = () => {
+interface CustomerManagementProps {
+  onEditCustomer?: (customer: any) => void;
+  onViewOrders?: (customer: any) => void;
+}
+
+const CustomerManagement = ({ onEditCustomer, onViewOrders }: CustomerManagementProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedStateId, setSelectedStateId] = useState("");
@@ -416,10 +421,15 @@ const CustomerManagement = () => {
                   </div>
                 )}
                 <div className="flex space-x-2 pt-2">
-                  <Button size="sm" variant="outline" className="flex-1">
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => onEditCustomer?.(customer)}>
                     Edit
                   </Button>
-                  <Button size="sm" variant="outline" className="flex-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => onViewOrders?.(customer)}
+                  >
                     Orders
                   </Button>
                 </div>

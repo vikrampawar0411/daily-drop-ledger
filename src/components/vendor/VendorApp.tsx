@@ -24,6 +24,7 @@ const VendorApp = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [navigationParams, setNavigationParams] = useState<any>({});
+  const [productsOrdersInnerTab, setProductsOrdersInnerTab] = useState<"products" | "orders">("products");
   const { signOut, user } = useAuth();
   const { vendors } = useVendors();
   const [vendorName, setVendorName] = useState("");
@@ -53,6 +54,33 @@ const VendorApp = () => {
     setActiveTab(tab);
     setNavigationParams(params || {});
   };
+
+  // Listen for cross-component navigation events (e.g. from child components)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ev = e as CustomEvent<any>;
+      const tab = ev?.detail?.tab;
+      const params = ev?.detail?.params || {};
+      if (tab) {
+        setActiveTab(tab);
+        setNavigationParams(params);
+      }
+    };
+
+    window.addEventListener("vendor:navigate", handler as EventListener);
+    return () => window.removeEventListener("vendor:navigate", handler as EventListener);
+  }, []);
+
+  // When navigationParams change, update inner products/orders tab selection
+  useEffect(() => {
+    if (activeTab === 'products-orders') {
+      if (navigationParams?.initialCustomerId) {
+        setProductsOrdersInnerTab('orders');
+      } else if (navigationParams?.initialTab === 'products') {
+        setProductsOrdersInnerTab('products');
+      }
+    }
+  }, [navigationParams, activeTab]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -143,10 +171,10 @@ const VendorApp = () => {
           </TabsContent>
 
           <TabsContent value="products-orders" className="space-y-6">
-            <Tabs defaultValue="products" className="w-full">
+              <Tabs value={productsOrdersInnerTab} onValueChange={setProductsOrdersInnerTab} className="w-full">
               <TabsList>
-                <TabsTrigger value="products">Product Management</TabsTrigger>
-                <TabsTrigger value="orders">Order Management</TabsTrigger>
+                <TabsTrigger value="products">Products</TabsTrigger>
+                <TabsTrigger value="orders">Orders</TabsTrigger>
               </TabsList>
               <TabsContent value="products">
                 <ProductManagement />
@@ -155,6 +183,8 @@ const VendorApp = () => {
                 <OrderManagement 
                   initialTimeRange={navigationParams?.initialTimeRange}
                   initialStatus={navigationParams?.initialStatus}
+                  initialCustomerId={navigationParams?.initialCustomerId}
+                  initialCustomerName={navigationParams?.initialCustomerName}
                 />
               </TabsContent>
             </Tabs>

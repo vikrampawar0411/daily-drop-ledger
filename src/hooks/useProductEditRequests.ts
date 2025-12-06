@@ -1,3 +1,22 @@
+  // Admin-only: delete an edit request
+  const deleteEditRequest = async (id: string, isAdmin: boolean) => {
+    if (!isAdmin) {
+      toast({ title: "Permission denied", description: "Only admins can delete edit requests.", variant: "destructive" });
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from("product_edit_requests")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      toast({ title: "Edit request deleted" });
+      await fetchEditRequests();
+    } catch (error: any) {
+      toast({ title: "Error deleting request", description: error?.message ?? String(error), variant: "destructive" });
+      throw error;
+    }
+  };
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +33,7 @@ export interface ProductEditRequest {
   proposed_subscribe_before: string | null;
   proposed_delivery_before: string | null;
   proposed_image_url: string | null;
+  proposed_price?: number | null;
   status: 'pending' | 'approved' | 'rejected';
   admin_notes: string | null;
   reviewed_by_user_id: string | null;
@@ -52,7 +72,7 @@ export const useProductEditRequests = (vendorId?: string) => {
     } catch (error: any) {
       toast({
         title: "Error fetching edit requests",
-        description: error.message,
+        description: error?.message ?? String(error),
         variant: "destructive",
       });
     } finally {
@@ -62,6 +82,78 @@ export const useProductEditRequests = (vendorId?: string) => {
 
   useEffect(() => {
     fetchEditRequests();
+  }, [vendorId]);
+
+  // Realtime subscription: refresh list when product_edit_requests change
+  useEffect(() => {
+    let isFetching = false;
+    // Support both supabase-js v1 and v2 APIs. If v2 is present, prefer channel-based
+    const anySupabase: any = supabase as any;
+
+    if (typeof anySupabase.channel === "function") {
+      // v2+ realtime via channel/postgres_changes
+      const channel = anySupabase
+        .channel("product_edit_requests_changes")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "product_edit_requests" },
+          async () => {
+            if (!isFetching) {
+              isFetching = true;
+              await fetchEditRequests();
+              isFetching = false;
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        try {
+          anySupabase.removeChannel?.(channel);
+        } catch (e) {
+          // ignore
+        }
+      };
+    }
+
+    // Fallback for v1 API
+    try {
+      const subscription: any = anySupabase
+        .from("product_edit_requests")
+        .on("INSERT", async () => {
+          if (!isFetching) {
+            isFetching = true;
+            await fetchEditRequests();
+            isFetching = false;
+          }
+        })
+        .on("UPDATE", async () => {
+          if (!isFetching) {
+            isFetching = true;
+            await fetchEditRequests();
+            isFetching = false;
+          }
+        })
+        .on("DELETE", async () => {
+          if (!isFetching) {
+            isFetching = true;
+            await fetchEditRequests();
+            isFetching = false;
+          }
+        })
+        .subscribe();
+
+      return () => {
+        try {
+          anySupabase.removeSubscription?.(subscription);
+        } catch (e) {
+          // ignore cleanup errors
+        }
+      };
+    } catch (e) {
+      // If realtime isn't supported in the environment, silently ignore
+      return () => {};
+    }
   }, [vendorId]);
 
   const createEditRequest = async (request: {
@@ -75,6 +167,7 @@ export const useProductEditRequests = (vendorId?: string) => {
     proposed_subscribe_before?: string;
     proposed_delivery_before?: string;
     proposed_image_url?: string;
+    proposed_price?: number;
   }) => {
     try {
       const { data, error } = await supabase
@@ -95,7 +188,7 @@ export const useProductEditRequests = (vendorId?: string) => {
     } catch (error: any) {
       toast({
         title: "Error creating edit request",
-        description: error.message,
+        description: error?.message ?? String(error),
         variant: "destructive",
       });
       throw error;
@@ -104,7 +197,11 @@ export const useProductEditRequests = (vendorId?: string) => {
 
   const approveEditRequest = async (id: string, adminUserId: string, adminNotes?: string) => {
     try {
-      // Get the edit request
+      // Optimistically mark approved in UI
+      const reviewedAt = new Date().toISOString();
+      setEditRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: "approved", reviewed_by_user_id: adminUserId, reviewed_at: reviewedAt, admin_notes: adminNotes || null } : r)));
+
+      // Get the edit request to read proposed fields
       const { data: request, error: fetchError } = await supabase
         .from("product_edit_requests")
         .select("*")
@@ -113,78 +210,61 @@ export const useProductEditRequests = (vendorId?: string) => {
 
       if (fetchError) throw fetchError;
 
-      // Update the product with proposed changes
+      // Only allow updating 'unit' and 'price' from edit requests. Do NOT apply
+      // proposed name or category changes here (enforced at approval time).
       const updates: any = {};
-      if (request.proposed_name) updates.name = request.proposed_name;
-      if (request.proposed_category) updates.category = request.proposed_category;
-      if (request.proposed_unit) updates.unit = request.proposed_unit;
-      if (request.proposed_description !== undefined) updates.description = request.proposed_description;
-      if (request.proposed_subscribe_before !== undefined) updates.subscribe_before = request.proposed_subscribe_before;
-      if (request.proposed_delivery_before !== undefined) updates.delivery_before = request.proposed_delivery_before;
-      if (request.proposed_image_url) updates.image_url = request.proposed_image_url;
+      const reqAny: any = request as any;
+      if (reqAny?.proposed_unit) updates.unit = reqAny.proposed_unit;
+      if (reqAny?.proposed_price !== undefined && reqAny?.proposed_price !== null) updates.price = reqAny.proposed_price;
 
-      const { error: updateProductError } = await supabase
-        .from("products")
-        .update(updates)
-        .eq("id", request.product_id);
-
+      const { error: updateProductError } = await supabase.from("products").update(updates).eq("id", request!.product_id);
       if (updateProductError) throw updateProductError;
 
-      // Mark request as approved
       const { error: updateRequestError } = await supabase
         .from("product_edit_requests")
         .update({
           status: "approved",
           reviewed_by_user_id: adminUserId,
-          reviewed_at: new Date().toISOString(),
+          reviewed_at: reviewedAt,
           admin_notes: adminNotes || null,
         })
         .eq("id", id);
-
       if (updateRequestError) throw updateRequestError;
 
-      toast({
-        title: "Request approved",
-        description: "Product has been updated successfully",
-      });
-
+      toast({ title: "Request approved", description: "Product has been updated successfully" });
       await fetchEditRequests();
     } catch (error: any) {
-      toast({
-        title: "Error approving request",
-        description: error.message,
-        variant: "destructive",
-      });
+      // revert by refetching fresh data
+      await fetchEditRequests();
+      toast({ title: "Error approving request", description: error?.message ?? String(error), variant: "destructive" });
       throw error;
     }
   };
 
   const rejectEditRequest = async (id: string, adminUserId: string, adminNotes: string) => {
     try {
+      // Optimistically update UI
+      const reviewedAt = new Date().toISOString();
+      setEditRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: "rejected", reviewed_by_user_id: adminUserId, reviewed_at: reviewedAt, admin_notes: adminNotes } : r)));
+
       const { error } = await supabase
         .from("product_edit_requests")
         .update({
           status: "rejected",
           reviewed_by_user_id: adminUserId,
-          reviewed_at: new Date().toISOString(),
+          reviewed_at: reviewedAt,
           admin_notes: adminNotes,
         })
         .eq("id", id);
 
       if (error) throw error;
 
-      toast({
-        title: "Request rejected",
-        description: "Edit request has been rejected",
-      });
+      toast({ title: "Request rejected", description: "Edit request has been rejected" });
 
       await fetchEditRequests();
     } catch (error: any) {
-      toast({
-        title: "Error rejecting request",
-        description: error.message,
-        variant: "destructive",
-      });
+      await fetchEditRequests();
+      toast({ title: "Error rejecting request", description: error?.message ?? String(error), variant: "destructive" });
       throw error;
     }
   };
@@ -195,6 +275,7 @@ export const useProductEditRequests = (vendorId?: string) => {
     createEditRequest,
     approveEditRequest,
     rejectEditRequest,
+    deleteEditRequest,
     refetch: fetchEditRequests,
   };
 };

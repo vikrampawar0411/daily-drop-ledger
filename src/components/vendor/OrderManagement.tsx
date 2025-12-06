@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,15 +16,21 @@ import { format, startOfWeek, startOfMonth, startOfYear, endOfDay } from "date-f
 interface OrderManagementProps {
   initialTimeRange?: "today" | "week" | "month" | "year";
   initialStatus?: string;
+  initialCustomerId?: string;
+  initialCustomerName?: string;
 }
 
-const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementProps = {}) => {
+const OrderManagement = ({ initialTimeRange, initialStatus, initialCustomerId, initialCustomerName }: OrderManagementProps = {}) => {
   const [dateRange, setDateRange] = useState<"today" | "week" | "month" | "year">(initialTimeRange || "today");
   const [selectedArea, setSelectedArea] = useState("all");
   const [selectedSociety, setSelectedSociety] = useState("all");
   const [selectedWing, setSelectedWing] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState(initialStatus || "pending");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(initialCustomerName || "");
+  // Local customer filter state (so user can clear the filter)
+  const [customerFilterId, setCustomerFilterId] = useState<string | null>(initialCustomerId || null);
+  const [customerFilterName, setCustomerFilterName] = useState<string | null>(initialCustomerName || null);
+  const [highlight, setHighlight] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -59,13 +65,40 @@ const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementPro
       const matchesArea = selectedArea === "all" || order.customer?.area_id === selectedArea;
       const matchesSociety = selectedSociety === "all" || order.customer?.society_id === selectedSociety;
       const matchesWing = selectedWing === "all" || order.customer?.wing_number === selectedWing;
+      const matchesCustomer = !customerFilterId || order.customer?.id === customerFilterId;
       const matchesSearch = searchTerm === "" || 
         order.customer?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.product.name.toLowerCase().includes(searchTerm.toLowerCase());
       
-      return matchesDate && matchesStatus && matchesArea && matchesSociety && matchesWing && matchesSearch;
+      return matchesDate && matchesStatus && matchesArea && matchesSociety && matchesWing && matchesSearch && matchesCustomer;
     }).sort((a, b) => new Date(a.order_date).getTime() - new Date(b.order_date).getTime());
-  }, [orders, dateRange, selectedStatus, selectedArea, selectedSociety, selectedWing, searchTerm]);
+  }, [orders, dateRange, selectedStatus, selectedArea, selectedSociety, selectedWing, searchTerm, customerFilterId]);
+
+  // When navigation supplies an initialCustomerName, keep searchTerm in sync
+  useEffect(() => {
+    if (initialCustomerName) {
+      setSearchTerm(initialCustomerName);
+    }
+  }, [initialCustomerName]);
+
+  // Focus/scroll the orders list when navigating for a specific customer
+  const ordersRootRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    // initialize local customer filter from props
+    if (initialCustomerId) {
+      setCustomerFilterId(initialCustomerId);
+      setCustomerFilterName(initialCustomerName || null);
+      setSearchTerm(initialCustomerName || "");
+      setHighlight(true);
+      if (ordersRootRef.current) {
+        setTimeout(() => {
+          ordersRootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 200);
+      }
+      // remove highlight after 2s
+      setTimeout(() => setHighlight(false), 2000);
+    }
+  }, [initialCustomerId]);
 
   const wings = useMemo(() => {
     return [...new Set(orders.map(o => o.customer?.wing_number).filter(Boolean))];
@@ -192,7 +225,7 @@ const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementPro
       </div>
 
       {/* Filters */}
-      <Card>
+      <Card ref={ordersRootRef as any} className={`${highlight ? 'ring-4 ring-yellow-300/40 transition-shadow' : ''}`}>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Filter className="h-5 w-5" />
@@ -200,6 +233,21 @@ const OrderManagement = ({ initialTimeRange, initialStatus }: OrderManagementPro
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {customerFilterName && (
+            <div className="mb-3 flex items-center justify-between">
+              <div className="inline-flex items-center gap-3 bg-blue-50 dark:bg-blue-950/20 px-3 py-1 rounded">
+                <div className="text-xs text-blue-700 dark:text-blue-400">Filtered:</div>
+                <div className="text-sm font-medium">{customerFilterName}</div>
+              </div>
+              <div>
+                <Button size="sm" variant="ghost" onClick={() => {
+                  setCustomerFilterId(null);
+                  setCustomerFilterName(null);
+                  setSearchTerm("");
+                }}>Clear</Button>
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Date Range */}
             <div>

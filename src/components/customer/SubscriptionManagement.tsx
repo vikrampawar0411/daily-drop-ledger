@@ -51,6 +51,9 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
   const [activeTab, setActiveTab] = useState("active");
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [subscriptionToCancel, setSubscriptionToCancel] = useState<string | null>(null);
+  const [cancelledDialogOpen, setCancelledDialogOpen] = useState(false);
+  const [cancelledDialogSubs, setCancelledDialogSubs] = useState<any[]>([]);
+  const [createDialogVendors, setCreateDialogVendors] = useState<typeof vendors>([] as any);
   
   // Calendar filter state
   const [calendarVendorId, setCalendarVendorId] = useState<string>("");
@@ -140,9 +143,20 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
   
   // Get available vendors (only those with products)
   const availableVendors = useMemo(() => {
-    const vendorIds = new Set(vendorProducts.map(vp => vp.vendor_id));
+    // If a product is selected in the create dialog, show only vendors that offer that product and are active
+    if (newSubscription.product_id) {
+      const vendorIds = new Set(
+        vendorProducts
+          .filter(vp => vp.product_id === newSubscription.product_id && vp.is_active)
+          .map(vp => vp.vendor_id)
+      );
+      return vendors.filter(v => v.is_active && vendorIds.has(v.id));
+    }
+
+    // Default: vendors with at least one active vendorProduct
+    const vendorIds = new Set(vendorProducts.filter(vp => vp.is_active).map(vp => vp.vendor_id));
     return vendors.filter(v => v.is_active && vendorIds.has(v.id));
-  }, [vendors, vendorProducts]);
+  }, [vendors, vendorProducts, newSubscription.product_id]);
   const availableProducts = useMemo(() => {
     // Get product IDs that are already subscribed (active or paused)
     const subscribedProductIds = new Set(
@@ -533,6 +547,36 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
     setPauseDialogOpen(true);
   };
 
+  const handleSubscribeFromProduct = async (product: any) => {
+    try {
+      // Fetch active vendor_products for this product directly from Supabase to avoid stale cache
+      const { data: vpData, error } = await supabase
+        .from('vendor_products')
+        .select('vendor_id')
+        .eq('product_id', product.id)
+        .eq('is_active', true);
+
+      if (error) throw error;
+
+      const offeringVendorIds = (vpData || []).map((v: any) => v.vendor_id).filter(Boolean);
+
+      // Filter vendors list to only those offering this product and active
+      const dialogVendors = vendors.filter(v => v.is_active && offeringVendorIds.includes(v.id));
+      setCreateDialogVendors(dialogVendors as any);
+
+      const activeOfferingVendor = offeringVendorIds.length === 1 ? offeringVendorIds[0] : "";
+
+      setNewSubscription(prev => ({ ...prev, product_id: product.id, quantity: productQuantities[product.id] || 1, vendor_id: activeOfferingVendor }));
+      setCreateDialogOpen(true);
+    } catch (err) {
+      console.error('Error fetching vendor offerings for product:', err);
+      // Fallback: open dialog with current available vendors
+      setCreateDialogVendors(availableVendors as any);
+      setNewSubscription(prev => ({ ...prev, product_id: product.id, quantity: productQuantities[product.id] || 1 }));
+      setCreateDialogOpen(true);
+    }
+  };
+
   const handlePauseConfirm = async () => {
     if (selectedSubscription && pauseFromDate && pauseUntilDate) {
       try {
@@ -675,7 +719,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
           <h2 className="text-2xl font-bold">Subscription Management</h2>
           <p className="text-sm text-muted-foreground">Manage recurring orders and view history</p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)} className="bg-green-600 hover:bg-green-700">
+        <Button onClick={() => { setCreateDialogVendors(availableVendors); setCreateDialogOpen(true); }} className="bg-green-600 hover:bg-green-700">
           <Plus className="h-4 w-4 mr-2" />
           New Subscription
         </Button>
@@ -821,12 +865,12 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
                     {subscription.status !== "cancelled" && (
                       <Button
                         size="sm"
-                        variant="destructive"
+                        variant="outline"
                         onClick={() => {
                           setSubscriptionToCancel(subscription.id);
                           setCancelDialogOpen(true);
                         }}
-                        className="flex-1"
+                        className="flex-1 border border-red-600 text-red-600 hover:bg-red-50"
                       >
                         <X className="h-4 w-4 mr-2" />
                         Cancel
@@ -867,7 +911,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
               return Object.entries(groupedCancelled).map(([key, subs]) => {
                 const firstSub = subs[0];
                 return (
-                  <Card key={key} className="hover:shadow-lg transition-shadow border-gray-300">
+                  <Card key={key} className="hover:shadow-lg transition-shadow border border-gray-300">
                     <CardHeader>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1">
@@ -894,64 +938,37 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {subs.map((subscription, index) => (
-                        <div 
-                          key={subscription.id} 
-                          id={`subscription-${subscription.id}`}
-                          className={cn(
-                            "text-sm space-y-2 p-3 rounded-lg bg-muted/50",
-                            index > 0 && "border-t"
-                          )}
-                        >
-                          {subs.length > 1 && (
-                            <div className="text-xs font-medium text-muted-foreground mb-2">
-                              Subscription #{index + 1}
-                            </div>
-                          )}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <span className="font-medium">Quantity:</span>
-                              <div className="text-muted-foreground">{subscription.quantity} {subscription.unit}</div>
-                            </div>
-                            <div>
-                              <span className="font-medium">Price:</span>
-                              <div className="text-muted-foreground">₹{subscription.price_per_unit}/{subscription.unit}</div>
-                            </div>
-                          </div>
-                          <div>
-                            <span className="font-medium">Frequency:</span>
-                            <div className="text-muted-foreground">{getFrequencyLabel(subscription.frequency)}</div>
-                          </div>
-                          <div>
-                            <span className="font-medium">Originally Started:</span>
-                            <div className="text-muted-foreground">
-                              {format(new Date(subscription.original_start_date || subscription.start_date), 'MMM dd, yyyy')}
-                            </div>
-                          </div>
-                          {subscription.end_date && (
-                            <div>
-                              <span className="font-medium">Ended:</span>
-                              <div className="text-muted-foreground">
-                                {format(new Date(subscription.end_date), 'MMM dd, yyyy')}
-                              </div>
-                            </div>
-                          )}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">{subs.length} cancelled subscription{subs.length > 1 ? 's' : ''}</p>
+                          <p className="text-xs text-muted-foreground mt-1">Originally started: {format(new Date(firstSub.original_start_date || firstSub.start_date), 'MMM dd, yyyy')}</p>
                         </div>
-                      ))}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          onNavigate?.('dashboard', {
-                            vendorId: firstSub.vendor_id,
-                            productId: firstSub.product_id
-                          });
-                        }}
-                        className="w-full"
-                      >
-                        <CalendarIcon className="h-4 w-4 mr-2" />
-                        See Calendar
-                      </Button>
+                        <div className="flex flex-col items-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setCancelledDialogSubs(subs);
+                              setCancelledDialogOpen(true);
+                            }}
+                          >
+                            View Details
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              onNavigate?.('dashboard', {
+                                vendorId: firstSub.vendor_id,
+                                productId: firstSub.product_id
+                              });
+                            }}
+                          >
+                            <CalendarIcon className="h-4 w-4 mr-2" />
+                            See Calendar
+                          </Button>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 );
@@ -1008,10 +1025,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
                           size="sm"
                           variant="outline"
                           className="w-full"
-                          onClick={() => {
-                            setNewSubscription({...newSubscription, product_id: product.id, quantity});
-                            setCreateDialogOpen(true);
-                          }}
+                          onClick={() => handleSubscribeFromProduct(product)}
                         >
                           <CalendarIcon className="h-3 w-3 mr-1" />
                           Subscribe
@@ -1071,7 +1085,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
                   <SelectValue placeholder="Select vendor" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableVendors.map((vendor) => (
+                  {(createDialogVendors && createDialogVendors.length > 0 ? createDialogVendors : availableVendors).map((vendor) => (
                     <SelectItem key={vendor.id} value={vendor.id}>
                       {vendor.name}
                     </SelectItem>
@@ -1085,7 +1099,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
               <Select 
                 value={newSubscription.product_id} 
                 onValueChange={(value) => setNewSubscription({...newSubscription, product_id: value})}
-                disabled={!newSubscription.vendor_id}
+                disabled={!newSubscription.vendor_id && !newSubscription.product_id}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select product" />
@@ -1363,6 +1377,51 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
             >
               Yes, Cancel Subscription
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancelled Subscriptions Details Dialog */}
+      <Dialog open={cancelledDialogOpen} onOpenChange={setCancelledDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Cancelled Subscriptions</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2 overflow-auto max-h-[60vh]">
+            {cancelledDialogSubs.map((subscription, index) => (
+              <div key={subscription.id} className={cn("text-sm space-y-2 p-3 rounded-lg bg-muted/50", index > 0 && "border-t")}>
+                {cancelledDialogSubs.length > 1 && (
+                  <div className="text-xs font-medium text-muted-foreground mb-2">Subscription #{index + 1}</div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <span className="font-medium">Quantity:</span>
+                    <div className="text-muted-foreground">{subscription.quantity} {subscription.unit}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Price:</span>
+                    <div className="text-muted-foreground">₹{subscription.price_per_unit}/{subscription.unit}</div>
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium">Frequency:</span>
+                  <div className="text-muted-foreground">{getFrequencyLabel(subscription.frequency)}</div>
+                </div>
+                <div>
+                  <span className="font-medium">Originally Started:</span>
+                  <div className="text-muted-foreground">{format(new Date(subscription.original_start_date || subscription.start_date), 'MMM dd, yyyy')}</div>
+                </div>
+                {subscription.end_date && (
+                  <div>
+                    <span className="font-medium">Ended:</span>
+                    <div className="text-muted-foreground">{format(new Date(subscription.end_date), 'MMM dd, yyyy')}</div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelledDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
