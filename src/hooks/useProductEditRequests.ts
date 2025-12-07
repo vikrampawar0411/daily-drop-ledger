@@ -1,22 +1,3 @@
-  // Admin-only: delete an edit request
-  const deleteEditRequest = async (id: string, isAdmin: boolean) => {
-    if (!isAdmin) {
-      toast({ title: "Permission denied", description: "Only admins can delete edit requests.", variant: "destructive" });
-      return;
-    }
-    try {
-      const { error } = await supabase
-        .from("product_edit_requests")
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
-      toast({ title: "Edit request deleted" });
-      await fetchEditRequests();
-    } catch (error: any) {
-      toast({ title: "Error deleting request", description: error?.message ?? String(error), variant: "destructive" });
-      throw error;
-    }
-  };
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -265,6 +246,26 @@ export const useProductEditRequests = (vendorId?: string) => {
     } catch (error: any) {
       await fetchEditRequests();
       toast({ title: "Error rejecting request", description: error?.message ?? String(error), variant: "destructive" });
+      throw error;
+    }
+  };
+
+  // Admin-only: delete an edit request
+  const deleteEditRequest = async (id: string, isAdmin: boolean) => {
+    if (!isAdmin) {
+      toast({ title: "Permission denied", description: "Only admins can delete edit requests.", variant: "destructive" });
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from("product_edit_requests")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      toast({ title: "Edit request deleted" });
+      await fetchEditRequests();
+    } catch (error: any) {
+      toast({ title: "Error deleting request", description: error?.message ?? String(error), variant: "destructive" });
       throw error;
     }
   };

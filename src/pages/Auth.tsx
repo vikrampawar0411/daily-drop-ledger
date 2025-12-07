@@ -87,16 +87,6 @@ const Auth = () => {
   const { areas } = useAreas();
   const { societies } = useSocieties(selectedAreaId);
 
-  // Check area availability for customer signup (check if vendors exist)
-  const customerAreaAvailability = useAreaAvailability(
-    customerSignupForm.watch("area_id"),
-    'customer',
-    500,
-    customerView === 'signup'
-  );
-
-  // Note: For vendor signup, we'll show general service info since vendors serve all areas
-
   // Initialize react-hook-form for customer signup with Zod validation
   const customerSignupForm = useForm<CustomerSignupFormData>({
     resolver: zodResolver(customerSignupSchema),
@@ -152,6 +142,16 @@ const Auth = () => {
   // Duplicate check hooks with debouncing (500ms)
   const customerDuplicateCheck = useDuplicateCheck(customerEmail, customerFullPhone, 500, customerView === 'signup');
   const vendorDuplicateCheck = useDuplicateCheck(vendorEmail, vendorFullPhone, 500, vendorView === 'signup');
+
+  // Check area availability for customer signup (check if vendors exist)
+  const customerAreaAvailability = useAreaAvailability(
+    customerSignupForm.watch("area_id"),
+    'customer',
+    500,
+    customerView === 'signup'
+  );
+
+  // Note: For vendor signup, we'll show general service info since vendors serve all areas
 
   // Set custom validation errors for duplicate email/phone
   useEffect(() => {
