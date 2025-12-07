@@ -1062,6 +1062,10 @@ export type Database = {
     Functions: {
       admin_exists: { Args: never; Returns: boolean }
       bootstrap_admin: { Args: { admin_user_id: string }; Returns: undefined }
+      check_email_phone_exists: {
+        Args: { p_email?: string | null; p_phone?: string | null }
+        Returns: Json
+      }
       complete_customer_signup: {
         Args: {
           p_area_id: string

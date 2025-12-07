@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +19,15 @@ import { useStates } from "@/hooks/useStates";
 import { useCities } from "@/hooks/useCities";
 import { useAreas } from "@/hooks/useAreas";
 import { useSocieties } from "@/hooks/useSocieties";
+import { 
+  customerSignupSchema, 
+  vendorSignupSchema,
+  type CustomerSignupFormData,
+  type VendorSignupFormData 
+} from "@/lib/validation";
+import { useDuplicateCheck } from "@/hooks/useDuplicateCheck";
+import { ValidatedInput } from "@/components/auth/ValidatedInput";
+import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
 
 const VENDOR_CATEGORIES = [
   "Milk & Dairy",
@@ -74,6 +85,93 @@ const Auth = () => {
   const { cities } = useCities(selectedStateId);
   const { areas } = useAreas();
   const { societies } = useSocieties(selectedAreaId);
+
+  // Initialize react-hook-form for customer signup with Zod validation
+  const customerSignupForm = useForm<CustomerSignupFormData>({
+    resolver: zodResolver(customerSignupSchema),
+    mode: "onBlur", // Validate on blur for better UX
+    defaultValues: {
+      email: "",
+      password: "",
+      confirmPassword: "",
+      name: "",
+      country_code: "+91",
+      phone: "",
+      state_id: "",
+      city_id: "",
+      area_id: "",
+      society_id: "",
+      wing_number: "",
+      flat_plot_house_number: "",
+    },
+  });
+
+  // Initialize react-hook-form for vendor signup with Zod validation
+  const vendorSignupForm = useForm<VendorSignupFormData>({
+    resolver: zodResolver(vendorSignupSchema),
+    mode: "onBlur",
+    defaultValues: {
+      email: "",
+      password: "",
+      confirmPassword: "",
+      businessName: "",
+      category: "",
+      contactPerson: "",
+      country_code: "+91",
+      phone: "",
+      businessEmail: "",
+      address: "",
+    },
+  });
+
+  // Watch form values for duplicate checking and password strength analysis
+  const customerEmail = customerSignupForm.watch("email");
+  const customerCountryCode = customerSignupForm.watch("country_code");
+  const customerPhone = customerSignupForm.watch("phone");
+  const customerPassword = customerSignupForm.watch("password");
+  const vendorEmail = vendorSignupForm.watch("email");
+  const vendorCountryCode = vendorSignupForm.watch("country_code");
+  const vendorPhone = vendorSignupForm.watch("phone");
+  const vendorPassword = vendorSignupForm.watch("password");
+
+  // Combine country code with phone number for duplicate checking
+  const customerFullPhone = customerPhone ? `${customerCountryCode} ${customerPhone}` : "";
+  const vendorFullPhone = vendorPhone ? `${vendorCountryCode} ${vendorPhone}` : "";
+
+  // Duplicate check hooks with debouncing (500ms)
+  const customerDuplicateCheck = useDuplicateCheck(customerEmail, customerFullPhone, 500, customerView === 'signup');
+  const vendorDuplicateCheck = useDuplicateCheck(vendorEmail, vendorFullPhone, 500, vendorView === 'signup');
+
+  // Set custom validation errors for duplicate email/phone
+  useEffect(() => {
+    if (customerDuplicateCheck.result?.emailExists) {
+      customerSignupForm.setError("email", {
+        type: "manual",
+        message: `Email already registered as ${customerDuplicateCheck.result.existsInTable === 'vendors' ? 'vendor' : 'customer'}`,
+      });
+    }
+    if (customerDuplicateCheck.result?.phoneExists) {
+      customerSignupForm.setError("phone", {
+        type: "manual",
+        message: `Phone number already registered as ${customerDuplicateCheck.result.existsInTable === 'vendors' ? 'vendor' : 'customer'}`,
+      });
+    }
+  }, [customerDuplicateCheck.result]);
+
+  useEffect(() => {
+    if (vendorDuplicateCheck.result?.emailExists) {
+      vendorSignupForm.setError("email", {
+        type: "manual",
+        message: `Email already registered as ${vendorDuplicateCheck.result.existsInTable === 'vendors' ? 'vendor' : 'customer'}`,
+      });
+    }
+    if (vendorDuplicateCheck.result?.phoneExists) {
+      vendorSignupForm.setError("phone", {
+        type: "manual",
+        message: `Phone number already registered as ${vendorDuplicateCheck.result.existsInTable === 'vendors' ? 'vendor' : 'customer'}`,
+      });
+    }
+  }, [vendorDuplicateCheck.result]);
 
   const handleCustomerSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -269,94 +367,119 @@ const Auth = () => {
     setIsLoading(false);
   };
 
-  const handleCustomerSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email || !password || !customerForm.name || !customerForm.phone || 
-        !customerForm.state_id || !customerForm.city_id || !customerForm.area_id || 
-        !customerForm.society_id || !customerForm.flat_plot_house_number) {
+  const handleCustomerSignup = async (data: CustomerSignupFormData) => {
+    // Double-check for duplicate email/phone before submitting
+    if (customerDuplicateCheck.result?.emailExists || customerDuplicateCheck.result?.phoneExists) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields",
+        description: "Email or phone number already registered. Please use different credentials.",
         variant: "destructive",
       });
       return;
     }
 
     setIsLoading(true);
-    const { error } = await signUp(email, password, 'customer', {
-      name: customerForm.name,
-      phone: customerForm.phone,
-      area_id: customerForm.area_id,
-      society_id: customerForm.society_id,
-      wing_number: customerForm.wing_number,
-      flat_plot_house_number: customerForm.flat_plot_house_number,
+    // Combine country code with phone number
+    const fullPhone = `${data.country_code} ${data.phone}`;
+    const { error } = await signUp(data.email, data.password, 'customer', {
+      name: data.name,
+      phone: fullPhone,
+      area_id: data.area_id,
+      society_id: data.society_id,
+      wing_number: data.wing_number || "",
+      flat_plot_house_number: data.flat_plot_house_number,
     });
     setIsLoading(false);
 
     if (error) {
-      toast({
-        title: "Sign Up Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-      setEmail('');
-      setPassword('');
-      setCustomerForm({
-        name: "",
-        phone: "",
-        state_id: "",
-        city_id: "",
-        area_id: "",
-        society_id: "",
-        wing_number: "",
-        flat_plot_house_number: "",
-      });
-    }
-  };
-
-  const handleVendorSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email || !password || !vendorForm.businessName || !vendorForm.category || 
-        !vendorForm.contactPerson || !vendorForm.phone || !vendorForm.address) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    const { error } = await signUp(email, password, 'vendor', {
-      businessName: vendorForm.businessName,
-      category: vendorForm.category,
-      contactPerson: vendorForm.contactPerson,
-      phone: vendorForm.phone,
-      businessEmail: vendorForm.businessEmail,
-      address: vendorForm.address,
-    });
-    setIsLoading(false);
-
-    if (error) {
+      // Show error toast on failure
       toast({
         title: "Sign Up Failed",
         description: error.message,
         variant: "destructive",
       });
     } else {
-      setEmail('');
-      setPassword('');
-      setVendorForm({
-        businessName: "",
-        category: "",
-        contactPerson: "",
-        phone: "",
-        businessEmail: "",
-        address: "",
+      // Show success toast on successful signup
+      toast({
+        title: "Account Created Successfully!",
+        description: "Your customer account has been created. You can now sign in.",
       });
+      // Switch to sign-in view after successful signup
+      setCustomerView('signin');
     }
+    
+    // Clear all form fields after signup attempt (success or failure)
+    customerSignupForm.reset();
+    setEmail('');
+    setPassword('');
+    setCustomerForm({
+      name: "",
+      phone: "",
+      state_id: "",
+      city_id: "",
+      area_id: "",
+      society_id: "",
+      wing_number: "",
+      flat_plot_house_number: "",
+    });
+    setSelectedStateId('');
+    setSelectedCityId('');
+    setSelectedAreaId('');
+  };
+
+  const handleVendorSignup = async (data: VendorSignupFormData) => {
+    // Double-check for duplicate email/phone before submitting
+    if (vendorDuplicateCheck.result?.emailExists || vendorDuplicateCheck.result?.phoneExists) {
+      toast({
+        title: "Validation Error",
+        description: "Email or phone number already registered. Please use different credentials.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    // Combine country code with phone number
+    const fullPhone = `${data.country_code} ${data.phone}`;
+    const { error } = await signUp(data.email, data.password, 'vendor', {
+      businessName: data.businessName,
+      category: data.category,
+      contactPerson: data.contactPerson,
+      phone: fullPhone,
+      businessEmail: data.businessEmail || "",
+      address: data.address,
+    });
+    setIsLoading(false);
+
+    if (error) {
+      // Show error toast on failure
+      toast({
+        title: "Sign Up Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      // Show success toast on successful signup
+      toast({
+        title: "Account Created Successfully!",
+        description: "Your vendor account has been created. You can now sign in.",
+      });
+      // Switch to sign-in view after successful signup
+      setVendorView('signin');
+    }
+    
+    // Clear all form fields after signup attempt (success or failure)
+    vendorSignupForm.reset();
+    setEmail('');
+    setPassword('');
+    setVendorForm({
+      businessName: "",
+      category: "",
+      contactPerson: "",
+      phone: "",
+      businessEmail: "",
+      address: "",
+    });
   };
 
   return (
@@ -460,63 +583,108 @@ const Auth = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <form onSubmit={handleCustomerSignup}>
+                    <form onSubmit={customerSignupForm.handleSubmit(handleCustomerSignup)}>
                       <ScrollArea className="h-[50vh] pr-4">
                         <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="customer-email">Email *</Label>
-                            <Input
-                              id="customer-email"
-                              type="email"
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              placeholder="your@email.com"
-                              required
+                          <ValidatedInput
+                            id="customer-email"
+                            label="Email"
+                            type="email"
+                            placeholder="your@email.com"
+                            required
+                            error={customerSignupForm.formState.errors.email?.message}
+                            isValidating={customerDuplicateCheck.isChecking}
+                            {...customerSignupForm.register("email")}
+                          />
+                          
+                          <ValidatedInput
+                            id="customer-password"
+                            label="Password"
+                            type="password"
+                            placeholder="••••••••"
+                            required
+                            error={customerSignupForm.formState.errors.password?.message}
+                            {...customerSignupForm.register("password")}
+                          />
+
+                          {/* Password strength indicator */}
+                          {customerPassword && (
+                            <PasswordStrengthIndicator 
+                              password={customerPassword}
+                              userInputs={[customerEmail, customerSignupForm.watch("name")]}
+                              showFeedback={true}
                             />
-                          </div>
+                          )}
+
+                          <ValidatedInput
+                            id="customer-confirm-password"
+                            label="Confirm Password"
+                            type="password"
+                            placeholder="••••••••"
+                            required
+                            error={customerSignupForm.formState.errors.confirmPassword?.message}
+                            {...customerSignupForm.register("confirmPassword")}
+                          />
+                          <ValidatedInput
+                            id="customer-name"
+                            label="Full Name"
+                            placeholder="Your full name"
+                            required
+                            error={customerSignupForm.formState.errors.name?.message}
+                            {...customerSignupForm.register("name")}
+                          />
+
                           <div className="space-y-2">
-                            <Label htmlFor="customer-password">Password *</Label>
-                            <Input
-                              id="customer-password"
-                              type="password"
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              placeholder="••••••••"
-                              required
-                              minLength={6}
-                            />
-                            <p className="text-xs text-muted-foreground">Must be at least 6 characters</p>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="customer-name">Full Name *</Label>
-                            <Input
-                              id="customer-name"
-                              value={customerForm.name}
-                              onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })}
-                              placeholder="Your full name"
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="customer-phone">Phone Number *</Label>
-                            <Input
-                              id="customer-phone"
-                              type="tel"
-                              value={customerForm.phone}
-                              onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })}
-                              placeholder="Your phone number"
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="customer-state">State *</Label>
+                            <Label htmlFor="customer-country-code">
+                              Country Code <span className="text-destructive">*</span>
+                            </Label>
                             <Select
-                              value={customerForm.state_id}
+                              value={customerSignupForm.watch("country_code")}
+                              onValueChange={(value) => customerSignupForm.setValue("country_code", value)}
+                            >
+                              <SelectTrigger id="customer-country-code">
+                                <SelectValue placeholder="Select country code" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="+91">+91 (India)</SelectItem>
+                                <SelectItem value="+1">+1 (USA/Canada)</SelectItem>
+                                <SelectItem value="+44">+44 (UK)</SelectItem>
+                                <SelectItem value="+971">+971 (UAE)</SelectItem>
+                                <SelectItem value="+65">+65 (Singapore)</SelectItem>
+                                <SelectItem value="+61">+61 (Australia)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {customerSignupForm.formState.errors.country_code && (
+                              <p className="text-sm text-destructive">
+                                {customerSignupForm.formState.errors.country_code.message}
+                              </p>
+                            )}
+                          </div>
+
+                          <ValidatedInput
+                            id="customer-phone"
+                            label="Phone Number"
+                            type="tel"
+                            placeholder="9876543210"
+                            required
+                            error={customerSignupForm.formState.errors.phone?.message}
+                            isValidating={customerDuplicateCheck.isChecking}
+                            hint="Enter 10-digit mobile number"
+                            {...customerSignupForm.register("phone")}
+                          />
+                          <div className="space-y-2">
+                            <Label htmlFor="customer-state">
+                              State <span className="text-destructive">*</span>
+                            </Label>
+                            <Select
+                              value={customerSignupForm.watch("state_id")}
                               onValueChange={(value) => {
-                                setCustomerForm({ ...customerForm, state_id: value, city_id: "", area_id: "", society_id: "" });
+                                customerSignupForm.setValue("state_id", value);
+                                customerSignupForm.setValue("city_id", "");
+                                customerSignupForm.setValue("area_id", "");
+                                customerSignupForm.setValue("society_id", "");
                                 setSelectedStateId(value);
                               }}
-                              required
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select your state" />
@@ -529,17 +697,26 @@ const Auth = () => {
                                 ))}
                               </SelectContent>
                             </Select>
+                            {customerSignupForm.formState.errors.state_id && (
+                              <p className="text-sm font-medium text-destructive">
+                                {customerSignupForm.formState.errors.state_id.message}
+                              </p>
+                            )}
                           </div>
+                          
                           <div className="space-y-2">
-                            <Label htmlFor="customer-city">City *</Label>
+                            <Label htmlFor="customer-city">
+                              City <span className="text-destructive">*</span>
+                            </Label>
                             <Select
-                              value={customerForm.city_id}
+                              value={customerSignupForm.watch("city_id")}
                               onValueChange={(value) => {
-                                setCustomerForm({ ...customerForm, city_id: value, area_id: "", society_id: "" });
+                                customerSignupForm.setValue("city_id", value);
+                                customerSignupForm.setValue("area_id", "");
+                                customerSignupForm.setValue("society_id", "");
                                 setSelectedCityId(value);
                               }}
                               disabled={!selectedStateId}
-                              required
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select your city" />
@@ -552,17 +729,25 @@ const Auth = () => {
                                 ))}
                               </SelectContent>
                             </Select>
+                            {customerSignupForm.formState.errors.city_id && (
+                              <p className="text-sm font-medium text-destructive">
+                                {customerSignupForm.formState.errors.city_id.message}
+                              </p>
+                            )}
                           </div>
+                          
                           <div className="space-y-2">
-                            <Label htmlFor="customer-area">Area *</Label>
+                            <Label htmlFor="customer-area">
+                              Area <span className="text-destructive">*</span>
+                            </Label>
                             <Select
-                              value={customerForm.area_id}
+                              value={customerSignupForm.watch("area_id")}
                               onValueChange={(value) => {
-                                setCustomerForm({ ...customerForm, area_id: value, society_id: "" });
+                                customerSignupForm.setValue("area_id", value);
+                                customerSignupForm.setValue("society_id", "");
                                 setSelectedAreaId(value);
                               }}
                               disabled={!selectedCityId}
-                              required
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select your area" />
@@ -575,14 +760,21 @@ const Auth = () => {
                                 ))}
                               </SelectContent>
                             </Select>
+                            {customerSignupForm.formState.errors.area_id && (
+                              <p className="text-sm font-medium text-destructive">
+                                {customerSignupForm.formState.errors.area_id.message}
+                              </p>
+                            )}
                           </div>
+                          
                           <div className="space-y-2">
-                            <Label htmlFor="customer-society">Society Name *</Label>
+                            <Label htmlFor="customer-society">
+                              Society Name <span className="text-destructive">*</span>
+                            </Label>
                             <Select
-                              value={customerForm.society_id}
-                              onValueChange={(value) => setCustomerForm({ ...customerForm, society_id: value })}
+                              value={customerSignupForm.watch("society_id")}
+                              onValueChange={(value) => customerSignupForm.setValue("society_id", value)}
                               disabled={!selectedAreaId}
-                              required
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select your society" />
@@ -595,30 +787,43 @@ const Auth = () => {
                                 ))}
                               </SelectContent>
                             </Select>
+                            {customerSignupForm.formState.errors.society_id && (
+                              <p className="text-sm font-medium text-destructive">
+                                {customerSignupForm.formState.errors.society_id.message}
+                              </p>
+                            )}
                           </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="customer-wing">Wing Number</Label>
-                            <Input
-                              id="customer-wing"
-                              value={customerForm.wing_number}
-                              onChange={(e) => setCustomerForm({ ...customerForm, wing_number: e.target.value })}
-                              placeholder="Wing number (optional)"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="customer-flat">Flat / Plot / House Number *</Label>
-                            <Input
-                              id="customer-flat"
-                              value={customerForm.flat_plot_house_number}
-                              onChange={(e) => setCustomerForm({ ...customerForm, flat_plot_house_number: e.target.value })}
-                              placeholder="Flat / Plot / House number"
-                              required
-                            />
-                          </div>
+
+                          <ValidatedInput
+                            id="customer-wing"
+                            label="Wing Number"
+                            placeholder="Wing number (optional)"
+                            error={customerSignupForm.formState.errors.wing_number?.message}
+                            {...customerSignupForm.register("wing_number")}
+                          />
+
+                          <ValidatedInput
+                            id="customer-flat"
+                            label="Flat / Plot / House Number"
+                            placeholder="Flat / Plot / House number"
+                            required
+                            error={customerSignupForm.formState.errors.flat_plot_house_number?.message}
+                            {...customerSignupForm.register("flat_plot_house_number")}
+                          />
                         </div>
                       </ScrollArea>
                       <div className="pt-4 border-t mt-4">
-                        <Button type="submit" className="w-full" disabled={isLoading}>
+                        <Button 
+                          type="submit" 
+                          className="w-full" 
+                          disabled={
+                            isLoading || 
+                            customerDuplicateCheck.isChecking || 
+                            !customerSignupForm.formState.isValid ||
+                            !!customerDuplicateCheck.result?.emailExists ||
+                            !!customerDuplicateCheck.result?.phoneExists
+                          }
+                        >
                           {isLoading ? "Creating account..." : "Create Customer Account"}
                         </Button>
                       </div>
@@ -706,49 +911,64 @@ const Auth = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <form onSubmit={handleVendorSignup}>
+                    <form onSubmit={vendorSignupForm.handleSubmit(handleVendorSignup)}>
                       <ScrollArea className="h-[50vh] pr-4">
                         <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="vendor-email">Email *</Label>
-                            <Input
-                              id="vendor-email"
-                              type="email"
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              placeholder="your@email.com"
-                              required
+                          <ValidatedInput
+                            id="vendor-email"
+                            label="Email"
+                            type="email"
+                            placeholder="your@email.com"
+                            required
+                            error={vendorSignupForm.formState.errors.email?.message}
+                            isValidating={vendorDuplicateCheck.isChecking}
+                            {...vendorSignupForm.register("email")}
+                          />
+
+                          <ValidatedInput
+                            id="vendor-password"
+                            label="Password"
+                            type="password"
+                            placeholder="••••••••"
+                            required
+                            error={vendorSignupForm.formState.errors.password?.message}
+                            {...vendorSignupForm.register("password")}
+                          />
+
+                          {/* Password strength indicator */}
+                          {vendorPassword && (
+                            <PasswordStrengthIndicator 
+                              password={vendorPassword}
+                              userInputs={[vendorEmail, vendorSignupForm.watch("businessName")]}
+                              showFeedback={true}
                             />
-                          </div>
+                          )}
+
+                          <ValidatedInput
+                            id="vendor-confirm-password"
+                            label="Confirm Password"
+                            type="password"
+                            placeholder="••••••••"
+                            required
+                            error={vendorSignupForm.formState.errors.confirmPassword?.message}
+                            {...vendorSignupForm.register("confirmPassword")}
+                          />
+                          <ValidatedInput
+                            id="vendor-business-name"
+                            label="Business Name"
+                            placeholder="Your business name"
+                            required
+                            error={vendorSignupForm.formState.errors.businessName?.message}
+                            {...vendorSignupForm.register("businessName")}
+                          />
+
                           <div className="space-y-2">
-                            <Label htmlFor="vendor-password">Password *</Label>
-                            <Input
-                              id="vendor-password"
-                              type="password"
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              placeholder="••••••••"
-                              required
-                              minLength={6}
-                            />
-                            <p className="text-xs text-muted-foreground">Must be at least 6 characters</p>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="vendor-business-name">Business Name *</Label>
-                            <Input
-                              id="vendor-business-name"
-                              value={vendorForm.businessName}
-                              onChange={(e) => setVendorForm({ ...vendorForm, businessName: e.target.value })}
-                              placeholder="Your business name"
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="vendor-category">Business Category *</Label>
+                            <Label htmlFor="vendor-category">
+                              Business Category <span className="text-destructive">*</span>
+                            </Label>
                             <Select
-                              value={vendorForm.category}
-                              onValueChange={(value) => setVendorForm({ ...vendorForm, category: value })}
-                              required
+                              value={vendorSignupForm.watch("category")}
+                              onValueChange={(value) => vendorSignupForm.setValue("category", value)}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select category" />
@@ -761,53 +981,102 @@ const Auth = () => {
                                 ))}
                               </SelectContent>
                             </Select>
+                            {vendorSignupForm.formState.errors.category && (
+                              <p className="text-sm font-medium text-destructive">
+                                {vendorSignupForm.formState.errors.category.message}
+                              </p>
+                            )}
                           </div>
+
+                          <ValidatedInput
+                            id="vendor-contact-person"
+                            label="Contact Person Name"
+                            placeholder="Primary contact person"
+                            required
+                            error={vendorSignupForm.formState.errors.contactPerson?.message}
+                            {...vendorSignupForm.register("contactPerson")}
+                          />
+
                           <div className="space-y-2">
-                            <Label htmlFor="vendor-contact-person">Contact Person Name *</Label>
-                            <Input
-                              id="vendor-contact-person"
-                              value={vendorForm.contactPerson}
-                              onChange={(e) => setVendorForm({ ...vendorForm, contactPerson: e.target.value })}
-                              placeholder="Primary contact person"
-                              required
-                            />
+                            <Label htmlFor="vendor-country-code">
+                              Country Code <span className="text-destructive">*</span>
+                            </Label>
+                            <Select
+                              value={vendorSignupForm.watch("country_code")}
+                              onValueChange={(value) => vendorSignupForm.setValue("country_code", value)}
+                            >
+                              <SelectTrigger id="vendor-country-code">
+                                <SelectValue placeholder="Select country code" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="+91">+91 (India)</SelectItem>
+                                <SelectItem value="+1">+1 (USA/Canada)</SelectItem>
+                                <SelectItem value="+44">+44 (UK)</SelectItem>
+                                <SelectItem value="+971">+971 (UAE)</SelectItem>
+                                <SelectItem value="+65">+65 (Singapore)</SelectItem>
+                                <SelectItem value="+61">+61 (Australia)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {vendorSignupForm.formState.errors.country_code && (
+                              <p className="text-sm text-destructive">
+                                {vendorSignupForm.formState.errors.country_code.message}
+                              </p>
+                            )}
                           </div>
+
+                          <ValidatedInput
+                            id="vendor-phone"
+                            label="Phone Number"
+                            type="tel"
+                            placeholder="9876543210"
+                            required
+                            error={vendorSignupForm.formState.errors.phone?.message}
+                            isValidating={vendorDuplicateCheck.isChecking}
+                            hint="Enter 10-digit mobile number"
+                            {...vendorSignupForm.register("phone")}
+                          />
+
+                          <ValidatedInput
+                            id="vendor-business-email"
+                            label="Business Email"
+                            type="email"
+                            placeholder="Business email address (optional)"
+                            error={vendorSignupForm.formState.errors.businessEmail?.message}
+                            hint="Must be different from login email if provided"
+                            {...vendorSignupForm.register("businessEmail")}
+                          />
+
                           <div className="space-y-2">
-                            <Label htmlFor="vendor-phone">Phone Number *</Label>
-                            <Input
-                              id="vendor-phone"
-                              type="tel"
-                              value={vendorForm.phone}
-                              onChange={(e) => setVendorForm({ ...vendorForm, phone: e.target.value })}
-                              placeholder="Business phone number"
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="vendor-business-email">Business Email</Label>
-                            <Input
-                              id="vendor-business-email"
-                              type="email"
-                              value={vendorForm.businessEmail}
-                              onChange={(e) => setVendorForm({ ...vendorForm, businessEmail: e.target.value })}
-                              placeholder="Business email address (optional)"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="vendor-address">Business Address *</Label>
+                            <Label htmlFor="vendor-address">
+                              Business Address <span className="text-destructive">*</span>
+                            </Label>
                             <Textarea
                               id="vendor-address"
-                              value={vendorForm.address}
-                              onChange={(e) => setVendorForm({ ...vendorForm, address: e.target.value })}
                               placeholder="Complete business address"
                               rows={3}
-                              required
+                              className={vendorSignupForm.formState.errors.address && "border-destructive"}
+                              {...vendorSignupForm.register("address")}
                             />
+                            {vendorSignupForm.formState.errors.address && (
+                              <p className="text-sm font-medium text-destructive">
+                                {vendorSignupForm.formState.errors.address.message}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </ScrollArea>
                       <div className="pt-4 border-t mt-4">
-                        <Button type="submit" className="w-full" disabled={isLoading}>
+                        <Button 
+                          type="submit" 
+                          className="w-full" 
+                          disabled={
+                            isLoading || 
+                            vendorDuplicateCheck.isChecking || 
+                            !vendorSignupForm.formState.isValid ||
+                            !!vendorDuplicateCheck.result?.emailExists ||
+                            !!vendorDuplicateCheck.result?.phoneExists
+                          }
+                        >
                           {isLoading ? "Creating account..." : "Create Vendor Account"}
                         </Button>
                       </div>
