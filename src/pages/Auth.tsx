@@ -12,7 +12,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Milk, Newspaper, Shield, Store, Users, Calendar } from "lucide-react";
+import { Milk, Newspaper, Shield, Store, Users, Calendar, CheckCircle2, Info, Loader2 } from "lucide-react";
+import { useAreaAvailability } from "@/hooks/useAreaAvailability";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useStates } from "@/hooks/useStates";
@@ -85,6 +86,16 @@ const Auth = () => {
   const { cities } = useCities(selectedStateId);
   const { areas } = useAreas();
   const { societies } = useSocieties(selectedAreaId);
+
+  // Check area availability for customer signup (check if vendors exist)
+  const customerAreaAvailability = useAreaAvailability(
+    customerSignupForm.watch("area_id"),
+    'customer',
+    500,
+    customerView === 'signup'
+  );
+
+  // Note: For vendor signup, we'll show general service info since vendors serve all areas
 
   // Initialize react-hook-form for customer signup with Zod validation
   const customerSignupForm = useForm<CustomerSignupFormData>({
@@ -765,6 +776,44 @@ const Auth = () => {
                                 {customerSignupForm.formState.errors.area_id.message}
                               </p>
                             )}
+
+                            {/* Area Availability Indicator for Customer Signup */}
+                            {customerSignupForm.watch("area_id") && (
+                              <div className="mt-2 rounded-md border p-3 bg-muted/50">
+                                {customerAreaAvailability.isChecking ? (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <span>Checking service availability...</span>
+                                  </div>
+                                ) : customerAreaAvailability.result ? (
+                                  <div className="space-y-1">
+                                    <div className={`flex items-start gap-2 text-sm ${
+                                      customerAreaAvailability.result.hasVendors 
+                                        ? "text-green-700 dark:text-green-400" 
+                                        : "text-orange-700 dark:text-orange-400"
+                                    }`}>
+                                      {customerAreaAvailability.result.hasVendors ? (
+                                        <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                      ) : (
+                                        <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                      )}
+                                      <span className="font-medium">
+                                        {customerAreaAvailability.result.message}
+                                      </span>
+                                    </div>
+                                    {customerAreaAvailability.result.hasVendors && customerAreaAvailability.result.categories && (
+                                      <p className="text-xs text-muted-foreground ml-6">
+                                        {customerAreaAvailability.result.categoryCount} categories including:{" "}
+                                        {customerAreaAvailability.result.categories.slice(0, 3).join(", ")}
+                                        {(customerAreaAvailability.result.categories.length || 0) > 3 && ", and more"}
+                                      </p>
+                                    )}
+                                  </div>
+                                ) : customerAreaAvailability.error ? (
+                                  <p className="text-sm text-destructive">{customerAreaAvailability.error}</p>
+                                ) : null}
+                              </div>
+                            )}
                           </div>
                           
                           <div className="space-y-2">
@@ -1062,6 +1111,19 @@ const Auth = () => {
                                 {vendorSignupForm.formState.errors.address.message}
                               </p>
                             )}
+                          </div>
+
+                          {/* Service Area Information for Vendors */}
+                          <div className="rounded-md border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800 p-3">
+                            <div className="flex items-start gap-2 text-sm text-blue-700 dark:text-blue-400">
+                              <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <div className="space-y-1">
+                                <p className="font-medium">Service Area Coverage</p>
+                                <p className="text-xs text-blue-600 dark:text-blue-500">
+                                  As a vendor, you can serve customers across all areas. The system-wide availability check ensures customers know vendors like you are ready to serve them.
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </ScrollArea>
