@@ -12,6 +12,8 @@ import VendorDirectory from "./VendorDirectory";
 import OrderCalendar from "./OrderCalendar";
 import SubscriptionManagement from "./SubscriptionManagement";
 import AccountSettings from "./AccountSettings";
+import WelcomeTourButton from "@/components/onboarding/WelcomeTourButton";
+import WelcomeDialog from "@/components/onboarding/WelcomeDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -21,6 +23,7 @@ const CustomerApp = () => {
   const [navigationParams, setNavigationParams] = useState<any>({});
   const { signOut, user } = useAuth();
   const [customerName, setCustomerName] = useState("");
+  const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
 
   useEffect(() => {
     const loadCustomerName = async () => {
@@ -64,6 +67,7 @@ const CustomerApp = () => {
                 <h1 className="text-xl font-bold text-gray-900">Customer Portal</h1>
                 <p className="text-sm text-gray-600 hidden md:block">Manage your orders and vendors</p>
               </div>
+              <WelcomeTourButton onClick={() => setWelcomeDialogOpen(true)} />
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -138,6 +142,14 @@ const CustomerApp = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Welcome Tour Dialog */}
+      <WelcomeDialog 
+        userType="customer" 
+        userName={customerName}
+        isOpen={welcomeDialogOpen}
+        onClose={() => setWelcomeDialogOpen(false)}
+      />
     </div>
   );
 };

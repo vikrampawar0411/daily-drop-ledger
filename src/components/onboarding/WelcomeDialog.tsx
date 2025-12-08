@@ -1,37 +1,18 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Users, Store, ShoppingCart, Package, TrendingUp, Bell } from "lucide-react";
-import { useState, useEffect } from "react";
+import { CheckCircle2, Users, Store, ShoppingCart, Package, TrendingUp, Bell, HelpCircle } from "lucide-react";
+import { useState } from "react";
 
 interface WelcomeDialogProps {
   userType: 'vendor' | 'customer';
   userName?: string;
-  hasConnections?: boolean;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export const WelcomeDialog = ({ userType, userName, hasConnections = false }: WelcomeDialogProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const storageKey = `welcome-dialog-shown-${userType}`;
-
-  useEffect(() => {
-    const hasSeenWelcome = localStorage.getItem(storageKey);
-    
-    // Close dialog if user has made connections
-    if (hasConnections && isOpen) {
-      handleClose();
-      return;
-    }
-    
-    // Show welcome dialog only if not seen and no connections
-    if (!hasSeenWelcome && !hasConnections) {
-      // Show welcome dialog after a short delay for better UX
-      setTimeout(() => setIsOpen(true), 500);
-    }
-  }, [storageKey, hasConnections, isOpen]);
-
+export const WelcomeDialog = ({ userType, userName, isOpen, onClose }: WelcomeDialogProps) => {
   const handleClose = () => {
-    localStorage.setItem(storageKey, 'true');
-    setIsOpen(false);
+    onClose();
   };
 
   const customerContent = {
@@ -95,7 +76,7 @@ export const WelcomeDialog = ({ userType, userName, hasConnections = false }: We
   const content = userType === 'customer' ? customerContent : vendorContent;
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-gray-900">

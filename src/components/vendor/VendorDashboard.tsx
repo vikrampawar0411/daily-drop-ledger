@@ -15,7 +15,6 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx-js-style';
 import { OnboardingCard } from "@/components/onboarding/OnboardingCard";
-import { WelcomeDialog } from "@/components/onboarding/WelcomeDialog";
 import { InviteCustomerDialog } from "./InviteCustomerDialog";
 import { UserPlus } from "lucide-react";
 
@@ -271,9 +270,6 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
 
   return (
     <div className="space-y-6">
-      {/* First-time Welcome Dialog */}
-      <WelcomeDialog userType="vendor" userName={vendorName} hasConnections={connectionCount > 0} />
-      
       {/* OOBE Card for New Vendors */}
       <OnboardingCard
         userType="vendor"

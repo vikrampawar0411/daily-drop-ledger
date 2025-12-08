@@ -15,6 +15,8 @@ import VendorBilling from "./VendorBilling";
 import { AreaSocietyManagement } from "./AreaSocietyManagement";
 import SocietyHierarchyView from "./SocietyHierarchyView";
 import AreaHierarchyView from "./AreaHierarchyView";
+import WelcomeTourButton from "@/components/onboarding/WelcomeTourButton";
+import WelcomeDialog from "@/components/onboarding/WelcomeDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVendors } from "@/hooks/useVendors";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +30,7 @@ const VendorApp = () => {
   const { signOut, user } = useAuth();
   const { vendors } = useVendors();
   const [vendorName, setVendorName] = useState("");
+  const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
   
   // Get the current vendor's ID
   const currentVendorId = vendors[0]?.id || "";
@@ -102,6 +105,7 @@ const VendorApp = () => {
                 <h1 className="text-xl font-bold text-gray-900">Vendor Dashboard</h1>
                 <p className="text-sm text-gray-600 hidden md:block">Manage your distribution network</p>
               </div>
+              <WelcomeTourButton onClick={() => setWelcomeDialogOpen(true)} />
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -220,6 +224,14 @@ const VendorApp = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Welcome Tour Dialog */}
+      <WelcomeDialog 
+        userType="vendor" 
+        userName={vendorName}
+        isOpen={welcomeDialogOpen}
+        onClose={() => setWelcomeDialogOpen(false)}
+      />
     </div>
   );
 };
