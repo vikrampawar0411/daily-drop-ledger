@@ -1084,10 +1084,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      create_vendor_customer_connections_for_all: {
-        Args: never
-        Returns: undefined
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
