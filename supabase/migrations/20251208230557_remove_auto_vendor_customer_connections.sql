@@ -1,0 +1,1 @@
+-- Remove automatic vendor-customer connection triggers
