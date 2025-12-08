@@ -35,6 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import * as XLSX from 'xlsx-js-style';
 import { OnboardingCard } from "@/components/onboarding/OnboardingCard";
+import { WelcomeDialog } from "@/components/onboarding/WelcomeDialog";
 import { NotificationBanner } from "./NotificationBanner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -1192,6 +1193,9 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   return (
     <TooltipProvider>
       <div className="space-y-6">
+      {/* First-time Welcome Dialog */}
+      <WelcomeDialog userType="customer" userName={customerName} />
+      
       {/* Notification Banner */}
       <NotificationBanner />
       
