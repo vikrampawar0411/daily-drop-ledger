@@ -6,19 +6,28 @@ import { useState, useEffect } from "react";
 interface WelcomeDialogProps {
   userType: 'vendor' | 'customer';
   userName?: string;
+  hasConnections?: boolean;
 }
 
-export const WelcomeDialog = ({ userType, userName }: WelcomeDialogProps) => {
+export const WelcomeDialog = ({ userType, userName, hasConnections = false }: WelcomeDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const storageKey = `welcome-dialog-shown-${userType}`;
 
   useEffect(() => {
     const hasSeenWelcome = localStorage.getItem(storageKey);
-    if (!hasSeenWelcome) {
+    
+    // Close dialog if user has made connections
+    if (hasConnections && isOpen) {
+      handleClose();
+      return;
+    }
+    
+    // Show welcome dialog only if not seen and no connections
+    if (!hasSeenWelcome && !hasConnections) {
       // Show welcome dialog after a short delay for better UX
       setTimeout(() => setIsOpen(true), 500);
     }
-  }, [storageKey]);
+  }, [storageKey, hasConnections, isOpen]);
 
   const handleClose = () => {
     localStorage.setItem(storageKey, 'true');

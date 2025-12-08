@@ -272,7 +272,7 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
   return (
     <div className="space-y-6">
       {/* First-time Welcome Dialog */}
-      <WelcomeDialog userType="vendor" userName={vendorName} />
+      <WelcomeDialog userType="vendor" userName={vendorName} hasConnections={connectionCount > 0} />
       
       {/* OOBE Card for New Vendors */}
       <OnboardingCard

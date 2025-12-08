@@ -1194,7 +1194,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     <TooltipProvider>
       <div className="space-y-6">
       {/* First-time Welcome Dialog */}
-      <WelcomeDialog userType="customer" userName={customerName} />
+      <WelcomeDialog userType="customer" userName={customerName} hasConnections={connectionCount > 0} />
       
       {/* Notification Banner */}
       <NotificationBanner />
