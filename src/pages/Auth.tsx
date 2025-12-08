@@ -497,27 +497,13 @@ const Auth = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-600 to-green-600 text-white px-6 py-4 rounded-xl inline-flex mb-4 shadow-lg">
-            <Milk className="h-10 w-10" />
-            <Newspaper className="h-10 w-10" />
+          <div className="flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-600 to-green-600 text-white px-4 py-3 rounded-lg inline-flex mb-4">
+            <Milk className="h-8 w-8" />
+            <Newspaper className="h-8 w-8" />
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">Daily Drop Ledger</h1>
-          <p className="text-lg font-semibold text-blue-600 mb-2">🎯 One App Solution for Everyone!</p>
-          <div className="space-y-2 mb-4">
-            <p className="text-gray-700 font-medium">
-              👥 <span className="text-green-600">Customers:</span> Connect with trusted vendors
-            </p>
-            <p className="text-gray-700 font-medium">
-              🏪 <span className="text-blue-600">Vendors:</span> Grow your customer base
-            </p>
-          </div>
-          <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg px-4 py-3 mb-3 border border-blue-200">
-            <p className="text-sm text-gray-800 leading-relaxed">
-              Seamlessly manage daily deliveries of milk, newspapers, groceries & more. 
-              <span className="font-semibold text-blue-700"> Connect. Order. Deliver.</span>
-            </p>
-          </div>
-          <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
+          <h1 className="text-3xl font-bold text-gray-900">Daily Drop Ledger</h1>
+          <p className="text-gray-600 mt-2">Vendor-Customer Distribution Platform</p>
+          <div className="flex items-center justify-center space-x-2 text-sm text-gray-600 mt-3">
             <Calendar className="h-4 w-4" />
             <span>{new Date().toLocaleDateString()}</span>
           </div>
