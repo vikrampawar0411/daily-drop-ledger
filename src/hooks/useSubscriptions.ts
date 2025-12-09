@@ -120,7 +120,7 @@ export const useSubscriptions = () => {
       await fetchSubscriptions();
       toast({
         title: "Success",
-        description: "Subscription created successfully",
+        description: "Subscription created successfully. Orders are being generated and will appear shortly.",
       });
       return data;
     } catch (error: any) {

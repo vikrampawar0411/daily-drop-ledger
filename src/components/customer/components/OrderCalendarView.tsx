@@ -130,15 +130,11 @@ const OrderCalendarView = ({
                 <SelectValue placeholder="Choose product" />
               </SelectTrigger>
               <SelectContent className="bg-background z-50">
-                {availableProducts
-                  .filter(p => {
-                    return orders.some(o => o.vendor.id === selectedVendor && o.product.id === p.id);
-                  })
-                  .map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name}
-                    </SelectItem>
-                  ))}
+                {availableProducts.map((product) => (
+                  <SelectItem key={product.id} value={product.id}>
+                    {product.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

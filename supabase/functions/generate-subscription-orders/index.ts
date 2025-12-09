@@ -34,8 +34,9 @@ Deno.serve(async (req) => {
     // For each subscription, generate orders
     for (const subscription of subscriptions || []) {
       try {
-        // Calculate the end date for this subscription
-        let currentDate = new Date(Math.max(new Date(subscription.start_date).getTime(), today.getTime()));
+        // Start from subscription start_date or today, whichever is earlier
+        // This ensures we generate orders for existing subscriptions
+        let currentDate = new Date(subscription.start_date);
         
         // Use subscription's end_date if provided, otherwise use 90 days from today
         let subscriptionEndDate: Date;

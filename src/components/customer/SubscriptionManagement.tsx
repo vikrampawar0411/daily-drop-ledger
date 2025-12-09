@@ -77,15 +77,28 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
   const [pauseUntilDate, setPauseUntilDate] = useState<Date | undefined>(undefined);
   const [customerId, setCustomerId] = useState<string | null>(null);
   
+  const getDefaultSubscriptionDates = () => {
+    const today = new Date();
+    const start = today.toISOString().split('T')[0];
+    const endDate = new Date(today);
+    endDate.setMonth(endDate.getMonth() + 1);
+    const end = endDate.toISOString().split('T')[0];
+    return { start, end };
+  };
+
   // New subscription form state
-  const [newSubscription, setNewSubscription] = useState({
-    vendor_id: "",
-    product_id: "",
-    quantity: 1,
-    frequency: "daily",
-    start_date: new Date().toISOString().split('T')[0],
-    weekly_days: [] as number[],
-    monthly_date: 1
+  const [newSubscription, setNewSubscription] = useState(() => {
+    const { start, end } = getDefaultSubscriptionDates();
+    return {
+      vendor_id: "",
+      product_id: "",
+      quantity: 1,
+      frequency: "daily",
+      start_date: start,
+      end_date: end,
+      weekly_days: [] as number[],
+      monthly_date: 1
+    };
   });
 
   // Product quantity state for quick subscribe
@@ -627,12 +640,19 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
   };
   
   const handleCreateSubscription = async () => {
-    if (!customerId || !newSubscription.vendor_id || !newSubscription.product_id) return;
+    if (!customerId || !newSubscription.vendor_id || !newSubscription.product_id || !newSubscription.end_date) return;
     
     const selectedProduct = availableProducts.find((p: any) => p.id === newSubscription.product_id);
     if (!selectedProduct) return;
     
     try {
+      console.log('Creating subscription with:', {
+        start_date: newSubscription.start_date,
+        end_date: newSubscription.end_date,
+        frequency: newSubscription.frequency,
+        product: selectedProduct.name
+      });
+      
       await createSubscription({
         customer_id: customerId,
         vendor_id: newSubscription.vendor_id,
@@ -642,19 +662,21 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
         price_per_unit: selectedProduct.price,
         frequency: newSubscription.frequency,
         start_date: newSubscription.start_date,
-        end_date: null,
+        end_date: newSubscription.end_date,
         status: 'active',
         paused_from: null,
         paused_until: null,
       });
       
       setCreateDialogOpen(false);
+      const { start, end } = getDefaultSubscriptionDates();
       setNewSubscription({
         vendor_id: "",
         product_id: "",
         quantity: 1,
         frequency: "daily",
-        start_date: new Date().toISOString().split('T')[0],
+        start_date: start,
+        end_date: end,
         weekly_days: [],
         monthly_date: 1
       });
@@ -1070,11 +1092,11 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
 
       {/* Create Subscription Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Subscription</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
             <div>
               <Label>Vendor</Label>
               <Select 
@@ -1188,12 +1210,23 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
                 onChange={(e) => setNewSubscription({...newSubscription, start_date: e.target.value})}
               />
             </div>
+            
+            <div>
+              <Label>End Date</Label>
+              <Input 
+                type="date" 
+                value={newSubscription.end_date}
+                min={newSubscription.start_date}
+                required
+                onChange={(e) => setNewSubscription({...newSubscription, end_date: e.target.value})}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
             <Button 
               onClick={handleCreateSubscription}
-              disabled={!newSubscription.vendor_id || !newSubscription.product_id}
+              disabled={!newSubscription.vendor_id || !newSubscription.product_id || !newSubscription.end_date}
             >
               Create Subscription
             </Button>

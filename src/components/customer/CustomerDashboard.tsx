@@ -120,14 +120,33 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     }
   }, [vendors, selectedVendor, intentionalVendorClear, isMonthChangeInProgress]);
 
-  // Get available products from filtered orders
+  // Fetch all vendor products (for product availability)
+  const { vendorProducts: vendorProductsAll } = useVendorProducts();
+
+  // Available products for ordering: active vendor products (includes products even with no prior orders)
   const availableProducts = useMemo(() => {
-    const filteredOrders = orders.filter(o => !selectedVendor || o.vendor.id === selectedVendor);
+    const activeVendorProducts = vendorProductsAll.filter(vp => vp.is_active && vp.product);
+    const filtered = selectedVendor
+      ? activeVendorProducts.filter(vp => vp.vendor_id === selectedVendor)
+      : activeVendorProducts;
+
     const uniqueProducts = Array.from(
-      new Map(filteredOrders.map(o => [o.product.id, o.product])).values()
+      new Map(
+        filtered.map(vp => [
+          vp.product_id,
+          {
+            ...vp.product!,
+            vendor_id: vp.vendor_id,
+            vendor_product_id: vp.id,
+            price_override: vp.price_override ?? undefined,
+          }
+        ])
+      ).values()
     );
+
+    console.log('Available products for vendor:', selectedVendor, uniqueProducts);
     return uniqueProducts;
-  }, [orders, selectedVendor]);
+  }, [vendorProductsAll, selectedVendor]);
 
   // Handle navigation params from other tabs (e.g., Place Order from VendorDirectory)
   useEffect(() => {
@@ -142,19 +161,23 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
           setSelectedProduct(navigationParams.productId);
         }
         
-        // Expand calendar, select today's date, and show the form
+        // Expand calendar and show the form without auto-selecting dates
         setCalendarExpanded(true);
         setTableExpanded(true);
-        const today = new Date();
-        setCalendarSelectedDates([today]);
         
-        // Pre-fill the order form
+        // Clear any selected dates to show "place new order" view
+        setCalendarSelectedDates(undefined);
+        
+        // Pre-fill the order form without date
         setNewOrderFormData({
           vendor_id: navigationParams.vendorId,
           product_id: navigationParams.productId || '',
           quantity: 1,
-          order_date: today,
+          order_date: new Date(),
         });
+        
+        // Refetch orders to ensure any newly generated subscription orders are loaded
+        refetch();
         
         // Scroll to calendar section
         setTimeout(() => {
@@ -227,7 +250,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   });
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [bulkEditDialogOpen, setBulkEditDialogOpen] = useState(false);
-  const { vendorProducts, loading: vendorProductsLoading } = useVendorProducts(editFormData.vendor_id);
+  const { vendorProducts: vendorProductsForEdit, loading: vendorProductsLoading } = useVendorProducts(editFormData.vendor_id);
   const [bulkEditFormData, setBulkEditFormData] = useState({
     quantity: 0,
     order_date: '',
@@ -734,7 +757,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     
     try {
       // Get the selected vendor product to get the correct price
-      const selectedVendorProduct = vendorProducts.find(vp => vp.product_id === editFormData.product_id);
+      const selectedVendorProduct = vendorProductsForEdit.find(vp => vp.product_id === editFormData.product_id);
       const pricePerUnit = selectedVendorProduct?.price_override || selectedVendorProduct?.product?.price || editingOrder.price_per_unit;
       const totalAmount = editFormData.quantity * pricePerUnit;
       
@@ -2481,7 +2504,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                                           className="h-8 w-8 p-0"
                                           onClick={async () => {
                                             if (editQuantity >= 1) {
-                                              const product = vendorProducts.find(vp => vp.product_id === order.product.id);
+                                              const product = vendorProductsForEdit.find(vp => vp.product_id === order.product.id);
                                               const pricePerUnit = product?.price_override || order.product.price;
                                               await updateOrder(order.id, {
                                                 quantity: editQuantity,
@@ -2940,7 +2963,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                   {vendorProductsLoading ? (
                     <SelectItem value="loading" disabled>Loading products...</SelectItem>
                   ) : (
-                    vendorProducts
+                    vendorProductsForEdit
                       .filter(vp => vp.is_active && vp.product)
                       .map((vp) => (
                         <SelectItem key={vp.product_id} value={vp.product_id}>
