@@ -82,11 +82,11 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
 
   const vendorsWithProducts = useMemo(() => {
     return vendors.map(vendor => {
-      // Get vendor-specific products
+      // Get vendor-specific products from vendor_products table
       const vendorSpecificProducts = vendorProducts
         .filter(vp => vp.vendor_id === vendor.id && vp.is_active)
         .map(vp => {
-          const product = allProducts.find(p => p.id === vp.product_id);
+          const product = vp.product || allProducts.find(p => p.id === vp.product_id);
           if (!product) return null;
           
           return {
@@ -278,9 +278,9 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                 )}
               </div>
 
-              {vendor.products.length > 0 && (
-                <div className="flex-1">
-                  <span className="text-sm font-medium">Products:</span>
+              <div className="flex-1">
+                <span className="text-sm font-medium">Products:</span>
+                {vendor.products.length > 0 ? (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {vendor.products.map((product) => (
                       <Badge key={product.id} variant="secondary" className="text-sm">
@@ -288,8 +288,10 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
                       </Badge>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-2">No products available yet</p>
+                )}
+              </div>
 
               <div className="flex space-x-2 pt-2 mt-auto">
                 <Button 

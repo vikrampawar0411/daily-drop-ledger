@@ -176,7 +176,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
       const uniqueProductsMap = new Map();
       
       allVendorProducts.forEach(vp => {
-        const product = products.find(p => p.id === vp.product_id);
+        const product = vp.product || products.find(p => p.id === vp.product_id);
         // Skip if product is already subscribed
         if (product && !subscribedProductIds.has(product.id)) {
           // If we haven't seen this product yet, or if this vendor offers a better price
@@ -208,7 +208,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
     return vendorProducts
       .filter(vp => vp.vendor_id === vendorIdToFilter && vp.is_active)
       .map(vp => {
-        const product = products.find(p => p.id === vp.product_id);
+        const product = vp.product || products.find(p => p.id === vp.product_id);
         return product && !subscribedProductIds.has(product.id) ? {
           ...product,
           price: vp.price_override || product.price,

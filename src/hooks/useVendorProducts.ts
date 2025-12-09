@@ -33,26 +33,25 @@ export const useVendorProducts = (vendorId?: string) => {
   const { toast } = useToast();
 
   const fetchVendorProducts = useCallback(async () => {
-    if (!vendorId) {
-      setLoading(false);
-      return;
-    }
-
     try {
-      console.log("Fetching products for vendor:", vendorId);
-      const { data, error } = await supabase
+      let query = supabase
         .from("vendor_products")
         .select(`
           *,
           product:products(*)
         `)
-        .eq("vendor_id", vendorId)
         .eq("is_active", true)
         .order("created_at", { ascending: false });
 
+      // Only filter by vendor_id if provided
+      if (vendorId) {
+        query = query.eq("vendor_id", vendorId);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
       
-      console.log("Fetched products:", data?.length);
       setVendorProducts(data || []);
     } catch (error: any) {
       console.error("Error fetching vendor products:", error);

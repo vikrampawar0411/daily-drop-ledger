@@ -12,8 +12,8 @@ import VendorDirectory from "./VendorDirectory";
 import OrderCalendar from "./OrderCalendar";
 import SubscriptionManagement from "./SubscriptionManagement";
 import AccountSettings from "./AccountSettings";
-import WelcomeTourButton from "@/components/onboarding/WelcomeTourButton";
-import WelcomeDialog from "@/components/onboarding/WelcomeDialog";
+import { WelcomeTourButton } from "@/components/onboarding/WelcomeTourButton";
+import { WelcomeDialog } from "@/components/onboarding/WelcomeDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
