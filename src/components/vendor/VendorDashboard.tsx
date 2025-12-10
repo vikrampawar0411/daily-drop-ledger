@@ -26,11 +26,20 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
   const { user } = useAuth();
   const { orders, loading, updateOrderStatus } = useOrders();
   const { toast } = useToast();
-  const [timeView, setTimeView] = useState<"today" | "tomorrow" | "week" | "month">("today");
+  const [timeView, setTimeView] = useState<"today" | "tomorrow" | "custom" | "month">("today");
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   });
+  const [customStartDate, setCustomStartDate] = useState<string>(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+  const [customEndDate, setCustomEndDate] = useState<string>(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+  const [orderTypeFilter, setOrderTypeFilter] = useState<"all" | "pending" | "delivered">("pending");
   const [vendorName, setVendorName] = useState("");
   const [connectionCount, setConnectionCount] = useState(0);
   const [loadingWelcome, setLoadingWelcome] = useState(true);
@@ -83,8 +92,11 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
       case "tomorrow":
         const tomorrow = addDays(now, 1);
         return { start: startOfDay(tomorrow), end: endOfDay(tomorrow) };
-      case "week":
-        return { start: startOfWeek(now), end: endOfWeek(now) };
+      case "custom":
+        return { 
+          start: startOfDay(new Date(customStartDate)), 
+          end: endOfDay(new Date(customEndDate)) 
+        };
       case "month":
         const [year, month] = selectedMonth.split('-');
         const monthStart = new Date(parseInt(year), parseInt(month) - 1, 1);
@@ -96,9 +108,11 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
     const { start, end } = getDateRangeForView();
     return orders.filter(order => {
       const orderDate = new Date(order.order_date);
-      return orderDate >= start && orderDate <= end;
+      const matchesDateRange = orderDate >= start && orderDate <= end;
+      const matchesOrderType = orderTypeFilter === "all" || order.status === orderTypeFilter;
+      return matchesDateRange && matchesOrderType;
     });
-  }, [orders, timeView, selectedMonth]);
+  }, [orders, timeView, selectedMonth, customStartDate, customEndDate, orderTypeFilter]);
 
   const groupedOrdersByHierarchy = useMemo(() => {
     const hierarchy = new Map();
@@ -390,45 +404,89 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
       {/* Time View Selector */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={timeView === "today" ? "default" : "outline"}
-                onClick={() => setTimeView("today")}
-              >
-                Today
-              </Button>
-              <Button
-                variant={timeView === "tomorrow" ? "default" : "outline"}
-                onClick={() => setTimeView("tomorrow")}
-              >
-                Tomorrow
-              </Button>
-              <Button
-                variant={timeView === "week" ? "default" : "outline"}
-                onClick={() => setTimeView("week")}
-              >
-                This Week
-              </Button>
-              <Button
-                variant={timeView === "month" ? "default" : "outline"}
-                onClick={() => setTimeView("month")}
-              >
-                Monthly
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={timeView === "today" ? "default" : "outline"}
+                  onClick={() => setTimeView("today")}
+                >
+                  Today
+                </Button>
+                <Button
+                  variant={timeView === "tomorrow" ? "default" : "outline"}
+                  onClick={() => setTimeView("tomorrow")}
+                >
+                  Tomorrow
+                </Button>
+                <Button
+                  variant={timeView === "custom" ? "default" : "outline"}
+                  onClick={() => setTimeView("custom")}
+                >
+                  Custom Date
+                </Button>
+                <Button
+                  variant={timeView === "month" ? "default" : "outline"}
+                  onClick={() => setTimeView("month")}
+                >
+                  Monthly
+                </Button>
+              </div>
+              <Button onClick={exportToExcel} variant="outline" className="w-full md:w-auto">
+                <Download className="h-4 w-4 mr-2" />
+                Export to Excel
               </Button>
             </div>
-            {timeView === "month" && (
-              <Input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-full md:w-auto"
-              />
-            )}
-            <Button onClick={exportToExcel} variant="outline" className="w-full md:w-auto">
-              <Download className="h-4 w-4 mr-2" />
-              Export to Excel
-            </Button>
+            
+            <div className="flex flex-col md:flex-row gap-4">
+              {timeView === "custom" && (
+                <div className="flex flex-col sm:flex-row gap-2 flex-1">
+                  <div className="flex-1">
+                    <label className="text-sm text-muted-foreground mb-1 block">From Date</label>
+                    <Input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-sm text-muted-foreground mb-1 block">To Date</label>
+                    <Input
+                      type="date"
+                      value={customEndDate}
+                      min={customStartDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {timeView === "month" && (
+                <div className="flex-1">
+                  <label className="text-sm text-muted-foreground mb-1 block">Select Month</label>
+                  <Input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="w-full md:w-auto"
+                  />
+                </div>
+              )}
+              
+              <div className="flex-1 md:max-w-xs">
+                <label className="text-sm text-muted-foreground mb-1 block">Order Type</label>
+                <Select value={orderTypeFilter} onValueChange={(value: any) => setOrderTypeFilter(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Orders</SelectItem>
+                    <SelectItem value="pending">Pending Orders</SelectItem>
+                    <SelectItem value="delivered">Delivered Orders</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
