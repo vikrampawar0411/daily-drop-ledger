@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Milk, Newspaper, Users, DollarSign, TrendingUp, MapPin, Receipt, ShieldCheck, ChevronDown, ChevronUp, Building, Download, CheckCircle, Clock, ShoppingCart } from "lucide-react";
+import { Milk, Newspaper, Users, DollarSign, TrendingUp, MapPin, Receipt, ShieldCheck, ChevronDown, ChevronUp, Building, Download, CheckCircle, Clock, ShoppingCart, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
 import { Skeleton } from "@/components/ui/skeleton";
 import { startOfWeek, startOfMonth, startOfYear, endOfDay, addDays, endOfWeek, endOfMonth, startOfDay, format } from "date-fns";
@@ -48,6 +48,8 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [vendorId, setVendorId] = useState("");
   const [currentDeliveryIndex, setCurrentDeliveryIndex] = useState(0);
+  const [sortColumn, setSortColumn] = useState<'date' | 'customer' | 'product' | 'quantity' | 'amount' | 'status'>('date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     const loadVendorData = async () => {
@@ -106,13 +108,57 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
 
   const filteredOrders = useMemo(() => {
     const { start, end } = getDateRangeForView();
-    return orders.filter(order => {
+    const filtered = orders.filter(order => {
       const orderDate = new Date(order.order_date);
       const matchesDateRange = orderDate >= start && orderDate <= end;
       const matchesOrderType = orderTypeFilter === "all" || order.status === orderTypeFilter;
       return matchesDateRange && matchesOrderType;
     });
-  }, [orders, timeView, selectedMonth, customStartDate, customEndDate, orderTypeFilter]);
+
+    // Sort orders
+    return filtered.sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortColumn) {
+        case 'date':
+          comparison = new Date(a.order_date).getTime() - new Date(b.order_date).getTime();
+          break;
+        case 'customer':
+          comparison = (a.customer?.name || '').localeCompare(b.customer?.name || '');
+          break;
+        case 'product':
+          comparison = (a.product?.name || '').localeCompare(b.product?.name || '');
+          break;
+        case 'quantity':
+          comparison = a.quantity - b.quantity;
+          break;
+        case 'amount':
+          comparison = a.total_amount - b.total_amount;
+          break;
+        case 'status':
+          comparison = a.status.localeCompare(b.status);
+          break;
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [orders, timeView, selectedMonth, customStartDate, customEndDate, orderTypeFilter, sortColumn, sortDirection]);
+
+  // Auto-expand all areas and societies
+  useEffect(() => {
+    const allAreas = new Set<string>();
+    const allSocieties = new Set<string>();
+    
+    filteredOrders.forEach(order => {
+      const areaId = order.customer?.area_id || 'unknown';
+      const societyId = order.customer?.society_id || 'unknown';
+      allAreas.add(areaId);
+      allSocieties.add(`${areaId}-${societyId}`);
+    });
+    
+    setExpandedAreas(allAreas);
+    setExpandedSocieties(allSocieties);
+  }, [filteredOrders]);
 
   const groupedOrdersByHierarchy = useMemo(() => {
     const hierarchy = new Map();
@@ -197,6 +243,15 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
       societiesServed: new Set(filteredOrders.map(o => o.customer?.society_id).filter(Boolean)).size,
     };
   }, [filteredOrders]);
+
+  const handleSort = (column: 'date' | 'customer' | 'product' | 'quantity' | 'amount' | 'status') => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
 
   const toggleAreaExpansion = (areaId: string) => {
     setExpandedAreas(prev => {
@@ -550,12 +605,84 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Area / Society / Wing / Flat</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('customer')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Customer
+                      {sortColumn === 'customer' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-50" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('product')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Product
+                      {sortColumn === 'product' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-50" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('quantity')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Quantity
+                      {sortColumn === 'quantity' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-50" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('amount')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Amount
+                      {sortColumn === 'amount' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-50" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Status
+                      {sortColumn === 'status' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-50" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('date')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Date
+                      {sortColumn === 'date' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-50" />
+                      )}
+                    </div>
+                  </TableHead>
                   <TableHead>Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -629,10 +756,19 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
                                         <TableCell>
                                           <Button
                                             size="sm"
-                                            variant={order.status === 'delivered' ? 'outline' : 'default'}
+                                            variant={order.status === 'delivered' ? 'ghost' : 'default'}
+                                            className={`h-8 w-8 p-0 ${
+                                              order.status === 'delivered' 
+                                                ? 'bg-green-100 hover:bg-green-200' 
+                                                : 'bg-amber-100 hover:bg-amber-200'
+                                            }`}
                                             onClick={() => handleStatusToggle(order.id, order.status)}
                                           >
-                                            {order.status === 'delivered' ? 'Pending' : 'Delivered'}
+                                            {order.status === 'delivered' ? (
+                                              <CheckCircle className="h-4 w-4 text-green-600" />
+                                            ) : (
+                                              <Clock className="h-4 w-4 text-amber-600" />
+                                            )}
                                           </Button>
                                         </TableCell>
                                       </TableRow>
