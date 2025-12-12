@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx-js-style';
 import { OnboardingCard } from "@/components/onboarding/OnboardingCard";
 import { InviteCustomerDialog } from "./InviteCustomerDialog";
+import { InviteCodeManager } from "./InviteCodeManager";
 import { UserPlus } from "lucide-react";
 
 interface VendorDashboardProps {
@@ -811,6 +812,15 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
           )}
         </CardContent>
       </Card>
+
+      {/* Invite Code Management Section */}
+      {vendorId && (
+        <Card>
+          <CardContent className="pt-6">
+            <InviteCodeManager vendorId={vendorId} />
+          </CardContent>
+        </Card>
+      )}
 
     </div>
   );

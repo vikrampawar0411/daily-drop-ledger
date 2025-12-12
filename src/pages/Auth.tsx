@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,7 @@ const VENDOR_CATEGORIES = [
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -54,6 +55,9 @@ const Auth = () => {
   const [showForgotDialog, setShowForgotDialog] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
+  
+  // Get redirect URL from query params (for post-auth navigation)
+  const redirectUrl = searchParams.get("redirect") || null;
 
   // Customer signup form data
   const [customerForm, setCustomerForm] = useState({
@@ -222,7 +226,7 @@ const Auth = () => {
             .update({ user_id: user.id })
             .eq('id', recordByEmail.id);
 
-          navigate("/");
+          navigate(redirectUrl || "/");
           setIsLoading(false);
           return;
         } else if (!recordByEmail) {
@@ -238,7 +242,7 @@ const Auth = () => {
       }
     }
 
-    navigate("/");
+    navigate(redirectUrl || "/");
     setIsLoading(false);
   };
 
@@ -280,7 +284,7 @@ const Auth = () => {
             .update({ user_id: user.id })
             .eq('id', recordByEmail.id);
 
-          navigate("/");
+          navigate(redirectUrl || "/");
           setIsLoading(false);
           return;
         } else if (!recordByEmail) {
@@ -296,7 +300,7 @@ const Auth = () => {
       }
     }
 
-    navigate("/");
+    navigate(redirectUrl || "/");
     setIsLoading(false);
   };
 
@@ -365,7 +369,7 @@ const Auth = () => {
           description: "You have successfully signed in.",
         });
 
-        navigate("/");
+        navigate(redirectUrl || "/");
       }
     } catch (error: any) {
       toast({
