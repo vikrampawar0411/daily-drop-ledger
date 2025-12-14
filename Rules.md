@@ -1,3 +1,7 @@
+<!-- IMPORTANT: This file contains critical development rules. Always reference this file. -->
+<!-- TAG: development-rules, coding-standards, git-workflow, best-practices -->
+
+# Development Rules
 
 These are the rules to follow before every change
 
@@ -7,3 +11,6 @@ These are the rules to follow before every change
 4. For every change add sufficient comments in the code, so that any other developer or non-developer can understand the code. 
 5. After every change is made, propose a Git commit description and commit title so as I can use it for checking in the code
 6. Always sugget best suitable functionality and commonly used user friendly UI for given requirement
+
+---
+**Note:** These rules must be followed for all code changes in this repository.

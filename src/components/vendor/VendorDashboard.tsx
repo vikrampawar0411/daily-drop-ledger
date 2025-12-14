@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Milk, Newspaper, Users, DollarSign, TrendingUp, MapPin, Receipt, ShieldCheck, ChevronDown, ChevronUp, Building, Download, CheckCircle, Clock, ShoppingCart, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Milk, Newspaper, Users, DollarSign, TrendingUp, MapPin, Receipt, ShieldCheck, ChevronDown, ChevronUp, Building, Download, CheckCircle, Clock, ShoppingCart, ArrowUpDown, ArrowUp, ArrowDown, UserPlus } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
 import { Skeleton } from "@/components/ui/skeleton";
 import { startOfWeek, startOfMonth, startOfYear, endOfDay, addDays, endOfWeek, endOfMonth, startOfDay, format } from "date-fns";
@@ -15,9 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx-js-style';
 import { OnboardingCard } from "@/components/onboarding/OnboardingCard";
-import { InviteCustomerDialog } from "./InviteCustomerDialog";
 import { InviteCodeManager } from "./InviteCodeManager";
-import { UserPlus } from "lucide-react";
 
 interface VendorDashboardProps {
   onNavigate?: (tab: string, params?: any) => void;
@@ -46,11 +44,11 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
   const [loadingWelcome, setLoadingWelcome] = useState(true);
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
   const [expandedSocieties, setExpandedSocieties] = useState<Set<string>>(new Set());
-  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [vendorId, setVendorId] = useState("");
   const [currentDeliveryIndex, setCurrentDeliveryIndex] = useState(0);
   const [sortColumn, setSortColumn] = useState<'date' | 'customer' | 'product' | 'quantity' | 'amount' | 'status'>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [inviteTrigger, setInviteTrigger] = useState(false);
 
   useEffect(() => {
     const loadVendorData = async () => {
@@ -427,7 +425,7 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
           })()}
 
           {/* Connected Customers Section */}
-          <div className="flex items-center justify-between pt-2 border-t border-white/20">
+          <div className="flex items-center justify-between pt-2 border-t border-white/20 gap-2">
             <Button
               variant="ghost"
               className="flex items-center space-x-2 text-green-100 hover:text-white hover:bg-white/20 p-2 rounded-lg"
@@ -436,10 +434,10 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
               <Users className="h-4 w-4" />
               <span>{connectionCount} Connected Customers</span>
             </Button>
-            <Button 
-              variant="secondary" 
+            <Button
+              variant="secondary"
               size="sm"
-              onClick={() => setInviteDialogOpen(true)}
+              onClick={() => setInviteTrigger(prev => !prev)}
               className="bg-white/20 hover:bg-white/30"
             >
               <UserPlus className="h-4 w-4 mr-2" />
@@ -448,14 +446,6 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Invite Customer Dialog */}
-      <InviteCustomerDialog
-        open={inviteDialogOpen}
-        onOpenChange={setInviteDialogOpen}
-        vendorId={vendorId}
-        vendorName={vendorName}
-      />
 
       {/* Time View Selector */}
       <Card>
@@ -817,7 +807,11 @@ const VendorDashboard = ({ onNavigate }: VendorDashboardProps) => {
       {vendorId && (
         <Card>
           <CardContent className="pt-6">
-            <InviteCodeManager vendorId={vendorId} />
+            <InviteCodeManager 
+              vendorId={vendorId}
+              externalTrigger={inviteTrigger}
+              onInviteTriggered={() => setInviteTrigger(false)}
+            />
           </CardContent>
         </Card>
       )}
