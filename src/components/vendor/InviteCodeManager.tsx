@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Copy, Plus, QrCode, Trash2, Power, PowerOff, ExternalLink } from "lucide-react";
+import { Copy, Plus, Trash2, Power, PowerOff, Share2, MessageCircle, MessageSquare, Mail, Facebook, Twitter, Linkedin, Phone, QrCode, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useVendorInviteCodes, type VendorInviteCode } from "@/hooks/useVendorInviteCodes";
 import { useToast } from "@/hooks/use-toast";
-import { generateShareableLink, getNetworkUrlHint } from "@/lib/urlUtils";
+import { generateShareableLink } from "@/lib/urlUtils";
 
 /**
  * InviteCodeManager Component
@@ -36,9 +36,11 @@ import { generateShareableLink, getNetworkUrlHint } from "@/lib/urlUtils";
  */
 interface InviteCodeManagerProps {
   vendorId: string;
+  externalTrigger?: boolean;
+  onInviteTriggered?: () => void;
 }
 
-export function InviteCodeManager({ vendorId }: InviteCodeManagerProps) {
+export function InviteCodeManager({ vendorId, externalTrigger, onInviteTriggered }: InviteCodeManagerProps) {
   const { codes, isLoading, createCode, updateCode, deleteCode, isMutating } = useVendorInviteCodes(vendorId);
   const { toast } = useToast();
   
@@ -48,9 +50,8 @@ export function InviteCodeManager({ vendorId }: InviteCodeManagerProps) {
   const [newCodeExpiryDays, setNewCodeExpiryDays] = useState<number | "">("");
   const [newCodeMaxUses, setNewCodeMaxUses] = useState<number | "">("");
   
-  // State for QR dialog
-  const [qrDialogOpen, setQrDialogOpen] = useState(false);
-  const [selectedCodeForQR, setSelectedCodeForQR] = useState<VendorInviteCode | null>(null);
+    // State for phone number input per code
+    const [phoneNumbers, setPhoneNumbers] = useState<Record<string, string>>({});
 
   /**
    * Generate the shareable link for a code
@@ -84,6 +85,156 @@ export function InviteCodeManager({ vendorId }: InviteCodeManagerProps) {
         title: "Failed to copy",
         description: "Please try again or copy manually.",
         variant: "destructive",
+      });
+    }
+  };
+
+  /**
+   * Handle sharing via various platforms
+   * 
+   * SOLUTION: Use platform-specific URL schemes that open the apps directly
+   * For WhatsApp/SMS, we need to be smart about encoding to keep links clickable
+   * SMS now supports sending to specific phone numbers
+   */
+  const handleShare = (platform: string, code: VendorInviteCode) => {
+    const link = getShareableLink(code.code);
+    const phoneNumber = phoneNumbers[code.id] || "";
+    
+    let shareUrl = "";
+    
+    switch (platform) {
+      case "whatsapp":
+        // WhatsApp Web/App - Opens WhatsApp with pre-filled message
+        // Use api.whatsapp.com which works better than wa.me for sharing links
+        const whatsappMessage = encodeURIComponent(link);
+        shareUrl = `https://api.whatsapp.com/send?text=${whatsappMessage}`;
+        break;
+      
+      case "sms":
+        // Server-side SMS sending via API - no fallback to SMS app
+        (async () => {
+          const rawNumber = (phoneNumber || "").trim();
+          const sanitizedNumber = rawNumber.replace(/[^+\d]/g, "");
+          
+          if (!sanitizedNumber) {
+            toast({ 
+              title: "Mobile number required", 
+              description: "Please enter a valid phone number to send the invite.", 
+              variant: "destructive" 
+            });
+            return;
+          }
+          
+          const smsApi = import.meta.env.VITE_SMS_API_URL;
+          const smsToken = import.meta.env.VITE_SMS_API_TOKEN;
+          
+          if (!smsApi) {
+            toast({ 
+              title: "SMS service unavailable", 
+              description: "SMS API is not configured. Please contact administrator.", 
+              variant: "destructive" 
+            });
+            return;
+          }
+          
+          // Show loading state
+          toast({ 
+            title: "Sending invite...", 
+            description: `Sending to ${sanitizedNumber}` 
+          });
+          
+          try {
+            const headers: HeadersInit = { "Content-Type": "application/json" };
+            if (smsToken) {
+              headers["X-API-Key"] = smsToken;
+            }
+            
+            const res = await fetch(smsApi, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ to: sanitizedNumber, body: link })
+            });
+            
+            if (!res.ok) {
+              const errData = await res.json().catch(() => ({ error: "Unknown error" }));
+              throw new Error(errData.error || `SMS API error: ${res.status}`);
+            }
+            
+            const result = await res.json();
+            toast({ 
+              title: "✅ Invite sent successfully", 
+              description: `Link delivered to ${sanitizedNumber}`,
+              duration: 5000
+            });
+            
+            // Clear the phone number after successful send
+            setPhoneNumbers(prev => ({ ...prev, [code.id]: "" }));
+            
+          } catch (err) {
+            console.error("SMS send error:", err);
+            toast({ 
+              title: "Failed to send SMS", 
+              description: err instanceof Error ? err.message : "Network error. Please try again.", 
+              variant: "destructive",
+              duration: 7000
+            });
+          }
+        })();
+        return; // Avoid default shareUrl flow
+      
+      case "email":
+        // Email - standard mailto format
+        const emailSubject = encodeURIComponent("Connect with me - Vendor Invite");
+        const emailBody = encodeURIComponent(
+          `Connect with me as a customer!\n\n` +
+          `${link}\n\n` +
+          `Invite code: ${code.code}\n\n` +
+          `Looking forward to serving you!`
+        );
+        shareUrl = `mailto:?subject=${emailSubject}&body=${emailBody}`;
+        break;
+      
+      case "facebook":
+        // Facebook share - opens Facebook with the link
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`;
+        break;
+      
+      case "twitter":
+        // Twitter/X share - opens Twitter with pre-filled tweet
+        const tweetText = encodeURIComponent(`Connect with me! Invite code: ${code.code}`);
+        shareUrl = `https://twitter.com/intent/tweet?text=${tweetText}&url=${encodeURIComponent(link)}`;
+        break;
+      
+      case "linkedin":
+        // LinkedIn share - opens LinkedIn share dialog
+        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(link)}`;
+        break;
+      
+      case "native":
+        // Use Web Share API if available (mobile browsers)
+        if (navigator.share) {
+          navigator.share({
+            title: "Vendor Invite - Connect with Me",
+            text: `🎉 Connect with me!\n\nInvite code: ${code.code}`,
+            url: link,
+          }).catch((error) => {
+            console.error("Error sharing:", error);
+          });
+          return;
+        } else {
+          // Fallback: copy to clipboard with simple format
+          const fallbackMessage = `${link}\n\n🎉 Connect with me as a customer!\n\nInvite code: ${code.code}`;
+          copyToClipboard(fallbackMessage, "Share message");
+          return;
+        }
+    }
+    
+    // Open share URL in new window/tab
+    if (shareUrl) {
+      window.open(shareUrl, "_blank", "noopener,noreferrer");
+      toast({
+        title: "Opening share dialog",
+        description: `Sharing via ${platform}`,
       });
     }
   };
@@ -178,6 +329,18 @@ export function InviteCodeManager({ vendorId }: InviteCodeManagerProps) {
     }
     return <Badge variant="default" className="bg-green-600">Active</Badge>;
   };
+
+    // Handle external trigger - scroll to first active code
+  useEffect(() => {
+    if (externalTrigger && codes.length > 0) {
+        // Scroll to invite codes section
+        const element = document.getElementById('invite-codes');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      onInviteTriggered?.();
+    }
+  }, [externalTrigger, codes, onInviteTriggered]);
 
   if (isLoading) {
     return (
@@ -316,8 +479,33 @@ export function InviteCodeManager({ vendorId }: InviteCodeManagerProps) {
               </CardHeader>
 
               <CardContent className="space-y-3">
+                {/* QR Code Display - directly in card */}
+                <div className="flex justify-center p-4 bg-white rounded-lg border">
+                  <QRCodeSVG
+                    value={getShareableLink(code.code)}
+                    size={160}
+                    level="H"
+                    includeMargin
+                  />
+                </div>
+
+                {/* Shareable Link - directly in card */}
+                <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                  <span className="text-xs truncate flex-1 font-mono">
+                    {getShareableLink(code.code)}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(getShareableLink(code.code), "Link")}
+                    className="shrink-0"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+
                 {/* Usage Stats */}
-                <div className="text-sm">
+                <div className="text-sm pt-2 border-t">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Used:</span>
                     <span className="font-medium">
@@ -335,43 +523,76 @@ export function InviteCodeManager({ vendorId }: InviteCodeManagerProps) {
                   )}
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex flex-wrap gap-2">
-                  {/* Copy Code */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(code.code, "Code")}
-                    className="flex-1"
-                  >
-                    <Copy className="h-3 w-3 mr-1" />
-                    Copy
-                  </Button>
+                  {/* Phone Number Input */}
+                  <div className="space-y-2">
+                    <Label htmlFor={`phone-${code.id}`} className="text-xs font-medium">Mobile Number (optional)</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id={`phone-${code.id}`}
+                        placeholder="+91 9876543210"
+                        value={phoneNumbers[code.id] || ""}
+                        onChange={(e) => setPhoneNumbers(prev => ({ ...prev, [code.id]: e.target.value }))}
+                        type="tel"
+                        className="h-8 text-sm flex-1"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleShare("sms", code)}
+                        disabled={!phoneNumbers[code.id]}
+                        className="h-8 px-2"
+                        title="Share via SMS"
+                      >
+                        <Send className="h-4 w-4 text-blue-600" />
+                      </Button>
+                    </div>
+                  </div>
 
-                  {/* Show QR */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedCodeForQR(code);
-                      setQrDialogOpen(true);
-                    }}
-                    className="flex-1"
-                  >
-                    <QrCode className="h-3 w-3 mr-1" />
-                    QR
-                  </Button>
-
-                  {/* Copy Link */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(getShareableLink(code.code), "Link")}
-                    className="flex-1"
-                  >
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    Link
-                  </Button>
+                  {/* Inline Share Buttons */}
+                  <div className="grid grid-cols-4 gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleShare("sms", code)}
+                      className="flex flex-col items-center gap-1 h-auto py-2 px-1"
+                      title="Send via SMS"
+                    >
+                      <MessageSquare className="h-4 w-4 text-blue-600" />
+                      <span className="text-[10px]">SMS</span>
+                    </Button>
+                  
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleShare("whatsapp", code)}
+                      className="flex flex-col items-center gap-1 h-auto py-2 px-1"
+                      title="Share on WhatsApp"
+                    >
+                      <MessageCircle className="h-4 w-4 text-green-600" />
+                      <span className="text-[10px]">WhatsApp</span>
+                    </Button>
+                  
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleShare("email", code)}
+                      className="flex flex-col items-center gap-1 h-auto py-2 px-1"
+                      title="Send via Email"
+                    >
+                      <Mail className="h-4 w-4 text-red-600" />
+                      <span className="text-[10px]">Email</span>
+                    </Button>
+                  
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(getShareableLink(code.code), "Link")}
+                      className="flex flex-col items-center gap-1 h-auto py-2 px-1"
+                      title="Copy Link"
+                    >
+                      <Copy className="h-4 w-4 text-gray-600" />
+                      <span className="text-[10px]">Copy</span>
+                    </Button>
                 </div>
 
                 {/* Management Buttons */}
@@ -415,68 +636,6 @@ export function InviteCodeManager({ vendorId }: InviteCodeManagerProps) {
         </div>
       )}
 
-      {/* QR Code Dialog */}
-      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>QR Code for {selectedCodeForQR?.code}</DialogTitle>
-            <DialogDescription>
-              Customers can scan this QR code to connect with you instantly
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedCodeForQR && (
-            <div className="space-y-4">
-              {/* QR Code Display */}
-              <div className="flex justify-center p-8 bg-white rounded-lg">
-                <QRCodeSVG
-                  value={getShareableLink(selectedCodeForQR.code)}
-                  size={256}
-                  level="H"
-                  includeMargin
-                />
-              </div>
-
-              {/* Code and Link */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                  <span className="font-mono font-bold text-lg">{selectedCodeForQR.code}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copyToClipboard(selectedCodeForQR.code, "Code")}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                  <span className="text-xs truncate flex-1">
-                    {getShareableLink(selectedCodeForQR.code)}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copyToClipboard(getShareableLink(selectedCodeForQR.code), "Link")}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Instructions */}
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p className="font-medium">Share this with customers:</p>
-                <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li>Show QR code for them to scan</li>
-                  <li>Share the code for manual entry</li>
-                  <li>Send the link via WhatsApp/SMS</li>
-                </ul>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
