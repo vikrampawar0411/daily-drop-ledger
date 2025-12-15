@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useVendors } from "@/hooks/useVendors";
 import { supabase } from "@/integrations/supabase/client";
 import VendorAccountSettings from "./VendorAccountSettings";
+import { useToast } from "@/hooks/use-toast";
 
 const VendorApp = () => {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ const VendorApp = () => {
   const [navigationParams, setNavigationParams] = useState<any>({});
   const [productsOrdersInnerTab, setProductsOrdersInnerTab] = useState<"products" | "orders">("products");
   const { signOut, user } = useAuth();
+  const { toast } = useToast();
   const { vendors } = useVendors();
   const [vendorName, setVendorName] = useState("");
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
@@ -171,7 +173,30 @@ const VendorApp = () => {
           </TabsContent>
 
           <TabsContent value="customers">
-            <CustomerManagement />
+            <CustomerManagement
+              onViewOrders={async (customer: any) => {
+                // Check if customer has any orders
+                const { count } = await supabase
+                  .from('orders')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('customer_id', customer.id)
+                  .eq('vendor_id', currentVendorId);
+                
+                if (count === 0) {
+                  // Show toast if no orders exist
+                  toast({
+                    title: 'No orders found',
+                    description: `No orders exist for ${customer.name}`,
+                  });
+                  return;
+                }
+                
+                handleNavigation('products-orders', {
+                  initialCustomerId: customer.id,
+                  initialCustomerName: customer.name,
+                });
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="products-orders" className="space-y-6">

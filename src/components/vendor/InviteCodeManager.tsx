@@ -38,9 +38,10 @@ interface InviteCodeManagerProps {
   vendorId: string;
   externalTrigger?: boolean;
   onInviteTriggered?: () => void;
+  isInDialog?: boolean;
 }
 
-export function InviteCodeManager({ vendorId, externalTrigger, onInviteTriggered }: InviteCodeManagerProps) {
+export function InviteCodeManager({ vendorId, externalTrigger, onInviteTriggered, isInDialog = false }: InviteCodeManagerProps) {
   const { codes, isLoading, createCode, updateCode, deleteCode, isMutating } = useVendorInviteCodes(vendorId);
   const { toast } = useToast();
   
@@ -463,7 +464,7 @@ export function InviteCodeManager({ vendorId, externalTrigger, onInviteTriggered
 
       {/* Codes List */}
       {codes.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className={isInDialog ? "space-y-4" : "grid gap-4 md:grid-cols-2 lg:grid-cols-3"}>
           {codes.map((code) => (
             <Card key={code.id}>
               <CardHeader>
@@ -483,7 +484,7 @@ export function InviteCodeManager({ vendorId, externalTrigger, onInviteTriggered
                 <div className="flex justify-center p-4 bg-white rounded-lg border">
                   <QRCodeSVG
                     value={getShareableLink(code.code)}
-                    size={160}
+                    size={isInDialog ? 140 : 160}
                     level="H"
                     includeMargin
                   />
