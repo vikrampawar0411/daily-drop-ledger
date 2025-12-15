@@ -101,7 +101,7 @@ export function useDuplicateCheck(
 
       // Call the RPC function to check for duplicates
       const { data, error: rpcError } = await supabase.rpc(
-        "check_email_phone_exists",
+        "check_email_phone_exists" as any,
         {
           p_email: checkEmail || null,
           p_phone: checkPhone || null,

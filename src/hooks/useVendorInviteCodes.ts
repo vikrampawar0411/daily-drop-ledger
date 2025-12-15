@@ -80,13 +80,13 @@ export function useVendorInviteCodes(vendorId?: string) {
 
     try {
       const { data, error } = await supabase
-        .from("vendor_invite_codes")
+        .from("vendor_invite_codes" as any)
         .select("*")
         .eq("vendor_id", vendorId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setCodes(data || []);
+      setCodes((data || []) as unknown as VendorInviteCode[]);
     } catch (error: any) {
       console.error("Error fetching invite codes:", error);
       toast({
@@ -129,7 +129,7 @@ export function useVendorInviteCodes(vendorId?: string) {
     try {
       // Step 1: Generate a unique code using the database function
       const { data: generatedCode, error: codeError } = await supabase
-        .rpc("generate_invite_code");
+        .rpc("generate_invite_code" as any);
 
       if (codeError || !generatedCode) {
         throw new Error("Failed to generate invite code");
@@ -137,7 +137,7 @@ export function useVendorInviteCodes(vendorId?: string) {
 
       // Step 2: Insert the code with optional parameters
       const { data, error } = await supabase
-        .from("vendor_invite_codes")
+        .from("vendor_invite_codes" as any)
         .insert({
           vendor_id: vendorId,
           code: generatedCode,
@@ -158,7 +158,7 @@ export function useVendorInviteCodes(vendorId?: string) {
         description: `Code ${generatedCode} is ready to share with customers.`,
       });
 
-      return data as VendorInviteCode;
+      return data as unknown as VendorInviteCode;
     } catch (error: any) {
       console.error("Error creating invite code:", error);
       toast({
@@ -187,7 +187,7 @@ export function useVendorInviteCodes(vendorId?: string) {
 
     try {
       const { data, error } = await supabase
-        .from("vendor_invite_codes")
+        .from("vendor_invite_codes" as any)
         .update({
           label: params.label,
           expires_at: params.expires_at,
@@ -209,7 +209,7 @@ export function useVendorInviteCodes(vendorId?: string) {
         description: "Your changes have been saved.",
       });
 
-      return data as VendorInviteCode;
+      return data as unknown as VendorInviteCode;
     } catch (error: any) {
       console.error("Error updating invite code:", error);
       toast({
@@ -232,7 +232,7 @@ export function useVendorInviteCodes(vendorId?: string) {
 
     try {
       const { error } = await supabase
-        .from("vendor_invite_codes")
+        .from("vendor_invite_codes" as any)
         .delete()
         .eq("id", codeId);
 
