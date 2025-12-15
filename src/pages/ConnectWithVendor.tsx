@@ -75,7 +75,7 @@ export default function ConnectWithVendor() {
 
         // Step 1: Fetch the invite code (with public policy)
         const { data: codeData, error: codeError } = await supabase
-          .from("vendor_invite_codes")
+          .from("vendor_invite_codes" as any)
           .select("id, vendor_id, expires_at, max_uses, used_count, is_active")
           .eq("code", inviteCode)
           .maybeSingle();
@@ -95,34 +95,36 @@ export default function ConnectWithVendor() {
           return;
         }
 
+        const inviteData = codeData as any;
+        
         // Check if code is active
-        if (!codeData.is_active) {
+        if (!inviteData.is_active) {
           setCodeError("This invite code is no longer active");
           setIsLoadingVendor(false);
           return;
         }
 
         // Check expiry
-        if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) {
+        if (inviteData.expires_at && new Date(inviteData.expires_at) < new Date()) {
           setCodeError("This invite code has expired");
           setIsLoadingVendor(false);
           return;
         }
 
         // Check max uses
-        if (codeData.max_uses && codeData.used_count >= codeData.max_uses) {
+        if (inviteData.max_uses && inviteData.used_count >= inviteData.max_uses) {
           setCodeError("This invite code has reached its maximum usage limit");
           setIsLoadingVendor(false);
           return;
         }
 
-        console.log("Code is valid, fetching vendor:", codeData.vendor_id);
+        console.log("Code is valid, fetching vendor:", inviteData.vendor_id);
 
         // Step 2: Fetch vendor data (public access via "Allow public read access to vendors" policy)
         const { data: vendorData, error: vendorError } = await supabase
           .from("vendors")
           .select("id, name, category, phone, address, email")
-          .eq("id", codeData.vendor_id)
+          .eq("id", inviteData.vendor_id)
           .maybeSingle();
 
         console.log("Vendor query result:", { vendorData, vendorError });
@@ -213,7 +215,7 @@ export default function ConnectWithVendor() {
       }
 
       // Use the validate_and_use_invite_code function
-      const { data, error } = await supabase.rpc("validate_and_use_invite_code", {
+      const { data, error } = await supabase.rpc("validate_and_use_invite_code" as any, {
         p_code: inviteCode,
         p_customer_id: customerId,
         p_connection_method: "qr_scan",

@@ -93,13 +93,13 @@ const VendorDirectory = ({ onNavigate }: VendorDirectoryProps = {}) => {
             id: product.id,
             name: product.name,
             category: product.category,
-            description: product.description,
+            description: product.description || null,
             unit: product.unit,
-            availability: product.availability,
+            availability: (product as any).availability || 'Daily',
             price: vp.price_override || product.price,
-            image_url: product.image_url,
-            subscribe_before: product.subscribe_before || null,
-            delivery_before: product.delivery_before || null,
+            image_url: (product as any).image_url || null,
+            subscribe_before: (product as any).subscribe_before || null,
+            delivery_before: (product as any).delivery_before || null,
           };
         })
         .filter(p => p !== null);

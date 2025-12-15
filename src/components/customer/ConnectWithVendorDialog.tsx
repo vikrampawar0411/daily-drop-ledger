@@ -101,7 +101,7 @@ export function ConnectWithVendorDialog({
 
     try {
       // Call the database function to validate code and get vendor details
-      const { data, error } = await supabase.rpc("validate_and_use_invite_code", {
+      const { data, error } = await supabase.rpc("validate_and_use_invite_code" as any, {
         p_code: code,
         p_customer_id: customerId,
         p_connection_method: "invite_code" as ConnectionMethod,
