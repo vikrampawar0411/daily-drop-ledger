@@ -608,7 +608,7 @@ export type Database = {
           is_active: boolean
           name: string
           price: number
-          status: string | null
+          status: string
           subscribe_before: string | null
           unit: string
           updated_at: string
@@ -626,7 +626,7 @@ export type Database = {
           is_active?: boolean
           name: string
           price: number
-          status?: string | null
+          status?: string
           subscribe_before?: string | null
           unit: string
           updated_at?: string
@@ -644,7 +644,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           price?: number
-          status?: string | null
+          status?: string
           subscribe_before?: string | null
           unit?: string
           updated_at?: string
@@ -858,21 +858,33 @@ export type Database = {
       }
       vendor_customer_connections: {
         Row: {
+          connection_method:
+            | Database["public"]["Enums"]["connection_method_enum"]
+            | null
           created_at: string | null
           customer_id: string
           id: string
+          invite_code_id: string | null
           vendor_id: string
         }
         Insert: {
+          connection_method?:
+            | Database["public"]["Enums"]["connection_method_enum"]
+            | null
           created_at?: string | null
           customer_id: string
           id?: string
+          invite_code_id?: string | null
           vendor_id: string
         }
         Update: {
+          connection_method?:
+            | Database["public"]["Enums"]["connection_method_enum"]
+            | null
           created_at?: string | null
           customer_id?: string
           id?: string
+          invite_code_id?: string | null
           vendor_id?: string
         }
         Relationships: [
@@ -884,6 +896,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "vendor_customer_connections_invite_code_id_fkey"
+            columns: ["invite_code_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_invite_codes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "vendor_customer_connections_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
@@ -892,6 +911,60 @@ export type Database = {
           },
           {
             foreignKeyName: "vendor_customer_connections_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_invite_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          label: string | null
+          max_uses: number | null
+          updated_at: string | null
+          used_count: number | null
+          vendor_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          label?: string | null
+          max_uses?: number | null
+          updated_at?: string | null
+          used_count?: number | null
+          vendor_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          label?: string | null
+          max_uses?: number | null
+          updated_at?: string | null
+          used_count?: number | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_invite_codes_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_invite_codes_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors_public"
@@ -1062,18 +1135,6 @@ export type Database = {
     Functions: {
       admin_exists: { Args: never; Returns: boolean }
       bootstrap_admin: { Args: { admin_user_id: string }; Returns: undefined }
-      check_customers_in_area: {
-        Args: { p_area_id: string }
-        Returns: Json
-      }
-      check_email_phone_exists: {
-        Args: { p_email?: string | null; p_phone?: string | null }
-        Returns: Json
-      }
-      check_vendors_availability: {
-        Args: { p_area_id?: string | null }
-        Returns: Json
-      }
       complete_customer_signup: {
         Args: {
           p_area_id: string
@@ -1084,6 +1145,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_vendor_customer_connections_for_all: {
+        Args: never
+        Returns: undefined
+      }
+      generate_invite_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1093,6 +1159,14 @@ export type Database = {
       }
       link_orphaned_records: { Args: never; Returns: undefined }
       make_user_admin: { Args: { target_user_id: string }; Returns: undefined }
+      validate_and_use_invite_code: {
+        Args: {
+          p_code: string
+          p_connection_method: Database["public"]["Enums"]["connection_method_enum"]
+          p_customer_id: string
+        }
+        Returns: Json
+      }
       vendor_can_view_customer: {
         Args: { _customer_id: string; _vendor_user_id: string }
         Returns: boolean
@@ -1100,6 +1174,11 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "staff" | "customer" | "vendor"
+      connection_method_enum:
+        | "invite_code"
+        | "qr_scan"
+        | "shared_link"
+        | "first_order"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1228,6 +1307,12 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "staff", "customer", "vendor"],
+      connection_method_enum: [
+        "invite_code",
+        "qr_scan",
+        "shared_link",
+        "first_order",
+      ],
     },
   },
 } as const

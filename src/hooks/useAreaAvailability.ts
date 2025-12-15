@@ -123,13 +123,13 @@ export function useAreaAvailability(
       if (checkType === 'vendor') {
         // Vendor signing up - check if customers exist in the area
         ({ data, error: rpcError } = await supabase.rpc(
-          "check_customers_in_area",
+          "check_customers_in_area" as any,
           { p_area_id: checkAreaId }
         ));
       } else {
         // Customer signing up - check if vendors are available
         ({ data, error: rpcError } = await supabase.rpc(
-          "check_vendors_availability",
+          "check_vendors_availability" as any,
           { p_area_id: checkAreaId }
         ));
       }

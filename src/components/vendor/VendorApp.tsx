@@ -200,7 +200,7 @@ const VendorApp = () => {
           </TabsContent>
 
           <TabsContent value="products-orders" className="space-y-6">
-              <Tabs value={productsOrdersInnerTab} onValueChange={setProductsOrdersInnerTab} className="w-full">
+              <Tabs value={productsOrdersInnerTab} onValueChange={(value) => setProductsOrdersInnerTab(value as "products" | "orders")} className="w-full">
               <TabsList>
                 <TabsTrigger value="products">Products</TabsTrigger>
                 <TabsTrigger value="orders">Orders</TabsTrigger>
