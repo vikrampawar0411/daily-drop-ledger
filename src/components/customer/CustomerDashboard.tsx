@@ -2740,8 +2740,12 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                   <div className="font-medium">#{selectedOrder.id.slice(0, 8)}</div>
                 </div>
                 <div>
-                  <Label className="text-sm text-muted-foreground">Date</Label>
-                  <div className="font-medium">{new Date(selectedOrder.order_date).toLocaleDateString()}</div>
+                  <Label className="text-sm text-muted-foreground">Order date and time</Label>
+                  <div className="font-medium">
+                    {selectedOrder.created_at 
+                      ? format(new Date(selectedOrder.created_at), "PPp")
+                      : 'N/A'}
+                  </div>
                 </div>
                 <div>
                   <Label className="text-sm text-muted-foreground">Vendor</Label>

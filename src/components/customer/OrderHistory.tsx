@@ -475,7 +475,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
     ]);
 
     // Header row
-    const headerRow = ['Order ID', 'Date', 'Vendor', 'Product', 'Quantity', 'Unit', 'Price/Unit', 'Total', 'Status', 'Delivered At'];
+    const headerRow = ['Order ID', 'Order date and time', 'Vendor', 'Product', 'Quantity', 'Unit', 'Price/Unit', 'Total', 'Status', 'Delivered At'];
     
     // Calculate row indices (accounting for 6 title rows)
     const orderDataStartRow = titleRowCount + 2;
@@ -937,7 +937,7 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                       Day {sortColumn === 'order_date' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </TableHead>
                     <TableHead className="cursor-pointer" onClick={() => handleSort('order_date')}>
-                      Date {sortColumn === 'order_date' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      Order date and time {sortColumn === 'order_date' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </TableHead>
                     <TableHead className="cursor-pointer" onClick={() => handleSort('vendor')}>
                       Vendor {sortColumn === 'vendor' && (sortDirection === 'asc' ? '↑' : '↓')}
@@ -1204,8 +1204,12 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                   <div className="font-medium">#{selectedOrder.id.slice(0, 8)}</div>
                 </div>
                 <div>
-                  <Label className="text-sm text-muted-foreground">Date</Label>
-                  <div className="font-medium">{new Date(selectedOrder.order_date).toLocaleDateString()}</div>
+                  <Label className="text-sm text-muted-foreground">Order date and time</Label>
+                  <div className="font-medium">
+                    {selectedOrder.created_at 
+                      ? format(new Date(selectedOrder.created_at), "PPp")
+                      : 'N/A'}
+                  </div>
                 </div>
                 <div>
                   <Label className="text-sm text-muted-foreground">Vendor</Label>

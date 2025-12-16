@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export interface OrderWithDetails {
   id: string;
   order_date: string;
+  created_at: string;
   quantity: number;
   status: string;
   unit: string;
@@ -138,6 +139,7 @@ export const useOrders = () => {
       const transformedData = data?.map((order: any) => ({
         id: order.id,
         order_date: order.order_date,
+        created_at: order.created_at,
         quantity: order.quantity,
         status: order.status,
         unit: order.unit,
