@@ -331,7 +331,23 @@ export function InviteCodeManager({ vendorId, externalTrigger, onInviteTriggered
     return <Badge variant="default" className="bg-green-600">Active</Badge>;
   };
 
-    // Handle external trigger - scroll to first active code
+  // Auto-create default invite code if vendor has none
+  useEffect(() => {
+    const createDefaultCode = async () => {
+      if (!isLoading && codes.length === 0 && vendorId) {
+        try {
+          await createCode({
+            label: 'Default Invite Code',
+          });
+        } catch (error) {
+          console.error('Failed to create default code:', error);
+        }
+      }
+    };
+    createDefaultCode();
+  }, [isLoading, codes.length, vendorId]);
+
+  // Handle external trigger - scroll to first active code
   useEffect(() => {
     if (externalTrigger && codes.length > 0) {
         // Scroll to invite codes section
@@ -355,7 +371,7 @@ export function InviteCodeManager({ vendorId, externalTrigger, onInviteTriggered
   }
 
   return (
-    <div className="space-y-4">
+    <div id="invite-codes" className="space-y-4">
       {/* Header with Create Button */}
       <div className="flex items-center justify-between">
         <div>
@@ -370,14 +386,14 @@ export function InviteCodeManager({ vendorId, externalTrigger, onInviteTriggered
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Create Code
+              Create Promotional Code
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Invite Code</DialogTitle>
+              <DialogTitle>Create Promotional Invite Code</DialogTitle>
               <DialogDescription>
-                Generate a unique code to share with customers. They can use this code to connect with you.
+                Generate a promotional code with custom settings to share with customers. They can use this code to connect with you.
               </DialogDescription>
             </DialogHeader>
             
@@ -445,19 +461,15 @@ export function InviteCodeManager({ vendorId, externalTrigger, onInviteTriggered
         </Dialog>
       </div>
 
-      {/* Empty State */}
+      {/* Loading State */}
       {codes.length === 0 && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <QrCode className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Invite Codes Yet</h3>
-            <p className="text-sm text-muted-foreground text-center mb-4">
-              Create your first invite code to start connecting with customers
+            <QrCode className="h-16 w-16 text-muted-foreground mb-4 animate-pulse" />
+            <h3 className="text-lg font-semibold mb-2">Setting up your invite code...</h3>
+            <p className="text-sm text-muted-foreground text-center">
+              Please wait while we create your default invite code
             </p>
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Your First Code
-            </Button>
           </CardContent>
         </Card>
       )}
@@ -619,17 +631,19 @@ export function InviteCodeManager({ vendorId, externalTrigger, onInviteTriggered
                     )}
                   </Button>
 
-                  {/* Delete */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteCode(code)}
-                    disabled={isMutating}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    Delete
-                  </Button>
+                  {/* Delete - hide for default invite code */}
+                  {code.label !== 'Default Invite Code' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteCode(code)}
+                      disabled={isMutating}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

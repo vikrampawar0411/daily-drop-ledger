@@ -100,7 +100,7 @@ const CustomerManagement = ({ onEditCustomer, onViewOrders }: CustomerManagement
             .select("id", { count: "exact", head: true })
             .eq("vendor_id", vendorId)
             .eq("customer_id", cid)
-            .gt("order_date", today)
+            .gte("order_date", today)
             .in("status", ["pending", "pending_approval"]);
           if (error) continue;
           next[cid] = count || 0;
