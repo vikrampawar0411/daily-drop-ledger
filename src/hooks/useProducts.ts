@@ -43,6 +43,7 @@ export const useProducts = () => {
         is_active: product.is_active,
         status: product.status,
         image_url: product.image_url,
+        images: product.images || [],
         subscribe_before: product.subscribe_before || null,
         delivery_before: product.delivery_before || null,
       }));

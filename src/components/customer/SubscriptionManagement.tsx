@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Pause, Play, X, Calendar as CalendarIcon, Plus, Package, History, Download, Eye, Minus } from "lucide-react";
 import OrderCalendar from "./OrderCalendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -103,6 +104,8 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
 
   // Product quantity state for quick subscribe
   const [productQuantities, setProductQuantities] = useState<Record<string, number>>({});
+  const [productDetailsDialogOpen, setProductDetailsDialogOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
   // Handle highlighting subscription when navigated from vendor directory
   useEffect(() => {
@@ -1028,7 +1031,11 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
                 return (
                   <Card 
                     key={product.id} 
-                    className="hover:shadow-lg transition-shadow"
+                    className="hover:shadow-lg transition-shadow cursor-pointer"
+                    onClick={() => {
+                      setSelectedProduct(product);
+                      setProductDetailsDialogOpen(true);
+                    }}
                   >
                     <CardContent className="p-3">
                       <div className="aspect-square mb-2 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
@@ -1042,7 +1049,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
                       <p className="text-xs text-muted-foreground">₹{product.price}/{product.unit}</p>
                       <Badge variant="outline" className="text-xs mt-1">{product.category}</Badge>
                       
-                      <div className="mt-3 space-y-2">
+                      <div className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1455,6 +1462,103 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCancelledDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Product Details Dialog */}
+      <Dialog open={productDetailsDialogOpen} onOpenChange={setProductDetailsDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedProduct?.name}</DialogTitle>
+          </DialogHeader>
+          {selectedProduct && (
+            <div className="space-y-4">
+              {/* Image Carousel */}
+              {((selectedProduct as any).images?.length > 0 || selectedProduct.image_url) ? (
+                <div className="relative">
+                  {(selectedProduct as any).images?.length > 1 ? (
+                    <Carousel className="w-full">
+                      <CarouselContent>
+                        {(selectedProduct as any).images.map((img: string, idx: number) => (
+                          <CarouselItem key={idx}>
+                            <div className="w-full h-80 rounded-lg overflow-hidden bg-gray-100">
+                              <img 
+                                src={img} 
+                                alt={`${selectedProduct.name} ${idx + 1}`}
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
+                          </CarouselItem>
+                        ))}
+                      </CarouselContent>
+                      <CarouselPrevious className="left-2" />
+                      <CarouselNext className="right-2" />
+                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                        {(selectedProduct as any).images.length} photos
+                      </div>
+                    </Carousel>
+                  ) : (
+                    <div className="w-full h-80 rounded-lg overflow-hidden bg-gray-100">
+                      <img 
+                        src={(selectedProduct as any).images?.[0] || selectedProduct.image_url} 
+                        alt={selectedProduct.name}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full h-80 bg-muted rounded-lg flex items-center justify-center">
+                  <Package className="h-24 w-24 text-muted-foreground" />
+                </div>
+              )}
+
+              {/* Product Details */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm text-muted-foreground">Category</Label>
+                  <div className="font-medium">{selectedProduct.category}</div>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Price</Label>
+                  <div className="font-medium text-lg">₹{selectedProduct.price}/{selectedProduct.unit}</div>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Availability</Label>
+                  <div className="font-medium">{selectedProduct.availability}</div>
+                </div>
+                {selectedProduct.subscribe_before && (
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Subscribe Before</Label>
+                    <div className="font-medium">{selectedProduct.subscribe_before}</div>
+                  </div>
+                )}
+                {selectedProduct.delivery_before && (
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Delivery Before</Label>
+                    <div className="font-medium">{selectedProduct.delivery_before}</div>
+                  </div>
+                )}
+              </div>
+
+              {selectedProduct.description && (
+                <div>
+                  <Label className="text-sm text-muted-foreground">Description</Label>
+                  <p className="text-sm mt-1">{selectedProduct.description}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setProductDetailsDialogOpen(false)}>Close</Button>
+            <Button onClick={() => {
+              setProductDetailsDialogOpen(false);
+              handleSubscribeFromProduct(selectedProduct);
+            }}>
+              <CalendarIcon className="h-4 w-4 mr-2" />
+              Subscribe to this Product
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
