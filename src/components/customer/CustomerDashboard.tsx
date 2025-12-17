@@ -108,17 +108,17 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   const [intentionalVendorClear, setIntentionalVendorClear] = useState(false);
   const [isMonthChangeInProgress, setIsMonthChangeInProgress] = useState(false);
 
-  // Set initial vendor after vendors load
+  // Set initial vendor after vendors load (only on first load)
   useEffect(() => {
-    // Skip during month change
-    if (isMonthChangeInProgress) return;
+    // Skip during month change or if user has already interacted
+    if (isMonthChangeInProgress || hasUserInteracted) return;
     
     if (vendors.length > 0 && !selectedVendor && !intentionalVendorClear) {
       const savedVendor = localStorage.getItem('lastSelectedVendor');
       const validVendor = savedVendor && vendors.find(v => v.id === savedVendor);
       setSelectedVendor(validVendor ? savedVendor : vendors[0].id);
     }
-  }, [vendors, selectedVendor, intentionalVendorClear, isMonthChangeInProgress]);
+  }, [vendors, selectedVendor, intentionalVendorClear, isMonthChangeInProgress, hasUserInteracted]);
 
   // Fetch all vendor products (for product availability)
   const { vendorProducts: vendorProductsAll } = useVendorProducts();
@@ -300,11 +300,16 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
 
 
   // Auto-apply filters when vendor is selected in new order form
+  // Only sync from form to filters, not the other way around
   useEffect(() => {
+    // Don't sync if user has manually interacted with filters
+    if (hasUserInteracted) return;
+    
     if (newOrderFormData.vendor_id && newOrderFormData.vendor_id !== selectedVendor) {
       // Keep calendar selected dates visible when vendor changes
       
       // Update main vendor filter
+      console.log('Auto-syncing vendor from form to filters:', newOrderFormData.vendor_id);
       setSelectedVendor(newOrderFormData.vendor_id);
       
       // Find most ordered product from this vendor
@@ -1109,11 +1114,43 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
       const orderDate = new Date(o.order_date);
       const matchesDateRange = orderDate >= startDate && orderDate <= endDate;
       const matchesVendor = !selectedVendor || o.vendor.id === selectedVendor;
+      const matchesProduct = selectedProduct === 'all' || o.product.id === selectedProduct;
       const notCancelled = o.status !== 'cancelled';
       
-      return matchesDateRange && matchesVendor && notCancelled;
+      return matchesDateRange && matchesVendor && matchesProduct && notCancelled;
     });
-  }, [orders, selectedMonth, dateRangeType, customStartDate, customEndDate, selectedVendor]);
+  }, [orders, selectedMonth, dateRangeType, customStartDate, customEndDate, selectedVendor, selectedProduct]);
+
+  // Check for future orders beyond current month
+  const futureOrdersInfo = useMemo(() => {
+    if (dateRangeType !== 'month') return null;
+    
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const currentMonthEnd = new Date(year, month, 0);
+    
+    const futureOrders = orders.filter(o => {
+      const orderDate = new Date(o.order_date);
+      const matchesVendor = !selectedVendor || o.vendor.id === selectedVendor;
+      const matchesProduct = selectedProduct === 'all' || o.product.id === selectedProduct;
+      const isFuture = orderDate > currentMonthEnd;
+      const notCancelled = o.status !== 'cancelled';
+      
+      return isFuture && matchesVendor && matchesProduct && notCancelled;
+    });
+    
+    if (futureOrders.length === 0) return null;
+    
+    // Find the nearest future month with orders
+    const futureDates = futureOrders.map(o => new Date(o.order_date));
+    const nearestDate = futureDates.sort((a, b) => a.getTime() - b.getTime())[0];
+    const nearestMonth = format(nearestDate, 'MMMM yyyy');
+    
+    return {
+      count: futureOrders.length,
+      nearestMonth,
+      nearestDate
+    };
+  }, [orders, selectedMonth, dateRangeType, selectedVendor, selectedProduct]);
 
   const groupedOrders = useMemo(() => {
     const groups: Record<string, any[]> = {};
@@ -1464,13 +1501,26 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
             <Label className="text-sm font-medium">Filter by Vendor</Label>
             <RadioGroup 
               value={selectedVendor} 
-              onValueChange={setSelectedVendor} 
+              onValueChange={(value) => {
+                console.log('Vendor selected in Order Statistics:', value);
+                setHasUserInteracted(true);
+                setSelectedVendor(value);
+                setIntentionalVendorClear(false);
+                localStorage.setItem('lastSelectedVendor', value);
+              }} 
               className="flex flex-wrap gap-2"
             >
               {vendors.map((vendor) => (
                 <div 
                   key={vendor.id} 
                   className="flex items-center space-x-2 px-3 py-2 rounded-md border border-input hover:bg-accent cursor-pointer transition-colors"
+                  onClick={() => {
+                    console.log('Vendor div clicked:', vendor.name, vendor.id);
+                    setHasUserInteracted(true);
+                    setSelectedVendor(vendor.id);
+                    setIntentionalVendorClear(false);
+                    localStorage.setItem('lastSelectedVendor', vendor.id);
+                  }}
                 >
                   <RadioGroupItem value={vendor.id} id={`vendor-${vendor.id}`} />
                   <Label 
@@ -1870,6 +1920,36 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                       }
                     }}
                   />
+
+                  {/* Future Orders Info - Show when there are orders beyond current month */}
+                  {futureOrdersInfo && (
+                    <Card className="border-blue-200 bg-blue-50">
+                      <CardContent className="pt-6">
+                        <div className="flex items-start gap-3">
+                          <CalendarIcon className="h-5 w-5 text-blue-600 mt-0.5" />
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-blue-900 mb-1">
+                              {futureOrdersInfo.count} Future {futureOrdersInfo.count === 1 ? 'Order' : 'Orders'} Scheduled
+                            </h4>
+                            <p className="text-sm text-blue-700 mb-3">
+                              You have {futureOrdersInfo.count} upcoming {futureOrdersInfo.count === 1 ? 'order' : 'orders'} starting in {futureOrdersInfo.nearestMonth}.
+                            </p>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                              onClick={() => {
+                                const monthStr = format(futureOrdersInfo.nearestDate, 'yyyy-MM');
+                                setSelectedMonth(monthStr);
+                              }}
+                            >
+                              View {futureOrdersInfo.nearestMonth}
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {/* Add Missing Orders - Only When No Dates Selected */}
                   {(!calendarSelectedDates || calendarSelectedDates.length === 0) && (

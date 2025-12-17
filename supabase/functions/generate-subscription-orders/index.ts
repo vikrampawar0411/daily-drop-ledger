@@ -28,20 +28,35 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${subscriptions?.length || 0} active subscriptions`);
 
+    if (!subscriptions || subscriptions.length === 0) {
+      console.log('No active subscriptions found');
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'No active subscriptions to process',
+        ordersCreated: 0,
+        subscriptionsProcessed: 0
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
+
     let ordersCreated = 0;
     const errors: string[] = [];
 
     // For each subscription, generate orders
     for (const subscription of subscriptions || []) {
       try {
-        // Start from subscription start_date or today, whichever is earlier
-        // This ensures we generate orders for existing subscriptions
-        let currentDate = new Date(subscription.start_date);
+        // Parse dates properly to avoid timezone issues
+        // DATE fields in postgres are in format YYYY-MM-DD
+        const startDateParts = subscription.start_date.split('-').map(Number);
+        let currentDate = new Date(startDateParts[0], startDateParts[1] - 1, startDateParts[2]);
         
         // Use subscription's end_date if provided, otherwise use 90 days from today
         let subscriptionEndDate: Date;
         if (subscription.end_date) {
-          subscriptionEndDate = new Date(subscription.end_date);
+          const endDateParts = subscription.end_date.split('-').map(Number);
+          subscriptionEndDate = new Date(endDateParts[0], endDateParts[1] - 1, endDateParts[2]);
         } else {
           // If no end date specified, generate for next 90 days only
           subscriptionEndDate = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000);
@@ -49,13 +64,20 @@ Deno.serve(async (req) => {
         
         const finalEndDate = subscriptionEndDate;
         
-        console.log(`Generating orders for subscription ${subscription.id} from ${currentDate.toISOString().split('T')[0]} to ${finalEndDate.toISOString().split('T')[0]}`);
+        console.log(`Generating orders for subscription ${subscription.id}`);
+        console.log(`Start: ${subscription.start_date}, End: ${subscription.end_date || 'none'}`);
+        console.log(`Parsed - Start: ${currentDate.toISOString().split('T')[0]}, End: ${finalEndDate.toISOString().split('T')[0]}`);
+        console.log(`Frequency: ${subscription.frequency}`);
         
         // Get dates to generate orders for based on frequency
         const datesToGenerate: string[] = [];
 
         while (currentDate <= finalEndDate) {
-          const dateStr = currentDate.toISOString().split('T')[0];
+          // Format date as YYYY-MM-DD consistently
+          const year = currentDate.getFullYear();
+          const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+          const day = String(currentDate.getDate()).padStart(2, '0');
+          const dateStr = `${year}-${month}-${day}`;
           
           // Check if subscription is paused on this date
           const isPaused = subscription.paused_from && subscription.paused_until &&
@@ -77,6 +99,29 @@ Deno.serve(async (req) => {
 
         console.log(`Generating ${datesToGenerate.length} orders for subscription ${subscription.id}`);
 
+        if (datesToGenerate.length === 0) {
+          console.log(`No dates to generate for subscription ${subscription.id}`);
+          continue;
+        }
+
+        console.log(`First few dates: ${datesToGenerate.slice(0, 5).join(', ')}`);
+
+        // Get vendor_product_id which is required for orders
+        const { data: vendorProduct, error: vendorProductError } = await supabase
+          .from('vendor_products')
+          .select('id')
+          .eq('vendor_id', subscription.vendor_id)
+          .eq('product_id', subscription.product_id)
+          .single();
+
+        if (vendorProductError || !vendorProduct) {
+          console.error(`Could not find vendor_product for subscription ${subscription.id}:`, vendorProductError);
+          errors.push(`Subscription ${subscription.id}: vendor_product not found`);
+          continue;
+        }
+
+        console.log(`Found vendor_product_id: ${vendorProduct.id}`);
+
         // Check which orders already exist
         const { data: existingOrders } = await supabase
           .from('orders')
@@ -95,6 +140,7 @@ Deno.serve(async (req) => {
             customer_id: subscription.customer_id,
             vendor_id: subscription.vendor_id,
             product_id: subscription.product_id,
+            vendor_product_id: vendorProduct.id,
             order_date: date,
             quantity: subscription.quantity,
             unit: subscription.unit,
@@ -105,6 +151,9 @@ Deno.serve(async (req) => {
           }));
 
         if (ordersToInsert.length > 0) {
+          console.log(`Inserting ${ordersToInsert.length} new orders for subscription ${subscription.id}`);
+          console.log(`Sample order:`, JSON.stringify(ordersToInsert[0], null, 2));
+          
           const { error: insertError } = await supabase
             .from('orders')
             .insert(ordersToInsert);

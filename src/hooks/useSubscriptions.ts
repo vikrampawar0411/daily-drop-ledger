@@ -83,19 +83,34 @@ export const useSubscriptions = () => {
 
   const createSubscription = async (subscription: Omit<Subscription, "id" | "created_at" | "updated_at" | "original_start_date">) => {
     try {
+      console.log('Creating subscription with data:', {
+        ...subscription,
+        original_start_date: subscription.start_date,
+        created_by_user_id: user?.id || null
+      });
+      
       const { data, error } = await supabase
         .from("subscriptions")
         .insert([{
           ...subscription,
-          original_start_date: subscription.start_date
+          original_start_date: subscription.start_date,
+          created_by_user_id: user?.id || null
         }])
         .select()
         .single();
 
       if (error) throw error;
 
+      console.log('Subscription created successfully:', data);
+
+      console.log('Subscription created:', data.id);
+
+      // Wait a moment to ensure subscription is committed to database
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Trigger order generation for this subscription
       try {
+        console.log('Calling generate-subscription-orders function for subscription:', data.id);
         const response = await fetch(
           'https://ssaogbrpjvxvlxtdivah.supabase.co/functions/v1/generate-subscription-orders',
           {
@@ -108,20 +123,59 @@ export const useSubscriptions = () => {
           }
         );
         
+        console.log('Function response status:', response.status);
+        
         if (response.ok) {
           const result = await response.json();
           console.log('Orders generated:', result);
+          
+          // Show details about generated orders
+          if (result.ordersCreated > 0) {
+            toast({
+              title: "Orders Generated",
+              description: `${result.ordersCreated} orders have been created for your subscription. Navigate through calendar months to see them.`,
+            });
+          } else {
+            console.warn('No orders were created. Result:', result);
+            toast({
+              title: "Subscription Created",
+              description: "Subscription created but no new orders generated. Check if orders already exist.",
+              variant: "default",
+            });
+          }
+          
+          // Wait longer for orders to be fully created, then trigger a page reload
+          setTimeout(() => {
+            window.location.reload();
+          }, 3000);
+        } else {
+          const errorText = await response.text();
+          console.error('Function call failed:', response.status, errorText);
+          toast({
+            title: "Warning",
+            description: "Subscription created but order generation may have failed. Please refresh the page.",
+            variant: "destructive",
+          });
+          
+          // Still reload to show subscription
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
         }
       } catch (generationError) {
         console.error('Error generating orders:', generationError);
+        toast({
+          title: "Warning",
+          description: "Subscription created but order generation encountered an error. Please refresh the page.",
+          variant: "destructive",
+        });
         // Don't fail the subscription creation if order generation fails
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
       }
 
       await fetchSubscriptions();
-      toast({
-        title: "Success",
-        description: "Subscription created successfully. Orders are being generated and will appear shortly.",
-      });
       return data;
     } catch (error: any) {
       toast({
