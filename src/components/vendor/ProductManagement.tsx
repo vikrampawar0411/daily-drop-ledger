@@ -163,8 +163,6 @@ const ProductManagement = () => {
         unit: newRequest.unit || "Nos",
         availability: newRequest.inStock ? "in_stock" : "out_of_stock",
         description: newRequest.description || null,
-        subscribe_before: newRequest.subscribe_before,
-        delivery_before: newRequest.delivery_before,
       } as any);
 
       setShowRequestDialog(false);
