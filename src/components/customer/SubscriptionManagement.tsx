@@ -36,7 +36,7 @@ interface SubscriptionManagementProps {
 
 const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionManagementProps) => {
   const { user } = useAuth();
-  const { subscriptions, loading, pauseSubscription, resumeSubscription, cancelSubscription, createSubscription } = useSubscriptions();
+  const { subscriptions, loading, pauseSubscription, resumeSubscription, cancelSubscription, createSubscription, isCreating } = useSubscriptions();
   const { vendors } = useVendors();
   const { products } = useProducts();
   const { vendorProducts } = useVendorProducts();
@@ -1361,9 +1361,9 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
             <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
             <Button 
               onClick={handleCreateSubscription}
-              disabled={!newSubscription.vendor_id || !newSubscription.product_id || !newSubscription.end_date}
+              disabled={!newSubscription.vendor_id || !newSubscription.product_id || !newSubscription.end_date || isCreating}
             >
-              Create Subscription
+              {isCreating ? "Creating..." : "Create Subscription"}
             </Button>
           </DialogFooter>
         </DialogContent>

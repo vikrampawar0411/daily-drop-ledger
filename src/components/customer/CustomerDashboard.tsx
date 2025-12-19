@@ -59,7 +59,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   const { orders, loading: ordersLoading, updateOrderStatus, raiseDispute, clearDispute, deleteOrder, updateOrder, refetch } = useOrders();
   const { addOrder: addCalendarOrder, refetch: refetchCalendar } = useCustomerOrders();
   const { vendors, loading: vendorsLoading } = useVendors();
-  const { subscriptions, createSubscription } = useSubscriptions();
+  const { subscriptions, createSubscription, isCreating } = useSubscriptions();
   const { toast } = useToast();
   const [customerName, setCustomerName] = useState("");
   const [connectionCount, setConnectionCount] = useState(0);
@@ -1785,10 +1785,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                       setIsMonthChangeInProgress(true);
                       setSelectedMonth(monthStr);
                       setCalendarSelectedDates(undefined);
-                      setIntentionalVendorClear(true);
-                      setSelectedVendor('');
-                      setSelectedProduct('all');
-                      setSelectedCardFilter('total');
                       
                       setTimeout(() => setIsMonthChangeInProgress(false), 100);
                     }}
@@ -2482,21 +2478,23 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                               const dayName = days[orderDate.getDay()];
                               const isVendorUpdated = order.updated_by_user_id && order.customer?.user_id && order.updated_by_user_id !== order.customer.user_id;
                               const canModify = !isPastDate || (isPastDate && !isVendorUpdated);
+                              // Disable checkbox only for vendor-updated orders
+                              const disableCheckbox = isVendorUpdated;
                               
                               return (
                                 <TableRow 
                                   key={order.id} 
-                                  className="group cursor-pointer hover:bg-muted/50"
+                                  className="group hover:bg-muted/50"
                                 >
                                   <TableCell onClick={(e) => e.stopPropagation()}>
                                     <Checkbox 
                                       checked={selectedOrderIds.includes(order.id)}
                                       onCheckedChange={() => toggleOrderSelection(order.id)}
-                                      disabled={isVendorUpdated}
+                                      disabled={disableCheckbox}
                                     />
                                   </TableCell>
                                   <TableCell 
-                                    className={`font-semibold ${isSunday ? 'text-blue-600' : ''}`}
+                                    className={`font-semibold ${isSunday ? 'text-blue-600' : ''} cursor-pointer`}
                                     onClick={() => handleOrderClick(order)}
                                   >
                                     {dayName}
@@ -3271,8 +3269,8 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
               } catch (error: any) {
                 console.error('Error creating subscription:', error);
               }
-            }}>
-              Create Subscription
+            }} disabled={isCreating}>
+              {isCreating ? "Creating..." : "Create Subscription"}
             </Button>
           </DialogFooter>
         </DialogContent>

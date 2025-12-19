@@ -174,6 +174,25 @@ export const useOrders = () => {
 
   const updateOrderStatus = async (orderId: string, status: string, deliveredAt?: string) => {
     try {
+      // Get the order to check its date
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        const [year, month, day] = order.order_date.split('-').map(Number);
+        const orderDate = new Date(year, month - 1, day);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Prevent vendors from updating future orders
+        if (orderDate > today && status === 'delivered') {
+          toast({
+            title: "Cannot update future order",
+            description: "You cannot mark future orders as delivered",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      
       const updateData: any = { status };
       
       // If marking as delivered, set the delivered_at timestamp and track who updated it

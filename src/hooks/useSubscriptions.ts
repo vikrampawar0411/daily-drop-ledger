@@ -32,6 +32,7 @@ export interface Subscription {
 export const useSubscriptions = () => {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -82,6 +83,12 @@ export const useSubscriptions = () => {
   }, [user]);
 
   const createSubscription = async (subscription: Omit<Subscription, "id" | "created_at" | "updated_at" | "original_start_date">) => {
+    if (isCreating) {
+      console.log('Subscription creation already in progress, ignoring duplicate request');
+      return;
+    }
+    
+    setIsCreating(true);
     try {
       console.log('Creating subscription with data:', {
         ...subscription,
@@ -178,6 +185,7 @@ export const useSubscriptions = () => {
       await fetchSubscriptions();
       return data;
     } catch (error: any) {
+      setIsCreating(false);
       toast({
         title: "Error creating subscription",
         description: error.message,
@@ -245,11 +253,65 @@ export const useSubscriptions = () => {
 
   const cancelSubscription = async (id: string) => {
     try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Get subscription details to find associated orders
+      const { data: subscription, error: subError } = await supabase
+        .from("subscriptions")
+        .select("customer_id, vendor_id, product_id")
+        .eq("id", id)
+        .single();
+
+      if (subError) throw subError;
+
+      console.log("Cancelling subscription:", id, "for customer:", subscription.customer_id, "vendor:", subscription.vendor_id, "product:", subscription.product_id);
+
+      // Delete all future orders created from this subscription
+      // This uses two strategies:
+      // 1. Orders with created_from_subscription_id set (newer orders)
+      // 2. Orders matching customer_id, vendor_id, product_id for the same subscription (older orders without the field)
+      
+      // First, try to delete orders with created_from_subscription_id
+      const { error: deleteError1, data: deletedData1 } = await supabase
+        .from("orders")
+        .delete()
+        .eq("created_from_subscription_id", id)
+        .gte("order_date", today)
+        .select();
+
+      if (deleteError1) {
+        console.error("Error deleting future orders by subscription_id:", deleteError1);
+      } else {
+        console.log("Deleted", deletedData1?.length || 0, "orders with created_from_subscription_id");
+      }
+
+      // Second, delete pending future orders for this customer+vendor+product combination
+      // This catches orders created before we added the created_from_subscription_id field
+      const { error: deleteError2, data: deletedData2 } = await supabase
+        .from("orders")
+        .delete()
+        .eq("customer_id", subscription.customer_id)
+        .eq("vendor_id", subscription.vendor_id)
+        .eq("product_id", subscription.product_id)
+        .eq("status", "pending")
+        .gte("order_date", today)
+        .select();
+
+      if (deleteError2) {
+        console.error("Error deleting future orders by customer/vendor/product:", deleteError2);
+      } else {
+        console.log("Deleted", deletedData2?.length || 0, "orders by customer/vendor/product match");
+      }
+
+      const totalDeleted = (deletedData1?.length || 0) + (deletedData2?.length || 0);
+      console.log("Total future orders deleted:", totalDeleted);
+
+      // Update subscription status
       const { error } = await supabase
         .from("subscriptions")
         .update({
           status: "cancelled",
-          end_date: new Date().toISOString().split('T')[0],
+          end_date: today,
         })
         .eq("id", id);
 
@@ -258,7 +320,7 @@ export const useSubscriptions = () => {
       await fetchSubscriptions();
       toast({
         title: "Success",
-        description: "Subscription cancelled successfully",
+        description: `Subscription cancelled and ${totalDeleted} future order(s) deleted`,
       });
     } catch (error: any) {
       toast({
@@ -273,6 +335,7 @@ export const useSubscriptions = () => {
   return {
     subscriptions,
     loading,
+    isCreating,
     createSubscription,
     pauseSubscription,
     resumeSubscription,

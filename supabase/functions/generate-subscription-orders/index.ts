@@ -148,6 +148,7 @@ Deno.serve(async (req) => {
             total_amount: subscription.quantity * subscription.price_per_unit,
             status: 'pending',
             created_by_user_id: subscription.created_by_user_id,
+            // created_from_subscription_id: subscription.id, // TODO: Add after migration
           }));
 
         if (ordersToInsert.length > 0) {
