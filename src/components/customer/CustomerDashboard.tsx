@@ -1892,12 +1892,8 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                           setSelectedVendor(vendorId);
                         }
                         
-                        // Ensure we always have a product selected
+                        // Keep the current product selection (including 'all')
                         let productId = selectedProduct !== 'all' ? selectedProduct : '';
-                        if (!productId && availableProducts.length > 0) {
-                          productId = availableProducts[0].id;
-                          setSelectedProduct(productId);
-                        }
                         
                         // Pre-fill the form with clicked date
                         setNewOrderFormData({

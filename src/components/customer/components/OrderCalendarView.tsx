@@ -116,13 +116,14 @@ const OrderCalendarView = ({
           <div className="space-y-2">
             <Label>Select Product</Label>
             <Select
-              value={selectedProduct !== 'all' ? selectedProduct : ''}
+              value={selectedProduct}
               onValueChange={onProductChange}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Choose product" />
               </SelectTrigger>
               <SelectContent className="bg-background z-50">
+                <SelectItem value="all">All Products</SelectItem>
                 {availableProducts.map((product) => (
                   <SelectItem key={product.id} value={product.id}>
                     {product.name}
