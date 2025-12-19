@@ -230,7 +230,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
   const [disputeOrderId, setDisputeOrderId] = useState<string | null>(null);
   const [disputeReason, setDisputeReason] = useState("");
-  const [selectedCardFilter, setSelectedCardFilter] = useState<'total' | 'future' | 'delivered' | 'pending' | 'disputed' | null>(null);
+  const [selectedCardFilter, setSelectedCardFilter] = useState<'total' | 'future' | 'delivered' | 'pending' | 'disputed' | 'cancelled' | null>(null);
   const orderTableRef = useRef<HTMLDivElement>(null);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => {
     const currentMonth = format(new Date(), 'MMMM yyyy');
@@ -908,14 +908,14 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
         const matchesSelectedDates = selectedDateStrs.includes(o.order_date);
         const matchesVendor = !selectedVendor || o.vendor.id === selectedVendor;
         const matchesProduct = selectedProduct === 'all' || o.product.id === selectedProduct;
-        return matchesSelectedDates && matchesVendor && matchesProduct && o.status !== 'cancelled';
+        return matchesSelectedDates && matchesVendor && matchesProduct;
       }
       
-      // Otherwise, show full month range
+      // Otherwise, show full month range (including cancelled orders)
       const matchesDate = orderDate >= startDate && orderDate <= endDate;
       const matchesVendor = !selectedVendor || o.vendor.id === selectedVendor;
       const matchesProduct = selectedProduct === 'all' || o.product.id === selectedProduct;
-      return matchesDate && matchesVendor && matchesProduct && o.status !== 'cancelled';
+      return matchesDate && matchesVendor && matchesProduct;
     });
     
     // Calculate future orders (orders with date >= today)
@@ -951,6 +951,9 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
           break;
         case 'disputed':
           filteredOrders = monthOrders.filter(o => o.status === 'delivered' && o.dispute_raised === true);
+          break;
+        case 'cancelled':
+          filteredOrders = monthOrders.filter(o => o.status === 'cancelled');
           break;
       }
     }
@@ -1000,6 +1003,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     const deliveredNonDisputed = monthOrders.filter(o => o.status === 'delivered' && !o.dispute_raised).length;
     const deliveredDisputed = monthOrders.filter(o => o.status === 'delivered' && o.dispute_raised === true).length;
     const scheduledOrders = monthOrders.filter(o => o.status === 'pending').length;
+    const cancelledOrders = monthOrders.filter(o => o.status === 'cancelled').length;
     
     const deliveredNonDisputedSpend = monthOrders
       .filter(o => o.status === 'delivered' && !o.dispute_raised)
@@ -1013,14 +1017,20 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
       .filter(o => o.status === 'pending')
       .reduce((sum, o) => sum + Number(o.total_amount), 0);
     
+    const cancelledAmount = monthOrders
+      .filter(o => o.status === 'cancelled')
+      .reduce((sum, o) => sum + Number(o.total_amount), 0);
+    
     return {
       totalOrders,
       deliveredOrders: deliveredNonDisputed,
       deliveredDisputedOrders: deliveredDisputed,
       scheduledOrders,
+      cancelledOrders,
       deliveredSpend: Math.round(deliveredNonDisputedSpend),
       deliveredDisputedAmount: Math.round(deliveredDisputedAmount),
       forecastedBill: Math.round(forecastedBill),
+      cancelledAmount: Math.round(cancelledAmount),
       futureOrders: futureOrdersCount,
       futureOrdersAmount: futureOrdersAmount,
       orders: sortedOrders
@@ -1028,7 +1038,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   }, [orders, selectedMonth, selectedVendor, selectedProduct, dateRangeType, customStartDate, customEndDate, sortColumn, sortDirection, calendarSelectedDates, selectedCardFilter]);
 
   // Handle card click for filtering
-  const handleCardClick = (cardType: 'total' | 'future' | 'delivered' | 'pending' | 'disputed') => {
+  const handleCardClick = (cardType: 'total' | 'future' | 'delivered' | 'pending' | 'disputed' | 'cancelled') => {
     // Toggle: if clicking same card, clear filter
     setSelectedCardFilter(prev => prev === cardType ? null : cardType);
     
@@ -1091,9 +1101,8 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
       const matchesDateRange = orderDate >= startDate && orderDate <= endDate;
       const matchesVendor = !selectedVendor || o.vendor.id === selectedVendor;
       const matchesProduct = selectedProduct === 'all' || o.product.id === selectedProduct;
-      const notCancelled = o.status !== 'cancelled';
       
-      return matchesDateRange && matchesVendor && matchesProduct && notCancelled;
+      return matchesDateRange && matchesVendor && matchesProduct;
     });
   }, [orders, selectedMonth, dateRangeType, customStartDate, customEndDate, selectedVendor, selectedProduct]);
 
@@ -1664,7 +1673,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
         </CardHeader>
         <CardContent>
           {/* Statistics Cards - Always Visible */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
             <Card 
               className={cn(
                 "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 cursor-pointer hover:shadow-lg transition-all",
@@ -1679,7 +1688,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900">{monthlyStats.totalOrders}</div>
                 <p className="text-xs text-gray-600 mt-1">
-                  ₹{(monthlyStats.deliveredSpend + monthlyStats.deliveredDisputedAmount + monthlyStats.forecastedBill).toFixed(2)}
+                  ₹{(monthlyStats.deliveredSpend + monthlyStats.deliveredDisputedAmount + monthlyStats.forecastedBill + monthlyStats.cancelledAmount).toFixed(2)}
                 </p>
               </CardContent>
             </Card>
@@ -1751,6 +1760,25 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
               <CardContent>
                 <div className="text-2xl font-bold text-red-900">{monthlyStats.deliveredDisputedOrders}</div>
                 <p className="text-xs text-red-600 mt-1">₹{monthlyStats.deliveredDisputedAmount}</p>
+              </CardContent>
+            </Card>
+
+            <Card 
+              className={cn(
+                "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-300 cursor-pointer hover:shadow-lg transition-all",
+                selectedCardFilter === 'cancelled' && "border-4 border-gray-500"
+              )}
+              onClick={() => handleCardClick('cancelled')}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                  <X className="h-4 w-4 text-gray-600" />
+                  Cancelled Orders
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900">{monthlyStats.cancelledOrders}</div>
+                <p className="text-xs text-gray-600 mt-1">₹{monthlyStats.cancelledAmount}</p>
               </CardContent>
             </Card>
           </div>
@@ -2304,7 +2332,8 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                         Filter: {selectedCardFilter === 'total' ? 'All' : 
                                  selectedCardFilter === 'future' ? 'Future' :
                                  selectedCardFilter === 'delivered' ? 'Delivered' :
-                                 selectedCardFilter === 'pending' ? 'Pending' : 'Disputed'}
+                                 selectedCardFilter === 'pending' ? 'Pending' : 
+                                 selectedCardFilter === 'disputed' ? 'Disputed' : 'Cancelled'}
                       </Badge>
                       <Button
                         size="sm"
@@ -2482,23 +2511,25 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                               return (
                                 <TableRow 
                                   key={order.id} 
-                                  className="group hover:bg-muted/50"
+                                  className={`group hover:bg-muted/50 ${order.status === 'cancelled' ? 'opacity-60' : ''}`}
                                 >
                                   <TableCell onClick={(e) => e.stopPropagation()}>
                                     <Checkbox 
                                       checked={selectedOrderIds.includes(order.id)}
                                       onCheckedChange={() => toggleOrderSelection(order.id)}
-                                      disabled={disableCheckbox}
+                                      disabled={disableCheckbox || order.status === 'cancelled'}
                                     />
                                   </TableCell>
                                   <TableCell 
-                                    className={`font-semibold ${isSunday ? 'text-blue-600' : ''} cursor-pointer`}
+                                    className={`font-semibold ${isSunday ? 'text-blue-600' : ''} ${order.status === 'cancelled' ? 'line-through' : ''} cursor-pointer`}
                                     onClick={() => handleOrderClick(order)}
                                   >
                                     {dayName}
                                   </TableCell>
-                                  <TableCell onClick={() => handleOrderClick(order)}>{orderDate.toLocaleDateString()}</TableCell>
-                                  <TableCell onClick={() => handleOrderClick(order)}>
+                                  <TableCell onClick={() => handleOrderClick(order)} className={order.status === 'cancelled' ? 'line-through' : ''}>
+                                    {orderDate.toLocaleDateString()}
+                                  </TableCell>
+                                  <TableCell onClick={() => handleOrderClick(order)} className={order.status === 'cancelled' ? 'line-through' : ''}>
                                     {order.product.name}
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
@@ -2555,10 +2586,10 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                                       </div>
                                     ) : (
                                       <div className="flex items-center gap-2 group">
-                                        <span onClick={() => handleOrderClick(order)} className="cursor-pointer">
+                                        <span onClick={() => handleOrderClick(order)} className={`cursor-pointer ${order.status === 'cancelled' ? 'line-through' : ''}`}>
                                           {order.quantity} {order.unit}
                                         </span>
-                                        {canModify && !(isPastDate && order.status === 'delivered') && (
+                                        {!isPastDate && canModify && !(isPastDate && order.status === 'delivered') && order.status !== 'cancelled' && (
                                           <Button
                                             size="sm"
                                             variant="ghost"
@@ -2574,12 +2605,14 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                                       </div>
                                     )}
                                   </TableCell>
-                                  <TableCell onClick={() => handleOrderClick(order)} className="font-semibold">
+                                  <TableCell onClick={() => handleOrderClick(order)} className={`font-semibold ${order.status === 'cancelled' ? 'line-through' : ''}`}>
                                     ₹{order.total_amount}
                                   </TableCell>
                                   <TableCell onClick={() => handleOrderClick(order)}>
                                     <div className="text-sm">
-                                      {order.status === 'delivered' ? (
+                                      {order.status === 'cancelled' ? (
+                                        <span className="text-red-600 font-medium">Cancelled</span>
+                                      ) : order.status === 'delivered' ? (
                                         order.dispute_raised ? 'Delivered (Disputed)' : 'Delivered'
                                       ) : (
                                         'Pending'
@@ -2588,95 +2621,101 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
                                     <div className="flex items-center gap-2">
-                                      {/* Delete/Cancel Button - Future orders can be deleted, past orders can only be cancelled */}
-                                      {canModify && !(isPastDate && order.status === 'delivered') && (
-                                        <Button
-                                          variant="ghost" 
-                                          size="sm"
-                                          onClick={() => {
-                                            setDeleteOrderId(order.id);
-                                            setDeleteDialogOpen(true);
-                                          }}
-                                          className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
-                                          title={isFutureOrder ? "Delete Order" : "Cancel Order"}
-                                        >
-                                          {isFutureOrder ? <Trash2 className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                                        </Button>
-                                      )}
+                                      {/* First Column: Delete/Cancel/3-Dot Menu/Dispute Button - Fixed width container */}
+                                      <div className="w-8">
+                                        {/* Delete/Cancel Button for non-vendor-delivered orders */}
+                                        {canModify && !(isPastDate && order.status === 'delivered') && order.status !== 'cancelled' && !isVendorUpdated && (
+                                          <Button
+                                            variant="ghost" 
+                                            size="sm"
+                                            onClick={() => {
+                                              setDeleteOrderId(order.id);
+                                              setDeleteDialogOpen(true);
+                                            }}
+                                            className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
+                                            title={isFutureOrder ? "Delete Order" : "Cancel Order"}
+                                          >
+                                            {isFutureOrder ? <Trash2 className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                                          </Button>
+                                        )}
 
-                                      {/* Toggle Status Button - Hide for future orders and vendor-delivered orders */}
-                                      {!(isVendorUpdated && order.status === 'delivered') && !isFutureOrder && (
-                                        <TooltipProvider>
+                                        {/* 3-Dot Menu for vendor-delivered orders without dispute */}
+                                        {isVendorUpdated && order.status === 'delivered' && !order.dispute_raised && (
+                                          <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                <MoreVertical className="h-4 w-4" />
+                                              </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="bg-background z-50">
+                                              <DropdownMenuItem 
+                                                onClick={() => {
+                                                  setDisputeOrderId(order.id);
+                                                  setDisputeReason("");
+                                                  setDisputeDialogOpen(true);
+                                                }}
+                                              >
+                                                <AlertTriangle className="h-4 w-4 mr-2 text-orange-600" />
+                                                Raise Dispute
+                                              </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                          </DropdownMenu>
+                                        )}
+
+                                        {/* Clear Dispute Button */}
+                                        {order.dispute_raised && (
                                           <Tooltip>
                                             <TooltipTrigger asChild>
-                                              <Button
+                                              <Button 
+                                                variant="ghost" 
                                                 size="sm"
-                                                variant={order.status === 'delivered' ? 'ghost' : 'default'}
-                                                className={`h-8 w-8 p-0 ${
-                                                  order.status === 'delivered' 
-                                                    ? 'bg-green-100 hover:bg-green-200' 
-                                                    : 'bg-amber-100 hover:bg-amber-200'
-                                                }`}
-                                                onClick={() => handleStatusToggle(order)}
-                                                disabled={isVendorUpdated || (isPastDate && !canModify)}
+                                                onClick={async () => {
+                                                  await clearDispute(order.id, order.status);
+                                                  refetch();
+                                                }}
+                                                className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50"
                                               >
-                                                {order.status === 'delivered' ? (
-                                                  <CheckCircle className="h-4 w-4 text-green-600" />
-                                                ) : (
-                                                  <Clock className="h-4 w-4 text-amber-600" />
-                                                )}
+                                                <CheckCircle className="h-4 w-4" />
                                               </Button>
                                             </TooltipTrigger>
                                             <TooltipContent>
-                                              <p>{isVendorUpdated ? 'Status updated by vendor' : 'Toggle status'}</p>
+                                              <p>Clear dispute</p>
                                             </TooltipContent>
                                           </Tooltip>
-                                        </TooltipProvider>
-                                      )}
+                                        )}
+                                      </div>
 
-                                      {/* 3-Dot Menu for Vendor-Delivered Orders */}
-                                      {isVendorUpdated && order.status === 'delivered' && !order.dispute_raised && (
-                                        <DropdownMenu>
-                                          <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                              <MoreVertical className="h-4 w-4" />
-                                            </Button>
-                                          </DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end" className="bg-background z-50">
-                                            <DropdownMenuItem 
-                                              onClick={() => {
-                                                setDisputeOrderId(order.id);
-                                                setDisputeReason("");
-                                                setDisputeDialogOpen(true);
-                                              }}
-                                            >
-                                              <AlertTriangle className="h-4 w-4 mr-2 text-orange-600" />
-                                              Raise Dispute
-                                            </DropdownMenuItem>
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
-                                      )}
-
-                                      {order.dispute_raised && (
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Button 
-                                              variant="ghost" 
-                                              size="sm"
-                                              onClick={async () => {
-                                                await clearDispute(order.id, order.status);
-                                                refetch();
-                                              }}
-                                              className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50"
-                                            >
-                                              <CheckCircle className="h-4 w-4" />
-                                            </Button>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>Clear dispute</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      )}
+                                      {/* Second Column: Toggle Status Button - Fixed width container */}
+                                      <div className="w-8">
+                                        {!(isVendorUpdated && order.status === 'delivered') && !isFutureOrder && order.status !== 'cancelled' && (
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className={`h-8 w-8 p-0 ${
+                                                    order.status === 'delivered' 
+                                                      ? 'bg-green-100 hover:bg-green-200' 
+                                                      : 'bg-amber-100 hover:bg-amber-200'
+                                                  }`}
+                                                  onClick={() => handleStatusToggle(order)}
+                                                  disabled={isVendorUpdated || (isPastDate && !canModify)}
+                                                >
+                                                  {order.status === 'delivered' ? (
+                                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                                  ) : (
+                                                    <Clock className="h-4 w-4 text-amber-600" />
+                                                  )}
+                                                </Button>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                <p>{isVendorUpdated ? 'Status updated by vendor' : 'Toggle status'}</p>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        )}
+                                      </div>
                                     </div>
                                   </TableCell>
                                 </TableRow>

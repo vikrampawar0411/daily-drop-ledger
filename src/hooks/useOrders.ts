@@ -305,22 +305,49 @@ export const useOrders = () => {
 
   const deleteOrder = async (orderId: string) => {
     try {
-      const { error } = await supabase
-        .from("orders")
-        .delete()
-        .eq("id", orderId);
+      // Check if order is in the past or future
+      const order = orders.find(o => o.id === orderId);
+      if (!order) throw new Error("Order not found");
+      
+      const [year, month, day] = order.order_date.split('-').map(Number);
+      const orderDate = new Date(year, month - 1, day);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const isFutureOrder = orderDate > today;
+      
+      if (isFutureOrder) {
+        // Future orders can be deleted
+        const { error } = await supabase
+          .from("orders")
+          .delete()
+          .eq("id", orderId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Order deleted successfully",
-      });
+        toast({
+          title: "Success",
+          description: "Order deleted successfully",
+        });
+      } else {
+        // Past/today orders should be cancelled (status update)
+        const { error } = await supabase
+          .from("orders")
+          .update({ status: 'cancelled' })
+          .eq("id", orderId);
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Order cancelled successfully",
+        });
+      }
       
       await fetchOrders();
     } catch (error: any) {
       toast({
-        title: "Error deleting order",
+        title: "Error",
         description: error.message,
         variant: "destructive",
       });
