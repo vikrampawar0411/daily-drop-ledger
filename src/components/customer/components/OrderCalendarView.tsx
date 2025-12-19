@@ -67,15 +67,8 @@ const OrderCalendarView = ({
 }: OrderCalendarViewProps) => {
   const calendarRef = useRef<HTMLDivElement>(null);
 
-  // Autofocus calendar when vendor and product are selected
-  useEffect(() => {
-    if (selectedVendor && selectedProduct && selectedProduct !== 'all' && calendarRef.current) {
-      const calendarButton = calendarRef.current.querySelector('button[name="day"]');
-      if (calendarButton) {
-        (calendarButton as HTMLElement).focus();
-      }
-    }
-  }, [selectedVendor, selectedProduct]);
+  // Removed autofocus - calendar should not auto-focus when filtering
+  // Users can click on dates manually when they want to place orders
 
   const handleDateSelect = (dates: Date[] | undefined) => {
     onSelectDates(dates);
@@ -152,11 +145,11 @@ const OrderCalendarView = ({
               disabled={(date) => {
               const compareDate = new Date(date);
               compareDate.setHours(0, 0, 0, 0);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
               
-              // If no cutoff time is set, only disable past dates
+              // If no cutoff time is set, only disable past dates (before today)
               if (!subscribeBeforeTime) {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
                 return compareDate < today;
               }
               
@@ -204,11 +197,14 @@ const OrderCalendarView = ({
           }}
           modifiersStyles={{
             today: {
-              boxShadow: '0 0 0 3px hsl(var(--primary)) inset',
-              fontWeight: '700'
+              border: '2px solid hsl(var(--primary))',
+              fontWeight: '700',
+              position: 'relative'
             },
             selected: {
-              boxShadow: '0 0 0 4px hsl(var(--ring)) inset'
+              backgroundColor: 'hsl(var(--primary))',
+              color: 'hsl(var(--primary-foreground))',
+              fontWeight: '600'
             },
             deliveredOrder: {
               backgroundColor: 'hsl(142 76% 73%)',
@@ -228,11 +224,16 @@ const OrderCalendarView = ({
               fontWeight: '400',
               border: '1px solid hsl(213 97% 78%)',
               opacity: 1
+            },
+            disabled: {
+              opacity: 0.4,
+              cursor: 'not-allowed',
+              pointerEvents: 'none'
             }
           }}
           modifiersClassNames={{
             selected: '!ring-4 !ring-ring !ring-offset-2',
-            disabled: 'cursor-not-allowed'
+            disabled: 'opacity-40 cursor-not-allowed pointer-events-none text-muted-foreground'
           }}
         />
         </div>

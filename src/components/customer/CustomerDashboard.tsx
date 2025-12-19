@@ -266,36 +266,12 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
   const calendarQuantityRef = useRef<HTMLInputElement>(null);
 
   // Calculate default date based on product's subscribe_before deadline (next-day delivery)
-  // Only auto-select dates after user has interacted (not on initial load)
+  // Only auto-select dates when user clicks on calendar dates, not when filtering
+  // Removed auto-selection on product filter change to allow viewing all orders
   useEffect(() => {
-    // Skip auto-setting dates when month change is in progress or on initial load
-    if (isMonthChangeInProgress || !hasUserInteracted) return;
-    
-    const productId = selectedProduct !== 'all' ? selectedProduct : '';
-    if (!productId) return;
-
-    const productFromOrders = orders.find(o => o.product.id === productId)?.product;
-    const subscribeBeforeTime = productFromOrders?.subscribe_before;
-    
-    const now = new Date();
-    
-    // Default to tomorrow (next-day delivery)
-    let defaultDate = new Date();
-    defaultDate.setDate(defaultDate.getDate() + 1);
-    defaultDate.setHours(0, 0, 0, 0);
-    
-    if (subscribeBeforeTime) {
-      const [hours, minutes] = subscribeBeforeTime.split(':').map(Number);
-      const todayCutoff = new Date();
-      todayCutoff.setHours(hours, minutes, 0, 0);
-      
-      // If past today's cut-off, delivery becomes day after tomorrow
-      if (now > todayCutoff) {
-        defaultDate.setDate(defaultDate.getDate() + 1);
-      }
-    }
-    
-    setCalendarSelectedDates([defaultDate]);
+    // Only auto-set date when explicitly placing a new order from the button
+    // Not when filtering products in Order Statistics
+    return;
   }, [selectedProduct, orders, isMonthChangeInProgress, hasUserInteracted]);
 
 
@@ -1121,37 +1097,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
     });
   }, [orders, selectedMonth, dateRangeType, customStartDate, customEndDate, selectedVendor, selectedProduct]);
 
-  // Check for future orders beyond current month
-  const futureOrdersInfo = useMemo(() => {
-    if (dateRangeType !== 'month') return null;
-    
-    const [year, month] = selectedMonth.split('-').map(Number);
-    const currentMonthEnd = new Date(year, month, 0);
-    
-    const futureOrders = orders.filter(o => {
-      const orderDate = new Date(o.order_date);
-      const matchesVendor = !selectedVendor || o.vendor.id === selectedVendor;
-      const matchesProduct = selectedProduct === 'all' || o.product.id === selectedProduct;
-      const isFuture = orderDate > currentMonthEnd;
-      const notCancelled = o.status !== 'cancelled';
-      
-      return isFuture && matchesVendor && matchesProduct && notCancelled;
-    });
-    
-    if (futureOrders.length === 0) return null;
-    
-    // Find the nearest future month with orders
-    const futureDates = futureOrders.map(o => new Date(o.order_date));
-    const nearestDate = futureDates.sort((a, b) => a.getTime() - b.getTime())[0];
-    const nearestMonth = format(nearestDate, 'MMMM yyyy');
-    
-    return {
-      count: futureOrders.length,
-      nearestMonth,
-      nearestDate
-    };
-  }, [orders, selectedMonth, dateRangeType, selectedVendor, selectedProduct]);
-
   const groupedOrders = useMemo(() => {
     const groups: Record<string, any[]> = {};
     
@@ -1427,9 +1372,8 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                 const now = new Date();
                 const productId = selectedProduct !== 'all' ? selectedProduct : '';
                 
-                // Default to tomorrow (next-day delivery)
+                // Start with today as default
                 let defaultDate = new Date();
-                defaultDate.setDate(defaultDate.getDate() + 1);
                 defaultDate.setHours(0, 0, 0, 0);
                 
                 // Apply cut-off logic based on selected product
@@ -1439,14 +1383,42 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                   
                   if (subscribeBeforeTime) {
                     const [hours, minutes] = subscribeBeforeTime.split(':').map(Number);
+                    
+                    // Calculate cutoff for today's delivery
+                    // Cutoff = (today - 1 day) at subscribe_before time = yesterday at cutoff time
                     const todayCutoff = new Date();
+                    todayCutoff.setDate(todayCutoff.getDate() - 1);
                     todayCutoff.setHours(hours, minutes, 0, 0);
                     
-                    // If past today's cut-off, delivery becomes day after tomorrow
-                    if (now > todayCutoff) {
+                    // If current time is past yesterday's cutoff, today is available
+                    // If not, move to tomorrow
+                    if (now <= todayCutoff) {
+                      // We're before the cutoff for today, so today is not available
                       defaultDate.setDate(defaultDate.getDate() + 1);
                     }
+                    
+                    // Actually, let me recalculate this properly
+                    // For an order on date X, the cutoff is (X-1 day) at subscribe_before time
+                    // So for today's order, cutoff was yesterday at subscribe_before
+                    // For tomorrow's order, cutoff is today at subscribe_before
+                    
+                    const tomorrowCutoff = new Date();
+                    tomorrowCutoff.setHours(hours, minutes, 0, 0);
+                    
+                    if (now > tomorrowCutoff) {
+                      // Past today's cutoff time, earliest delivery is day after tomorrow
+                      defaultDate.setDate(defaultDate.getDate() + 2);
+                    } else {
+                      // Before today's cutoff, can deliver tomorrow
+                      defaultDate.setDate(defaultDate.getDate() + 1);
+                    }
+                  } else {
+                    // No cutoff time, can order for tomorrow
+                    defaultDate.setDate(defaultDate.getDate() + 1);
                   }
+                } else {
+                  // No product selected, default to tomorrow
+                  defaultDate.setDate(defaultDate.getDate() + 1);
                 }
                 
                 setCalendarExpanded(true);
@@ -1838,18 +1810,20 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                       setSelectedVendor(value);
                       setSelectedProduct('all');
                       setIntentionalVendorClear(false);
+                      // Clear selected dates when vendor changes
+                      setCalendarSelectedDates(undefined);
                       setNewOrderFormData({ 
                         vendor_id: value,
                         product_id: '', // Reset product when vendor changes
                         quantity: 1,
-                        order_date: calendarSelectedDates && calendarSelectedDates.length > 0 
-                          ? calendarSelectedDates[0] 
-                          : new Date()
+                        order_date: new Date()
                       });
                     }}
                     onProductChange={(value) => {
                       setHasUserInteracted(true);
                       setSelectedProduct(value);
+                      // Clear selected dates when product changes
+                      setCalendarSelectedDates(undefined);
                       setNewOrderFormData({ 
                         ...newOrderFormData, 
                         product_id: value 
@@ -1920,36 +1894,6 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                       }
                     }}
                   />
-
-                  {/* Future Orders Info - Show when there are orders beyond current month */}
-                  {futureOrdersInfo && (
-                    <Card className="border-blue-200 bg-blue-50">
-                      <CardContent className="pt-6">
-                        <div className="flex items-start gap-3">
-                          <CalendarIcon className="h-5 w-5 text-blue-600 mt-0.5" />
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-blue-900 mb-1">
-                              {futureOrdersInfo.count} Future {futureOrdersInfo.count === 1 ? 'Order' : 'Orders'} Scheduled
-                            </h4>
-                            <p className="text-sm text-blue-700 mb-3">
-                              You have {futureOrdersInfo.count} upcoming {futureOrdersInfo.count === 1 ? 'order' : 'orders'} starting in {futureOrdersInfo.nearestMonth}.
-                            </p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="border-blue-300 text-blue-700 hover:bg-blue-100"
-                              onClick={() => {
-                                const monthStr = format(futureOrdersInfo.nearestDate, 'yyyy-MM');
-                                setSelectedMonth(monthStr);
-                              }}
-                            >
-                              View {futureOrdersInfo.nearestMonth}
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
 
                   {/* Add Missing Orders - Only When No Dates Selected */}
                   {(!calendarSelectedDates || calendarSelectedDates.length === 0) && (
