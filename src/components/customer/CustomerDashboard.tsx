@@ -2383,13 +2383,11 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                             <span className="hidden sm:inline">Modify</span>
                           </Button>
                         )}
-                        {!hasAnyPastDateSelected && (
-                          <Button onClick={() => setBulkDeleteDialogOpen(true)} variant="destructive" size="sm" className="h-8">
-                            <Trash2 className="h-4 w-4 sm:mr-2" />
-                            <span className="hidden sm:inline">Delete {selectedOrderIds.length}</span>
-                            <span className="sm:hidden">{selectedOrderIds.length}</span>
-                          </Button>
-                        )}
+                        <Button onClick={() => setBulkDeleteDialogOpen(true)} variant="destructive" size="sm" className="h-8">
+                          {hasAnyPastDateSelected ? <X className="h-4 w-4 sm:mr-2" /> : <Trash2 className="h-4 w-4 sm:mr-2" />}
+                          <span className="hidden sm:inline">{hasAnyPastDateSelected ? 'Cancel' : 'Delete'} {selectedOrderIds.length}</span>
+                          <span className="sm:hidden">{selectedOrderIds.length}</span>
+                        </Button>
                       </>
                     );
                   })()}
@@ -2520,30 +2518,32 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                                           className="w-20 h-8"
                                           autoFocus
                                         />
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          className="h-8 w-8 p-0"
-                                          onClick={async () => {
-                                            if (editQuantity >= 1) {
-                                              const product = vendorProductsForEdit.find(vp => vp.product_id === order.product.id);
-                                              const pricePerUnit = product?.price_override || order.product.price;
-                                              await updateOrder(order.id, {
-                                                quantity: editQuantity,
-                                                total_amount: editQuantity * pricePerUnit
-                                              });
-                                              setEditingOrderId(null);
-                                            } else {
-                                              toast({
-                                                title: "Invalid Quantity",
-                                                description: "Quantity must be at least 1",
-                                                variant: "destructive",
-                                              });
-                                            }
-                                          }}
-                                        >
-                                          <Check className="h-4 w-4 text-green-600" />
-                                        </Button>
+                                        {editQuantity !== order.quantity && (
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-8 w-8 p-0"
+                                            onClick={async () => {
+                                              if (editQuantity >= 1) {
+                                                const product = vendorProductsForEdit.find(vp => vp.product_id === order.product.id);
+                                                const pricePerUnit = product?.price_override || order.product.price;
+                                                await updateOrder(order.id, {
+                                                  quantity: editQuantity,
+                                                  total_amount: editQuantity * pricePerUnit
+                                                });
+                                                setEditingOrderId(null);
+                                              } else {
+                                                toast({
+                                                  title: "Invalid Quantity",
+                                                  description: "Quantity must be at least 1",
+                                                  variant: "destructive",
+                                                });
+                                              }
+                                            }}
+                                          >
+                                            <Check className="h-4 w-4 text-green-600" />
+                                          </Button>
+                                        )}
                                         <Button
                                           size="sm"
                                           variant="ghost"
@@ -2588,7 +2588,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                                   </TableCell>
                                   <TableCell onClick={(e) => e.stopPropagation()}>
                                     <div className="flex items-center gap-2">
-                                      {/* Delete Button - First */}
+                                      {/* Delete/Cancel Button - Future orders can be deleted, past orders can only be cancelled */}
                                       {canModify && !(isPastDate && order.status === 'delivered') && (
                                         <Button
                                           variant="ghost" 
@@ -2598,9 +2598,9 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                                             setDeleteDialogOpen(true);
                                           }}
                                           className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
-                                          title="Delete Order"
+                                          title={isFutureOrder ? "Delete Order" : "Cancel Order"}
                                         >
-                                          <Trash2 className="h-4 w-4" />
+                                          {isFutureOrder ? <Trash2 className="h-4 w-4" /> : <X className="h-4 w-4" />}
                                         </Button>
                                       )}
 
@@ -2952,15 +2952,43 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Order</AlertDialogTitle>
+            <AlertDialogTitle>
+              {(() => {
+                const order = monthlyStats.orders.find(o => o.id === deleteOrderId);
+                if (!order) return "Delete Order";
+                const [year, monthNum, day] = order.order_date.split('-').map(Number);
+                const orderDate = new Date(year, monthNum - 1, day);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return orderDate > today ? "Delete Order" : "Cancel Order";
+              })()}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this order? This action cannot be undone.
+              {(() => {
+                const order = monthlyStats.orders.find(o => o.id === deleteOrderId);
+                if (!order) return "Are you sure you want to delete this order? This action cannot be undone.";
+                const [year, monthNum, day] = order.order_date.split('-').map(Number);
+                const orderDate = new Date(year, monthNum - 1, day);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return orderDate > today 
+                  ? "Are you sure you want to delete this order? This action cannot be undone."
+                  : "Are you sure you want to cancel this order? This action cannot be undone.";
+              })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteOrder} className="border-2 border-red-600 text-red-600 hover:border-red-700 hover:bg-red-50">
-              Delete
+              {(() => {
+                const order = monthlyStats.orders.find(o => o.id === deleteOrderId);
+                if (!order) return "Delete";
+                const [year, monthNum, day] = order.order_date.split('-').map(Number);
+                const orderDate = new Date(year, monthNum - 1, day);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return orderDate > today ? "Delete" : "Cancel Order";
+              })()}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -3034,9 +3062,31 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
       <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Multiple Orders</AlertDialogTitle>
+            <AlertDialogTitle>
+              {(() => {
+                const selectedOrders = monthlyStats.orders.filter(order => selectedOrderIds.includes(order.id));
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const hasPastDate = selectedOrders.some(order => {
+                  const orderDate = new Date(order.order_date);
+                  orderDate.setHours(0, 0, 0, 0);
+                  return orderDate < today;
+                });
+                return hasPastDate ? 'Cancel Multiple Orders' : 'Delete Multiple Orders';
+              })()}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {selectedOrderIds.length} order(s)? This action cannot be undone.
+              {(() => {
+                const selectedOrders = monthlyStats.orders.filter(order => selectedOrderIds.includes(order.id));
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const hasPastDate = selectedOrders.some(order => {
+                  const orderDate = new Date(order.order_date);
+                  orderDate.setHours(0, 0, 0, 0);
+                  return orderDate < today;
+                });
+                return `Are you sure you want to ${hasPastDate ? 'cancel' : 'delete'} ${selectedOrderIds.length} order(s)? This action cannot be undone.`;
+              })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -3045,7 +3095,17 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
               onClick={handleBulkDelete} 
               className="border-2 border-red-600 text-red-600 hover:border-red-700 hover:bg-red-50"
             >
-              Delete All
+              {(() => {
+                const selectedOrders = monthlyStats.orders.filter(order => selectedOrderIds.includes(order.id));
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const hasPastDate = selectedOrders.some(order => {
+                  const orderDate = new Date(order.order_date);
+                  orderDate.setHours(0, 0, 0, 0);
+                  return orderDate < today;
+                });
+                return hasPastDate ? 'Cancel All' : 'Delete All';
+              })()}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
