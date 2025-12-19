@@ -188,6 +188,15 @@ const OrderCalendarView = ({
                 o.status === 'pending'
               );
             },
+            cancelledOrder: (date) => {
+              const dateStr = format(date, 'yyyy-MM-dd');
+              const orders = getOrdersForDate(date);
+              return orders.some(o => 
+                o.order_date && 
+                o.order_date === dateStr && 
+                o.status === 'cancelled'
+              );
+            },
             futureOrder: (date) => {
               const dateStr = format(date, 'yyyy-MM-dd');
               const today = format(new Date(), 'yyyy-MM-dd');
@@ -217,6 +226,12 @@ const OrderCalendarView = ({
               color: 'hsl(36 55% 15%)',
               fontWeight: '600',
               border: '2px solid hsl(38 92% 50%)'
+            },
+            cancelledOrder: {
+              backgroundColor: 'transparent',
+              color: 'hsl(220 9% 46%)',
+              fontWeight: '600',
+              border: '2px solid hsl(220 9% 46%)'
             },
             futureOrder: {
               backgroundColor: 'hsl(214 95% 93%)',
@@ -249,6 +264,10 @@ const OrderCalendarView = ({
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(214 95% 93%)', border: '1px solid hsl(213 97% 78%)' }}></div>
             <span className="font-normal">Future orders</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 rounded" style={{ border: '2px solid hsl(220 9% 46%)' }}></div>
+            <span className="font-normal">Cancelled orders</span>
           </div>
           {subscriptionCount !== undefined && subscriptionCount > 0 && onNavigateToSubscriptions && (
             <div className="pt-2 border-t border-border">

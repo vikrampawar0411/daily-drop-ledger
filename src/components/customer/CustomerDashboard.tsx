@@ -1771,7 +1771,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
               onClick={() => handleCardClick('cancelled')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                <CardTitle className="text-sm font-medium text-gray-900 flex items-center gap-2 whitespace-nowrap">
                   <X className="h-4 w-4 text-gray-600" />
                   Cancelled Orders
                 </CardTitle>
@@ -2766,11 +2766,16 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                             <TableCell className="text-right">{monthlyStats.scheduledOrders}</TableCell>
                             <TableCell className="text-right">{monthlyStats.forecastedBill}</TableCell>
                           </TableRow>
+                          <TableRow>
+                            <TableCell className="text-gray-700 font-medium">Cancelled</TableCell>
+                            <TableCell className="text-right">{monthlyStats.cancelledOrders}</TableCell>
+                            <TableCell className="text-right">{monthlyStats.cancelledAmount}</TableCell>
+                          </TableRow>
                           <TableRow className="font-bold bg-gray-50">
                             <TableCell>Total</TableCell>
                             <TableCell className="text-right">{monthlyStats.totalOrders}</TableCell>
                             <TableCell className="text-right">
-                              ₹{(monthlyStats.deliveredSpend + monthlyStats.deliveredDisputedAmount + monthlyStats.forecastedBill).toFixed(2)}
+                              ₹{(monthlyStats.deliveredSpend + monthlyStats.deliveredDisputedAmount + monthlyStats.forecastedBill + monthlyStats.cancelledAmount).toFixed(2)}
                             </TableCell>
                           </TableRow>
                         </TableBody>
