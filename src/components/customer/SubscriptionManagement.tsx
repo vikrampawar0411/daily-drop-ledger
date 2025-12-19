@@ -34,7 +34,7 @@ interface SubscriptionManagementProps {
   };
 }
 
-const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionManagementProps = {}) => {
+const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionManagementProps) => {
   const { user } = useAuth();
   const { subscriptions, loading, pauseSubscription, resumeSubscription, cancelSubscription, createSubscription } = useSubscriptions();
   const { vendors } = useVendors();
@@ -55,6 +55,114 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
   const [cancelledDialogOpen, setCancelledDialogOpen] = useState(false);
   const [cancelledDialogSubs, setCancelledDialogSubs] = useState<any[]>([]);
   const [createDialogVendors, setCreateDialogVendors] = useState<typeof vendors>([] as any);
+  
+  // Grouping state - default to 'vendor'
+  const [groupBy, setGroupBy] = useState<'vendor' | 'product'>('vendor');
+  
+  // Group active/paused subscriptions by vendor or product
+  const groupedActiveSubscriptions = useMemo(() => {
+    const activeSubs = subscriptions.filter(sub => sub.status !== 'cancelled');
+    
+    console.log('Active subscriptions:', activeSubs);
+    console.log('Group by:', groupBy);
+    
+    if (groupBy === 'vendor') {
+      // Group by vendor
+      const grouped = activeSubs.reduce((acc, sub) => {
+        const vendorId = sub.vendor_id;
+        if (!acc[vendorId]) {
+          acc[vendorId] = {
+            id: vendorId,
+            name: sub.vendor?.name || 'Unknown Vendor',
+            subscriptions: []
+          };
+        }
+        acc[vendorId].subscriptions.push(sub);
+        return acc;
+      }, {} as Record<string, { id: string; name: string; subscriptions: typeof activeSubs }>);
+      
+      console.log('Grouped by vendor:', grouped);
+      return grouped;
+    } else {
+      // Group by product
+      const grouped = activeSubs.reduce((acc, sub) => {
+        const productId = sub.product_id;
+        if (!acc[productId]) {
+          acc[productId] = {
+            id: productId,
+            name: sub.product?.name || 'Unknown Product',
+            subscriptions: []
+          };
+        }
+        acc[productId].subscriptions.push(sub);
+        return acc;
+      }, {} as Record<string, { id: string; name: string; subscriptions: typeof activeSubs }>);
+      
+      console.log('Grouped by product:', grouped);
+      return grouped;
+    }
+  }, [subscriptions, groupBy]);
+  
+  // Group cancelled subscriptions by vendor or product
+  const groupedCancelledSubscriptions = useMemo(() => {
+    const cancelledSubs = subscriptions.filter(sub => sub.status === 'cancelled');
+    
+    if (groupBy === 'vendor') {
+      // Group by vendor, then by product within each vendor
+      return cancelledSubs.reduce((acc, sub) => {
+        const vendorId = sub.vendor_id;
+        if (!acc[vendorId]) {
+          acc[vendorId] = {
+            id: vendorId,
+            name: sub.vendor?.name || 'Unknown Vendor',
+            products: {}
+          };
+        }
+        
+        const productId = sub.product_id;
+        const key = `${vendorId}-${productId}`;
+        if (!acc[vendorId].products[key]) {
+          acc[vendorId].products[key] = {
+            productId,
+            vendorId,
+            productName: sub.product?.name || 'Unknown Product',
+            vendorName: sub.vendor?.name || 'Unknown Vendor',
+            productImage: sub.product?.image_url,
+            subscriptions: []
+          };
+        }
+        acc[vendorId].products[key].subscriptions.push(sub);
+        return acc;
+      }, {} as Record<string, { id: string; name: string; products: Record<string, any> }>);
+    } else {
+      // Group by product, then by vendor within each product
+      return cancelledSubs.reduce((acc, sub) => {
+        const productId = sub.product_id;
+        if (!acc[productId]) {
+          acc[productId] = {
+            id: productId,
+            name: sub.product?.name || 'Unknown Product',
+            products: {}
+          };
+        }
+        
+        const vendorId = sub.vendor_id;
+        const key = `${vendorId}-${productId}`;
+        if (!acc[productId].products[key]) {
+          acc[productId].products[key] = {
+            productId,
+            vendorId,
+            productName: sub.product?.name || 'Unknown Product',
+            vendorName: sub.vendor?.name || 'Unknown Vendor',
+            productImage: sub.product?.image_url,
+            subscriptions: []
+          };
+        }
+        acc[productId].products[key].subscriptions.push(sub);
+        return acc;
+      }, {} as Record<string, { id: string; name: string; products: Record<string, any> }>);
+    }
+  }, [subscriptions, groupBy]);
   
   // Calendar filter state
   const [calendarVendorId, setCalendarVendorId] = useState<string>("");
@@ -707,7 +815,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
       case "paused":
         return <Badge className="bg-yellow-500">Paused</Badge>;
       case "cancelled":
-        return <Badge className="border-2 border-gray-400 text-gray-700">Cancelled</Badge>;
+        return <span className="inline-flex items-center rounded-md bg-red-100 px-2 py-1 text-xs font-medium text-red-700 border border-red-300">Cancelled</span>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -773,191 +881,211 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Subscriptions</h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowCancelled(!showCancelled)}
-            >
-              {showCancelled ? (
-                <>
-                  <Eye className="h-4 w-4 mr-2" />
-                  Hide Cancelled
-                </>
-              ) : (
-                <>
-                  <Eye className="h-4 w-4 mr-2" />
-                  Show Cancelled ({subscriptions.filter(s => s.status === 'cancelled').length})
-                </>
-              )}
-            </Button>
+            <div className="flex gap-2">
+              <div className="flex gap-1 border rounded-md p-1">
+                <Button
+                  variant={groupBy === 'vendor' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setGroupBy('vendor')}
+                  className="h-8"
+                >
+                  By Vendor
+                </Button>
+                <Button
+                  variant={groupBy === 'product' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setGroupBy('product')}
+                  className="h-8"
+                >
+                  By Product
+                </Button>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCancelled(!showCancelled)}
+              >
+                {showCancelled ? (
+                  <>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Show Active
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Show Cancelled ({subscriptions.filter(s => s.status === 'cancelled').length})
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Render active and paused subscriptions individually */}
-            {subscriptions
-              .filter(sub => sub.status !== 'cancelled')
-              .map((subscription) => (
-              <Card key={subscription.id} id={`subscription-${subscription.id}`} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className="aspect-square w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
-                        {subscription.product?.image_url ? (
-                          <img src={subscription.product.image_url} alt={subscription.product.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <Package className="h-8 w-8 text-gray-400" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-lg truncate">{subscription.vendor?.name}</CardTitle>
-                        <p className="text-sm text-muted-foreground">{subscription.product?.name}</p>
-                      </div>
-                    </div>
-                    {getStatusBadge(subscription.status)}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="font-medium">Quantity:</span>
-                    <div className="text-muted-foreground">{subscription.quantity} {subscription.unit}</div>
-                  </div>
-                  <div>
-                    <span className="font-medium">Price:</span>
-                    <div className="text-muted-foreground">₹{subscription.price_per_unit}/{subscription.unit}</div>
-                  </div>
-                </div>
-                <div className="text-sm">
-                  <span className="font-medium">Frequency:</span>
-                  <div className="text-muted-foreground">{getFrequencyLabel(subscription.frequency)}</div>
-                </div>
-                <div className="text-sm space-y-2">
-                  <div>
-                    <span className="font-medium">Originally Started:</span>
-                    <div className="text-muted-foreground">
-                      {format(new Date(subscription.original_start_date || subscription.start_date), 'MMM dd, yyyy')}
-                    </div>
-                  </div>
-
-                  {subscription.status === "paused" && subscription.paused_from && subscription.paused_until && (
-                    <div className="bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-200 dark:border-yellow-800">
-                      <span className="font-medium text-yellow-800 dark:text-yellow-200">Paused Period:</span>
-                      <div className="text-yellow-700 dark:text-yellow-300 text-sm">
-                        From: {format(new Date(subscription.paused_from), 'MMM dd, yyyy')}<br/>
-                        Until: {format(new Date(subscription.paused_until), 'MMM dd, yyyy')}
-                      </div>
-                    </div>
-                  )}
-
-                  {subscription.status === "active" && subscription.paused_from && (
-                    <div className="text-xs text-muted-foreground">
-                      Last resumed: {format(new Date(subscription.start_date), 'MMM dd, yyyy')}
-                    </div>
-                  )}
-
-                  {subscription.end_date && (
-                    <div>
-                      <span className="font-medium">Ended:</span>
-                      <div className="text-muted-foreground">
-                        {format(new Date(subscription.end_date), 'MMM dd, yyyy')}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2 pt-2">
-                  <div className="flex space-x-2">
-                    {subscription.status === "active" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handlePause(subscription.id)}
-                        className="flex-1"
-                      >
-                        <Pause className="h-4 w-4 mr-2" />
-                        Pause
-                      </Button>
-                    )}
-                    {subscription.status === "paused" && (
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => handleResume(subscription.id)}
-                        className="flex-1"
-                      >
-                        <Play className="h-4 w-4 mr-2" />
-                        Resume
-                      </Button>
-                    )}
-                    {subscription.status !== "cancelled" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSubscriptionToCancel(subscription.id);
-                          setCancelDialogOpen(true);
-                        }}
-                        className="flex-1 border border-red-600 text-red-600 hover:bg-red-50"
-                      >
-                        <X className="h-4 w-4 mr-2" />
-                        Cancel
-                      </Button>
-                    )}
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      onNavigate?.('dashboard', {
-                        vendorId: subscription.vendor_id,
-                        productId: subscription.product_id
-                      });
-                    }}
-                    className="w-full"
-                  >
-                    <CalendarIcon className="h-4 w-4 mr-2" />
-                    See Calendar
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-
-            {/* Render cancelled subscriptions grouped by vendor+product */}
-            {showCancelled && (() => {
-              const cancelledSubs = subscriptions.filter(sub => sub.status === 'cancelled');
-              const groupedCancelled = cancelledSubs.reduce((acc, sub) => {
-                const key = `${sub.vendor_id}-${sub.product_id}`;
-                if (!acc[key]) {
-                  acc[key] = [];
-                }
-                acc[key].push(sub);
-                return acc;
-              }, {} as Record<string, typeof cancelledSubs>);
-
-              return Object.entries(groupedCancelled).map(([key, subs]) => {
-                const firstSub = subs[0];
-                return (
-                  <Card key={key} className="hover:shadow-lg transition-shadow border border-gray-300">
+          
+          {/* Grouped Active/Paused Subscriptions */}
+          {!showCancelled && Object.entries(groupedActiveSubscriptions).map(([groupId, group]) => (
+            <div key={groupId} className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground px-1">
+                {group.name}
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {group.subscriptions.map((subscription) => (
+                  <Card key={subscription.id} id={`subscription-${subscription.id}`} className="hover:shadow-lg transition-shadow">
                     <CardHeader>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1">
                           <div className="aspect-square w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
-                            {firstSub.product?.image_url ? (
-                              <img src={firstSub.product.image_url} alt={firstSub.product?.name} className="w-full h-full object-cover" />
+                            {subscription.product?.image_url ? (
+                              <img src={subscription.product.image_url} alt={subscription.product.name} className="w-full h-full object-cover" />
                             ) : (
                               <Package className="h-8 w-8 text-gray-400" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <CardTitle className="text-lg truncate">{firstSub.vendor?.name}</CardTitle>
-                            <p className="text-sm text-muted-foreground">{firstSub.product?.name}</p>
+                            <CardTitle className="text-lg truncate">{subscription.product?.name}</CardTitle>
+                            <p className="text-sm text-muted-foreground">{subscription.vendor?.name}</p>
+                          </div>
+                        </div>
+                        {getStatusBadge(subscription.status)}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="font-medium">Quantity:</span>
+                        <div className="text-muted-foreground">{subscription.quantity} {subscription.unit}</div>
+                      </div>
+                      <div>
+                        <span className="font-medium">Price:</span>
+                        <div className="text-muted-foreground">₹{subscription.price_per_unit}/{subscription.unit}</div>
+                      </div>
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-medium">Frequency:</span>
+                      <div className="text-muted-foreground">{getFrequencyLabel(subscription.frequency)}</div>
+                    </div>
+                    <div className="text-sm space-y-2">
+                      <div>
+                        <span className="font-medium">Originally Started:</span>
+                        <div className="text-muted-foreground">
+                          {format(new Date(subscription.original_start_date || subscription.start_date), 'MMM dd, yyyy')}
+                        </div>
+                      </div>
+
+                      {subscription.status === "paused" && subscription.paused_from && subscription.paused_until && (
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-200 dark:border-yellow-800">
+                          <span className="font-medium text-yellow-800 dark:text-yellow-200">Paused Period:</span>
+                          <div className="text-yellow-700 dark:text-yellow-300 text-sm">
+                            From: {format(new Date(subscription.paused_from), 'MMM dd, yyyy')}<br/>
+                            Until: {format(new Date(subscription.paused_until), 'MMM dd, yyyy')}
+                          </div>
+                        </div>
+                      )}
+
+                      {subscription.status === "active" && subscription.paused_from && (
+                        <div className="text-xs text-muted-foreground">
+                          Last resumed: {format(new Date(subscription.start_date), 'MMM dd, yyyy')}
+                        </div>
+                      )}
+
+                      {subscription.end_date && (
+                        <div>
+                          <span className="font-medium">Ended:</span>
+                          <div className="text-muted-foreground">
+                            {format(new Date(subscription.end_date), 'MMM dd, yyyy')}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2 pt-2">
+                      <div className="flex space-x-2">
+                        {subscription.status === "active" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handlePause(subscription.id)}
+                            className="flex-1"
+                          >
+                            <Pause className="h-4 w-4 mr-2" />
+                            Pause
+                          </Button>
+                        )}
+                        {subscription.status === "paused" && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleResume(subscription.id)}
+                            className="flex-1"
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            Resume
+                          </Button>
+                        )}
+                        {subscription.status !== "cancelled" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSubscriptionToCancel(subscription.id);
+                              setCancelDialogOpen(true);
+                            }}
+                            className="flex-1 border border-red-600 text-red-600 hover:bg-red-50"
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          onNavigate?.('dashboard', {
+                            vendorId: subscription.vendor_id,
+                            productId: subscription.product_id
+                          });
+                        }}
+                        className="w-full"
+                      >
+                        <CalendarIcon className="h-4 w-4 mr-2" />
+                        See Calendar
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              </div>
+            </div>
+          ))}
+
+          {/* Render cancelled subscriptions grouped by vendor or product */}
+          {showCancelled && Object.entries(groupedCancelledSubscriptions).map(([groupId, group]) => (
+            <div key={groupId} className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground px-1">
+                {group.name}
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Object.entries(group.products).map(([key, productGroup]: [string, any]) => (
+                  <Card key={key} className="hover:shadow-lg transition-shadow border border-gray-300">
+                    <CardHeader>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1">
+                          <div className="aspect-square w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
+                            {productGroup.productImage ? (
+                              <img src={productGroup.productImage} alt={productGroup.productName} className="w-full h-full object-cover" />
+                            ) : (
+                              <Package className="h-8 w-8 text-gray-400" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-lg truncate">{productGroup.productName}</CardTitle>
+                            <p className="text-sm text-muted-foreground">{productGroup.vendorName}</p>
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           {getStatusBadge('cancelled')}
-                          {subs.length > 1 && (
-                            <Badge variant="outline" className="text-xs">
-                              {subs.length} subscriptions
-                            </Badge>
+                          {productGroup.subscriptions.length > 1 && (
+                            <span className="text-xs text-muted-foreground">
+                              {productGroup.subscriptions.length} subscriptions
+                            </span>
                           )}
                         </div>
                       </div>
@@ -965,15 +1093,15 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
                     <CardContent className="space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm text-muted-foreground">{subs.length} cancelled subscription{subs.length > 1 ? 's' : ''}</p>
-                          <p className="text-xs text-muted-foreground mt-1">Originally started: {format(new Date(firstSub.original_start_date || firstSub.start_date), 'MMM dd, yyyy')}</p>
+                          <p className="text-sm text-muted-foreground">{productGroup.subscriptions.length} cancelled subscription{productGroup.subscriptions.length > 1 ? 's' : ''}</p>
+                          <p className="text-xs text-muted-foreground mt-1">Originally started: {format(new Date(productGroup.subscriptions[0].original_start_date || productGroup.subscriptions[0].start_date), 'MMM dd, yyyy')}</p>
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => {
-                              setCancelledDialogSubs(subs);
+                              setCancelledDialogSubs(productGroup.subscriptions);
                               setCancelledDialogOpen(true);
                             }}
                           >
@@ -984,8 +1112,8 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
                             variant="outline"
                             onClick={() => {
                               onNavigate?.('dashboard', {
-                                vendorId: firstSub.vendor_id,
-                                productId: firstSub.product_id
+                                vendorId: productGroup.vendorId,
+                                productId: productGroup.productId
                               });
                             }}
                           >
@@ -996,15 +1124,15 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
                       </div>
                     </CardContent>
                   </Card>
-                );
-              });
-            })()}
-        </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Other Products Section */}
-      {availableProducts.length > 0 && (
+      {/* Other Products Section - Only show when viewing active subscriptions */}
+      {!showCancelled && availableProducts.length > 0 && (
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -1101,7 +1229,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create New Subscription</DialogTitle>
+            <DialogTitle>Product's Subscription</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
             <div>
