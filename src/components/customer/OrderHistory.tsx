@@ -45,8 +45,8 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
     const currentMonth = format(new Date(), 'MMMM yyyy');
     return new Set([currentMonth]);
   });
-  const [sortColumn, setSortColumn] = useState<string>('order_date');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  // Always sort by order_date descending for stable order positions
+  // Remove sortColumn and sortDirection state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -252,72 +252,24 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
     }
   }, [vendors, selectedVendor, initialVendorFilter]);
 
-  const handleSort = (column: string) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortColumn(column);
-      setSortDirection('asc');
-    }
-  };
+  // Sorting is fixed by order_date descending, so handleSort is not needed
 
   const filteredOrders = useMemo(() => {
     const filtered = orders.filter(order => {
       const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           order.vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           order.product.name.toLowerCase().includes(searchTerm.toLowerCase());
+        order.vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.product.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesVendor = !selectedVendor || order.vendor.name === selectedVendor;
       const matchesStatus = selectedStatus === "all" || order.status === selectedStatus;
-      
       // Date range filter
       const orderDate = new Date(order.order_date);
       const matchesStartDate = !startDate || orderDate >= startDate;
       const matchesEndDate = !endDate || orderDate <= endDate;
-      
       return matchesSearch && matchesVendor && matchesStatus && matchesStartDate && matchesEndDate;
     });
-
-    // Sort filtered orders
-    return filtered.sort((a, b) => {
-      let aVal: any, bVal: any;
-      
-      switch (sortColumn) {
-        case 'order_date':
-          aVal = new Date(a.order_date).getTime();
-          bVal = new Date(b.order_date).getTime();
-          break;
-        case 'vendor':
-          aVal = a.vendor.name.toLowerCase();
-          bVal = b.vendor.name.toLowerCase();
-          break;
-        case 'product':
-          aVal = a.product.name.toLowerCase();
-          bVal = b.product.name.toLowerCase();
-          break;
-        case 'quantity':
-          aVal = Number(a.quantity);
-          bVal = Number(b.quantity);
-          break;
-        case 'total_amount':
-          aVal = Number(a.total_amount);
-          bVal = Number(b.total_amount);
-          break;
-        case 'status':
-          aVal = a.status.toLowerCase();
-          bVal = b.status.toLowerCase();
-          break;
-        default:
-          aVal = new Date(a.order_date).getTime();
-          bVal = new Date(b.order_date).getTime();
-      }
-      
-      if (sortDirection === 'asc') {
-        return aVal > bVal ? 1 : -1;
-      } else {
-        return aVal < bVal ? 1 : -1;
-      }
-    });
-  }, [orders, searchTerm, selectedVendor, selectedStatus, startDate, endDate, sortColumn, sortDirection]);
+    // Always sort by order_date descending (latest first)
+    return filtered.sort((a, b) => new Date(b.order_date).getTime() - new Date(a.order_date).getTime());
+  }, [orders, searchTerm, selectedVendor, selectedStatus, startDate, endDate]);
 
   const groupedOrders = useMemo(() => {
     const groups: Record<string, any[]> = {};
@@ -933,26 +885,26 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                         onCheckedChange={toggleAllOrders}
                       />
                     </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => handleSort('order_date')}>
-                      Day {sortColumn === 'order_date' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    <TableHead>
+                      Day
                     </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => handleSort('order_date')}>
-                      Order date and time {sortColumn === 'order_date' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    <TableHead>
+                      Order date and time
                     </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => handleSort('vendor')}>
-                      Vendor {sortColumn === 'vendor' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    <TableHead>
+                      Vendor
                     </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => handleSort('product')}>
-                      Product {sortColumn === 'product' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    <TableHead>
+                      Product
                     </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => handleSort('quantity')}>
-                      Quantity {sortColumn === 'quantity' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    <TableHead>
+                      Quantity
                     </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => handleSort('total_amount')}>
-                      Total {sortColumn === 'total_amount' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    <TableHead>
+                      Total
                     </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => handleSort('status')}>
-                      Status {sortColumn === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    <TableHead>
+                      Status
                     </TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
