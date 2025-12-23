@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Pause, Play, X, Calendar as CalendarIcon, Plus, Package, History, Download, Eye, Minus } from "lucide-react";
 import OrderCalendar from "./OrderCalendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -214,6 +215,10 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
   const [productQuantities, setProductQuantities] = useState<Record<string, number>>({});
   const [productDetailsDialogOpen, setProductDetailsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [productSearchQuery, setProductSearchQuery] = useState("");
+  const [productComboOpen, setProductComboOpen] = useState(false);
+  const [vendorSearchQuery, setVendorSearchQuery] = useState("");
+  const [vendorComboOpen, setVendorComboOpen] = useState(false);
 
   // Handle highlighting subscription when navigated from vendor directory
   useEffect(() => {
@@ -341,6 +346,31 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
       })
       .filter(p => p !== null);
   }, [vendorProducts, products, selectedVendorFilter, newSubscription.vendor_id, subscriptions]);
+
+  // All active products across all vendors (deduped by product id, choose lowest price)
+  const allActiveProducts = useMemo(() => {
+    const map = new Map<string, any>();
+    vendorProducts.filter(vp => vp.is_active).forEach(vp => {
+      const product = vp.product || products.find(p => p.id === vp.product_id);
+      if (!product) return;
+      const price = vp.price_override || product.price;
+      const existing = map.get(product.id);
+      if (!existing || price < existing.price) {
+        map.set(product.id, { ...product, price });
+      }
+    });
+    return Array.from(map.values());
+  }, [vendorProducts, products]);
+  
+  // Reset product search when vendor changes or dialog opens
+  useEffect(() => {
+    setProductSearchQuery("");
+  }, [newSubscription.vendor_id, createDialogOpen]);
+  
+  // Reset vendor search when product changes or dialog opens
+  useEffect(() => {
+    setVendorSearchQuery("");
+  }, [newSubscription.product_id, createDialogOpen]);
   
   // Generate month options (last 12 months)
   const monthOptions = useMemo(() => {
@@ -1232,43 +1262,134 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
             <DialogTitle>Product's Subscription</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-            <div>
-              <Label>Vendor</Label>
-              <Select 
-                value={newSubscription.vendor_id} 
-                onValueChange={(value) => setNewSubscription({...newSubscription, vendor_id: value, product_id: ""})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select vendor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(createDialogVendors && createDialogVendors.length > 0 ? createDialogVendors : availableVendors).map((vendor) => (
-                    <SelectItem key={vendor.id} value={vendor.id}>
-                      {vendor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            
             
             <div>
               <Label>Product</Label>
-              <Select 
-                value={newSubscription.product_id} 
-                onValueChange={(value) => setNewSubscription({...newSubscription, product_id: value})}
-                disabled={!newSubscription.vendor_id && !newSubscription.product_id}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select product" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableProducts.map((product: any) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name} - ₹{product.price}/{product.unit}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={productComboOpen} onOpenChange={setProductComboOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={productComboOpen}
+                    className="w-full justify-between"
+                  >
+                    {(() => {
+                      const sel = allActiveProducts.find((p: any) => p.id === newSubscription.product_id);
+                      return sel ? `${sel.name} - ₹${sel.price}/${sel.unit}` : "Select product";
+                    })()}
+                    <span className="ml-2 text-muted-foreground">▾</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[--radix-popover-trigger-width]">
+                  <Command>
+                    <CommandInput
+                      placeholder="Search products..."
+                      value={productSearchQuery}
+                      onValueChange={(q) => {
+                        setProductSearchQuery(q);
+                        if (q.trim().length > 0) {
+                          setNewSubscription(prev => ({ ...prev, vendor_id: "" }));
+                        }
+                      }}
+                    />
+                    <CommandList>
+                      <CommandEmpty>No products found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          key="all-products"
+                          value="All Products"
+                          onSelect={() => {
+                            setNewSubscription({ ...newSubscription, product_id: "" });
+                            setProductComboOpen(false);
+                          }}
+                        >
+                          All Products (clear selection)
+                        </CommandItem>
+                        {(() => {
+                          const query = productSearchQuery.toLowerCase().trim();
+                          const source = allActiveProducts as any[];
+                          const filtered = source.filter((p: any) => p.name.toLowerCase().includes(query));
+                          return filtered.map((product: any) => (
+                            <CommandItem
+                              key={product.id}
+                              value={product.name}
+                              onSelect={() => {
+                                setNewSubscription({ ...newSubscription, product_id: product.id, vendor_id: "" });
+                                setProductComboOpen(false);
+                              }}
+                            >
+                              {product.name} - ₹{product.price}/{product.unit}
+                            </CommandItem>
+                          ));
+                        })()}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            <div>
+              <Label>Vendor</Label>
+              <Popover open={vendorComboOpen} onOpenChange={setVendorComboOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={vendorComboOpen}
+                    className="w-full justify-between"
+                  >
+                    {(() => {
+                      const vendorSource = availableVendors;
+                      const sel = vendorSource.find((v: any) => v.id === newSubscription.vendor_id);
+                      return sel ? sel.name : (newSubscription.product_id ? "Select vendor" : "Select product first");
+                    })()}
+                    <span className="ml-2 text-muted-foreground">▾</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[--radix-popover-trigger-width]">
+                  <Command>
+                    <CommandInput
+                      placeholder="Search vendors..."
+                      value={vendorSearchQuery}
+                      onValueChange={(q) => setVendorSearchQuery(q)}
+                    />
+                    <CommandList>
+                      <CommandEmpty>No vendors found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          key="all-vendors"
+                          value="All Vendors"
+                          onSelect={() => {
+                            setNewSubscription({ ...newSubscription, vendor_id: "" });
+                            setVendorComboOpen(false);
+                          }}
+                        >
+                          All Vendors (clear filter)
+                        </CommandItem>
+                        {(() => {
+                          const vendorSource = availableVendors;
+                          const query = vendorSearchQuery.toLowerCase().trim();
+                          const filtered = vendorSource.filter((v: any) => v.name.toLowerCase().includes(query));
+                          return filtered.map((vendor: any) => (
+                            <CommandItem
+                              key={vendor.id}
+                              value={vendor.name}
+                              onSelect={() => {
+                                setNewSubscription({ ...newSubscription, vendor_id: vendor.id });
+                                setVendorComboOpen(false);
+                              }}
+                            >
+                              {vendor.name}
+                            </CommandItem>
+                          ));
+                        })()}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             
             <div>
