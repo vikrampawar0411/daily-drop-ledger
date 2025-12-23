@@ -16,13 +16,15 @@ import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { useVendors } from "@/hooks/useVendors";
 import { useProducts } from "@/hooks/useProducts";
 import { useVendorProducts } from "@/hooks/useVendorProducts";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import * as XLSX from 'xlsx-js-style';
 import SubscriptionCalendarView from "./components/SubscriptionCalendarView";
 
@@ -38,6 +40,7 @@ interface SubscriptionManagementProps {
 
 const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: SubscriptionManagementProps) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const { subscriptions, loading, pauseSubscription, resumeSubscription, cancelSubscription, createSubscription, isCreating } = useSubscriptions();
   const { vendors } = useVendors();
   const { products } = useProducts();
@@ -57,6 +60,11 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
   const [cancelledDialogOpen, setCancelledDialogOpen] = useState(false);
   const [cancelledDialogSubs, setCancelledDialogSubs] = useState<any[]>([]);
   const [createDialogVendors, setCreateDialogVendors] = useState<typeof vendors>([] as any);
+  const [quickOrderDialogOpen, setQuickOrderDialogOpen] = useState(false);
+  const [quickOrderProduct, setQuickOrderProduct] = useState<any | null>(null);
+  const [quickOrderVendorName, setQuickOrderVendorName] = useState("");
+  const [quickOrderQuantity, setQuickOrderQuantity] = useState(1);
+  const [quickOrderSubmitting, setQuickOrderSubmitting] = useState(false);
   
   // Grouping state - default to 'vendor'
   const [groupBy, setGroupBy] = useState<'vendor' | 'product'>('vendor');
@@ -184,8 +192,8 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
   });
   const [startDatePopoverOpen, setStartDatePopoverOpen] = useState(false);
   const [endDatePopoverOpen, setEndDatePopoverOpen] = useState(false);
-  const [pauseFromDate, setPauseFromDate] = useState<Date | undefined>(new Date());
-  const [pauseUntilDate, setPauseUntilDate] = useState<Date | undefined>(undefined);
+  const [pauseFromDate, setPauseFromDate] = useState<Date | undefined>(addDays(new Date(), 1));
+  const [pauseUntilDate, setPauseUntilDate] = useState<Date | undefined>(addDays(new Date(), 2));
   const [customerId, setCustomerId] = useState<string | null>(null);
   
   const getDefaultSubscriptionDates = () => {
@@ -351,6 +359,62 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
   }, [vendorProducts, products, selectedVendorFilter, newSubscription.vendor_id, subscriptions]);
 
   // All active products across all vendors (deduped by product id, choose lowest price)
+
+    const handleQuickOrderClick = (product: any) => {
+      const vendorName = vendors.find(v => v.id === product.vendor_id)?.name || "Unknown";
+      const quantity = productQuantities[product.id] || 1;
+      setQuickOrderProduct(product);
+      setQuickOrderVendorName(vendorName);
+      setQuickOrderQuantity(quantity);
+      setQuickOrderDialogOpen(true);
+    };
+
+    const placeQuickOrder = async () => {
+      if (!user || !quickOrderProduct) return;
+      try {
+        setQuickOrderSubmitting(true);
+
+        const { data: customerData, error: customerError } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (customerError) throw customerError;
+        if (!customerData) {
+          toast({ title: "Customer profile not found", variant: "destructive" });
+          return;
+        }
+
+        const orderDate = new Date().toISOString().slice(0, 10);
+        const total = quickOrderProduct.price * quickOrderQuantity;
+
+        const { error: orderError } = await supabase.from('orders').insert({
+          customer_id: customerData.id,
+          vendor_id: quickOrderProduct.vendor_id,
+          product_id: quickOrderProduct.id,
+          quantity: quickOrderQuantity,
+          unit: quickOrderProduct.unit,
+          total_amount: total,
+          order_date: orderDate,
+          status: 'pending',
+          delivered_at: null,
+          dispute_raised: false,
+          dispute_reason: null,
+          dispute_raised_at: null,
+          updated_by_user_id: user.id
+        });
+
+        if (orderError) throw orderError;
+
+        toast({ title: "Order placed", description: `${quickOrderProduct.name} x${quickOrderQuantity} confirmed` });
+        setQuickOrderDialogOpen(false);
+      } catch (err: any) {
+        toast({ title: "Failed to place order", description: err.message, variant: "destructive" });
+      } finally {
+        setQuickOrderSubmitting(false);
+      }
+    };
   const allActiveProducts = useMemo(() => {
     const map = new Map<string, any>();
     vendorProducts.filter(vp => vp.is_active).forEach(vp => {
@@ -370,8 +434,31 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
     setProductSearchQuery("");
   }, [newSubscription.vendor_id, createDialogOpen]);
 
+  // Ensure pause dates are prefilled and coherent when dialog is open
+  useEffect(() => {
+    if (!pauseDialogOpen) return;
+
+    const tomorrow = addDays(new Date(), 1);
+    const defaultFrom = pauseFromDate || tomorrow;
+    const nextDay = addDays(defaultFrom, 1);
+
+    if (!pauseFromDate) {
+      setPauseFromDate(defaultFrom);
+    }
+
+    if (!pauseUntilDate || (pauseFromDate && pauseUntilDate <= pauseFromDate)) {
+      setPauseUntilDate(nextDay);
+    }
+    // Keep pause to one day by default when opening
+    if (pauseFromDate && (!pauseUntilDate || pauseUntilDate.getTime() !== addDays(pauseFromDate, 1).getTime())) {
+      setPauseUntilDate(addDays(pauseFromDate, 1));
+    }
+  }, [pauseDialogOpen, pauseFromDate, pauseUntilDate]);
+
   const handlePause = (subscriptionId: string) => {
     setSelectedSubscription(subscriptionId);
+    setPauseFromDate(addDays(new Date(), 1));
+    setPauseUntilDate(addDays(new Date(), 2));
     setPauseDialogOpen(true);
   };
 
@@ -408,6 +495,38 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
   const handlePauseConfirm = async () => {
     if (selectedSubscription && pauseFromDate && pauseUntilDate) {
       try {
+        const subscription = subscriptions.find(sub => sub.id === selectedSubscription);
+        const cutoffStr = subscription?.product?.subscribe_before || "";
+
+        // If pause starts within next day and cutoff passed, block
+        if (cutoffStr) {
+          const now = new Date();
+          const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const daysDiff = Math.floor((pauseFromDate.getTime() - startOfToday.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (daysDiff <= 1) {
+            const [time, meridian] = cutoffStr.split(/\s+/);
+            const [hourStr, minuteStr] = time?.split(":") || [];
+            let hours = parseInt(hourStr || "0", 10);
+            const minutes = parseInt(minuteStr || "0", 10);
+            const isPM = (meridian || "").toUpperCase().startsWith("P");
+            if (isPM && hours < 12) hours += 12;
+            if (!isPM && hours === 12) hours = 0;
+
+            const cutoffDate = new Date();
+            cutoffDate.setHours(hours, minutes, 0, 0);
+
+            if (now > cutoffDate) {
+              toast({
+                title: "Pause cut-off passed",
+                description: "This product's cut-off time is over for the selected start date.",
+                variant: "destructive",
+              });
+              return;
+            }
+          }
+        }
+
         await pauseSubscription(
           selectedSubscription,
           format(pauseFromDate, 'yyyy-MM-dd'),
@@ -415,8 +534,8 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
         );
         setPauseDialogOpen(false);
         setSelectedSubscription(null);
-        setPauseFromDate(new Date());
-        setPauseUntilDate(undefined);
+        setPauseFromDate(addDays(new Date(), 1));
+        setPauseUntilDate(addDays(new Date(), 2));
       } catch (error) {
         console.error('Error pausing subscription:', error);
       }
@@ -424,8 +543,33 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
   };
   
   const handleResume = (subscriptionId: string) => {
+    const subscription = subscriptions.find(sub => sub.id === subscriptionId);
+    const cutoffStr = subscription?.product?.subscribe_before || "";
+
+    // Always default to tomorrow for resume
+    let defaultResumeDate = addDays(new Date(), 1);
+    
+    // If cutoff not passed today, can resume today
+    if (cutoffStr) {
+      const [time, meridian] = cutoffStr.split(/\s+/);
+      const [hourStr, minuteStr] = time?.split(":") || [];
+      let hours = parseInt(hourStr || "0", 10);
+      const minutes = parseInt(minuteStr || "0", 10);
+      const isPM = (meridian || "").toUpperCase().startsWith("P");
+      if (isPM && hours < 12) hours += 12;
+      if (!isPM && hours === 12) hours = 0;
+
+      const cutoffDate = new Date();
+      cutoffDate.setHours(hours, minutes, 0, 0);
+
+      // Only if cutoff NOT passed, allow today
+      if (new Date() <= cutoffDate) {
+        defaultResumeDate = new Date();
+      }
+    }
+
     setSelectedSubscription(subscriptionId);
-    setResumeDate(new Date());
+    setResumeDate(defaultResumeDate);
     setResumeDialogOpen(true);
   };
 
@@ -446,8 +590,35 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
         setSelectedSubscription(null);
         setResumeDate(undefined);
         
+        // Regenerate orders for the resumed subscription
+        try {
+          const response = await fetch(
+            'https://ssaogbrpjvxvlxtdivah.supabase.co/functions/v1/generate-subscription-orders',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzYW9nYnJwanZ4dmx4dGRpdmFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0MzE1OTIsImV4cCI6MjA3NTAwNzU5Mn0.QQn4MgbPVHi83q5jWwL5qYJNrwnFylHlUyawK_bJaiM`,
+              },
+              body: JSON.stringify({}),
+            }
+          );
+          
+          if (response.ok) {
+            const result = await response.json();
+            toast({
+              title: "Subscription Resumed",
+              description: `Orders regenerated from ${format(resumeDate, "PPP")}`,
+            });
+          }
+        } catch (genError) {
+          console.error('Error regenerating orders:', genError);
+        }
+        
         // Refresh subscriptions
-        window.location.reload();
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       } catch (error) {
         console.error('Error resuming subscription:', error);
       }
@@ -559,19 +730,6 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
           <p className="text-sm text-muted-foreground">Manage recurring orders and view history</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="icon"
-            onClick={() => setCartDialogOpen(true)}
-            className="relative"
-          >
-            <ShoppingCart className="h-4 w-4" />
-            {cartItems.length > 0 && (
-              <Badge className="absolute top-0 right-0 h-5 w-5 rounded-full p-0 flex items-center justify-center bg-red-500 text-white text-xs">
-                {cartItems.length}
-              </Badge>
-            )}
-          </Button>
           <Button onClick={() => { setCreateDialogVendors(availableVendors); setCreateDialogOpen(true); }} className="bg-green-600 hover:bg-green-700">
             <Plus className="h-4 w-4 mr-2" />
             New Subscription
@@ -900,27 +1058,36 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
                       
                       <div className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1"
-                            onClick={() => handleSubscribeFromProduct(product)}
-                          >
-                            <CalendarIcon className="h-3 w-3 mr-1" />
-                            Subscribe
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1"
-                            onClick={() => {
-                              const vendorName = vendors.find(v => v.id === product.vendor_id)?.name || 'Unknown';
-                              addToCart(product, { id: product.vendor_id, name: vendorName }, quantity);
-                            }}
-                          >
-                            <ShoppingCart className="h-3 w-3 mr-1" />
-                            Quick Order
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                aria-label="Subscribe"
+                                size="icon"
+                                variant="outline"
+                                onClick={() => handleSubscribeFromProduct(product)}
+                              >
+                                <CalendarIcon className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Subscribe
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                aria-label="Quick Order"
+                                size="icon"
+                                variant="outline"
+                                onClick={() => handleQuickOrderClick(product)}
+                              >
+                                <ShoppingCart className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Quick Order
+                            </TooltipContent>
+                          </Tooltip>
                         </div>
                         
                         <div className="flex items-center justify-between gap-1">
@@ -959,6 +1126,77 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
       )}
     </TabsContent>
       </Tabs>
+
+        {/* Quick Order Confirmation */}
+        <Dialog open={quickOrderDialogOpen} onOpenChange={setQuickOrderDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Quick Order</DialogTitle>
+            </DialogHeader>
+
+            {quickOrderProduct && (
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  {quickOrderProduct.image_url ? (
+                    <img
+                      src={quickOrderProduct.image_url}
+                      alt={quickOrderProduct.name}
+                      className="h-16 w-16 rounded-md object-cover"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-md bg-gray-100 flex items-center justify-center">
+                      <Package className="h-6 w-6 text-gray-400" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-muted-foreground">{quickOrderVendorName}</p>
+                    <h4 className="font-semibold truncate">{quickOrderProduct.name}</h4>
+                    <p className="text-sm text-muted-foreground">₹{quickOrderProduct.price}/{quickOrderProduct.unit}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Quantity</span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setQuickOrderQuantity(qty => Math.max(1, qty - 1))}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <span className="min-w-[2rem] text-center font-semibold">{quickOrderQuantity}</span>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setQuickOrderQuantity(qty => Math.min(50, qty + 1))}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between border-t pt-2">
+                  <span className="text-sm font-medium">Total</span>
+                  <span className="text-lg font-semibold">₹{(quickOrderProduct.price * quickOrderQuantity).toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setQuickOrderDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                className="bg-green-600 hover:bg-green-700"
+                disabled={quickOrderSubmitting}
+                onClick={placeQuickOrder}
+              >
+                {quickOrderSubmitting ? "Placing..." : "Confirm Order"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
       {/* Create Subscription Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
@@ -1201,7 +1439,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
           <DialogHeader>
             <DialogTitle>Pause Subscription</DialogTitle>
             <p className="text-sm text-muted-foreground">
-              Select the period during which you want to pause deliveries
+              Default pause is for one day. Adjust the resume date if needed.
             </p>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1224,7 +1462,11 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
                   <Calendar
                     mode="single"
                     selected={pauseFromDate}
-                    onSelect={setPauseFromDate}
+                    onSelect={(date) => {
+                      if (!date) return;
+                      setPauseFromDate(date);
+                      setPauseUntilDate(addDays(date, 1));
+                    }}
                     disabled={(date) => date < new Date()}
                     initialFocus
                     className={cn("p-3 pointer-events-auto")}
@@ -1234,7 +1476,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
             </div>
 
             <div>
-              <Label>Pause Until</Label>
+              <Label>Resume On</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -1245,7 +1487,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {pauseUntilDate ? format(pauseUntilDate, "PPP") : "Select end date"}
+                    {pauseUntilDate ? format(pauseUntilDate, "PPP") : "Select resume date"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -1517,127 +1759,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
         </DialogContent>
       </Dialog>
 
-      {/* Cart Dialog */}
-      <Dialog open={cartDialogOpen} onOpenChange={setCartDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ShoppingCart className="h-5 w-5" />
-              Shopping Cart
-            </DialogTitle>
-          </DialogHeader>
-          
-          {cartItems.length === 0 ? (
-            <div className="py-12 text-center">
-              <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-lg font-medium">Your cart is empty</p>
-              <p className="text-sm text-muted-foreground mt-2">Add items using the Quick Order button</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Cart Items */}
-              <div className="space-y-3 max-h-[50vh] overflow-y-auto">
-                {cartItems.map((item) => (
-                  <Card key={item.id} className="p-3">
-                    <div className="flex gap-3">
-                      {item.image_url ? (
-                        <img 
-                          src={item.image_url} 
-                          alt={item.productName}
-                          className="h-16 w-16 object-cover rounded-lg"
-                        />
-                      ) : (
-                        <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <Package className="h-8 w-8 text-gray-400" />
-                        </div>
-                      )}
-                      
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-sm truncate">{item.productName}</h4>
-                        <p className="text-xs text-muted-foreground">{item.vendorName}</p>
-                        <p className="text-sm font-medium mt-1">₹{item.price}/{item.unit}</p>
-                      </div>
-
-                      <div className="flex flex-col items-end gap-2">
-                        <div className="flex items-center gap-1 border rounded p-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0"
-                            onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="text-sm font-medium min-w-[2rem] text-center">{item.quantity}</span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0"
-                            onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        
-                        <div className="text-right">
-                          <p className="text-sm font-semibold">₹{(item.price * item.quantity).toFixed(2)}</p>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => removeFromCart(item.id)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-
-              {/* Cart Summary */}
-              <div className="border-t pt-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Subtotal:</span>
-                  <span>₹{cartTotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Items:</span>
-                  <span>{cartItems.length}</span>
-                </div>
-                <div className="flex justify-between font-semibold text-lg pt-2 border-t">
-                  <span>Total:</span>
-                  <span>₹{cartTotal.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setCartDialogOpen(false)}
-              className="flex-1"
-            >
-              Continue Shopping
-            </Button>
-            {cartItems.length > 0 && (
-              <Button 
-                className="flex-1 bg-green-600 hover:bg-green-700"
-                onClick={() => {
-                  // TODO: Implement checkout logic
-                  // For now, show a simple notification
-                  console.log('Checkout clicked with items:', cartItems);
-                  // This would integrate with order creation
-                }}
-              >
-                Checkout
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Cart Dialog moved to global header (CustomerApp). */}
     </div>
   );
 };

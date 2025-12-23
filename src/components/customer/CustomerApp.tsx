@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,50 +55,53 @@ const CustomerApp = () => {
       if (data) {
         setCustomerName(data.name);
       }
-    const addToCart = (product: any, vendor: any, quantity: number = 1) => {
-      const cartItemId = `${vendor.id}-${product.id}`;
-      setCartItems(prev => {
-        const existing = prev.find(item => item.id === cartItemId);
-        if (existing) {
-          return prev.map(item =>
-            item.id === cartItemId ? { ...item, quantity: item.quantity + quantity } : item
-          );
-        }
-        return [...prev, {
-          id: cartItemId,
-          productId: product.id,
-          productName: product.name,
-          vendorId: vendor.id,
-          vendorName: vendor.name,
-          price: product.price,
-          unit: product.unit,
-          quantity,
-          image_url: product.image_url
-        }];
-      });
-    };
-
-    const removeFromCart = (cartItemId: string) => {
-      setCartItems(prev => prev.filter(item => item.id !== cartItemId));
-    };
-
-    const updateCartItemQuantity = (cartItemId: string, quantity: number) => {
-      if (quantity <= 0) {
-        removeFromCart(cartItemId);
-      } else {
-        setCartItems(prev =>
-          prev.map(item =>
-            item.id === cartItemId ? { ...item, quantity } : item
-          )
-        );
-      }
-    };
-
-    const cartTotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     };
 
     loadCustomerName();
   }, [user]);
+
+  const addToCart = (product: any, vendor: any, quantity: number = 1) => {
+    const cartItemId = `${vendor.id}-${product.id}`;
+    setCartItems(prev => {
+      const existing = prev.find(item => item.id === cartItemId);
+      if (existing) {
+        return prev.map(item =>
+          item.id === cartItemId ? { ...item, quantity: item.quantity + quantity } : item
+        );
+      }
+      return [...prev, {
+        id: cartItemId,
+        productId: product.id,
+        productName: product.name,
+        vendorId: vendor.id,
+        vendorName: vendor.name,
+        price: product.price,
+        unit: product.unit,
+        quantity,
+        image_url: product.image_url
+      }];
+    });
+  };
+
+  const removeFromCart = (cartItemId: string) => {
+    setCartItems(prev => prev.filter(item => item.id !== cartItemId));
+  };
+
+  const updateCartItemQuantity = (cartItemId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(cartItemId);
+    } else {
+      setCartItems(prev =>
+        prev.map(item =>
+          item.id === cartItemId ? { ...item, quantity } : item
+        )
+      );
+    }
+  };
+
+  const cartTotal = useMemo(() => {
+    return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  }, [cartItems]);
 
   const handleNavigation = (tab: string, params?: any) => {
     setActiveTab(tab);

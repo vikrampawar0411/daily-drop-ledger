@@ -197,6 +197,14 @@ export const useSubscriptions = () => {
 
   const pauseSubscription = async (id: string, pausedFrom: string, pausedUntil: string) => {
     try {
+      const { data: subscription, error: fetchSubError } = await supabase
+        .from("subscriptions")
+        .select("customer_id, vendor_id, product_id")
+        .eq("id", id)
+        .single();
+
+      if (fetchSubError) throw fetchSubError;
+
       const { error } = await supabase
         .from("subscriptions")
         .update({
@@ -208,10 +216,40 @@ export const useSubscriptions = () => {
 
       if (error) throw error;
 
+      // Remove pending orders only for the paused window (inclusive start, exclusive resume)
+      const deleteRange = { gte: pausedFrom, lt: pausedUntil } as any;
+
+      const { error: deleteBySubId } = await supabase
+        .from("orders")
+        .delete()
+        .eq("status", "pending")
+        .eq("created_from_subscription_id", id)
+        .gte("order_date", deleteRange.gte)
+        .lt("order_date", deleteRange.lt);
+
+      if (deleteBySubId) {
+        console.warn("Could not delete orders by subscription id", deleteBySubId);
+      }
+
+      // Fallback for older orders without created_from_subscription_id
+      const { error: deleteByCombo } = await supabase
+        .from("orders")
+        .delete()
+        .eq("status", "pending")
+        .eq("customer_id", subscription.customer_id)
+        .eq("vendor_id", subscription.vendor_id)
+        .eq("product_id", subscription.product_id)
+        .gte("order_date", deleteRange.gte)
+        .lt("order_date", deleteRange.lt);
+
+      if (deleteByCombo) {
+        console.warn("Could not delete orders by customer/vendor/product combo", deleteByCombo);
+      }
+
       await fetchSubscriptions();
       toast({
         title: "Success",
-        description: "Subscription paused successfully",
+        description: "Subscription paused and scheduled orders updated",
       });
     } catch (error: any) {
       toast({
