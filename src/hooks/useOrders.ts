@@ -150,6 +150,7 @@ export const useOrders = () => {
         dispute_raised_at: order.dispute_raised_at,
         updated_by_user_id: order.updated_by_user_id,
         customer_id: order.customer_id,
+        order_type: order.order_type, // Pass through order_type
         customer: Array.isArray(order.customer) ? order.customer[0] : order.customer,
         vendor: Array.isArray(order.vendor) ? order.vendor[0] : order.vendor,
         product: Array.isArray(order.product) ? order.product[0] : order.product,
@@ -181,7 +182,6 @@ export const useOrders = () => {
         const orderDate = new Date(year, month - 1, day);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
         // Prevent vendors from updating future orders
         if (orderDate > today && status === 'delivered') {
           toast({
@@ -192,24 +192,38 @@ export const useOrders = () => {
           return;
         }
       }
-      
       const updateData: any = { status };
-      
       // If marking as delivered, set the delivered_at timestamp and track who updated it
+      let sendNotification = false;
       if (status === 'delivered') {
         updateData.delivered_at = deliveredAt || new Date().toISOString();
         if (user) {
           updateData.updated_by_user_id = user.id;
         }
+        // Only send notification if vendor is updating
+        if (user && order && user.id !== order.customer?.user_id) {
+          sendNotification = true;
+        }
       }
-
       const { error } = await supabase
         .from("orders")
         .update(updateData)
         .eq("id", orderId);
-
       if (error) throw error;
-      
+      // Send notification to customer if vendor marked as delivered
+      if (sendNotification && order && order.customer?.user_id) {
+        const message = `Your order for ${order.product?.name || 'a product'} from ${order.vendor?.name || 'the vendor'} has been marked as delivered.`;
+        await supabase.from("notifications").insert({
+          recipient_user_id: order.customer.user_id,
+          sender_user_id: user.id,
+          order_id: order.id,
+          vendor_id: order.vendor?.id,
+          message,
+          type: "order_update",
+          is_read: false,
+          created_at: new Date().toISOString(),
+        });
+      }
       // Refetch to get updated data with user info
       await fetchOrders();
     } catch (error: any) {

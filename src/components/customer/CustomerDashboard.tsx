@@ -2825,6 +2825,12 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                   <Label className="text-sm text-muted-foreground">Total Amount</Label>
                   <div className="font-medium">₹{selectedOrder.total_amount}</div>
                 </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Order Type</Label>
+                  <div className="font-medium">
+                    {selectedOrder.order_type === 'auto' ? 'Subscription' : selectedOrder.order_type === 'request' ? 'Quick Order' : 'Unknown'}
+                  </div>
+                </div>
                 <div className="col-span-2">
                   <Label className="text-sm text-muted-foreground">Status</Label>
                   <Badge className={getStatusColor(selectedOrder.status)}>

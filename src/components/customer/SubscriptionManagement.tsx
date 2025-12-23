@@ -371,24 +371,30 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
     };
 
     const placeQuickOrder = async () => {
+
       if (!user || !quickOrderProduct) return;
       try {
         setQuickOrderSubmitting(true);
 
         const { data: customerData, error: customerError } = await supabase
           .from('customers')
-          .select('id')
+          .select('id, user_id')
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (customerError) throw customerError;
+        console.log('[DEBUG] QuickOrder: user.id:', user.id);
+        console.log('[DEBUG] QuickOrder: customerData:', customerData);
+        if (customerError) {
+          console.error('[DEBUG] QuickOrder: customerError:', customerError);
+          throw customerError;
+        }
         if (!customerData) {
           toast({ title: "Customer profile not found", variant: "destructive" });
+          console.error('[DEBUG] QuickOrder: No customer profile found for user.id:', user.id);
           return;
         }
 
-        const orderDate = new Date().toISOString().slice(0, 10);
-
+        // Resolve vendor product
         const resolvedVendorProduct =
           vendorProducts.find(vp => vp.id === quickOrderProduct.vendor_product_id) ||
           vendorProducts.find(vp => vp.product_id === quickOrderProduct.id && vp.vendor_id === quickOrderProduct.vendor_id);
@@ -418,6 +424,16 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
           throw new Error('Unit is missing for this product. Please contact support.');
         }
 
+        // Ensure orderDate is defined and set to today if not provided
+        let orderDate: string;
+        if (quickOrderProduct.order_date) {
+          orderDate = quickOrderProduct.order_date;
+        } else {
+          // Default to today in YYYY-MM-DD
+          const today = new Date();
+          orderDate = today.toISOString().split('T')[0];
+        }
+
         const { error: orderError } = await supabase.from('orders').insert({
           customer_id: customerData.id,
           vendor_id: resolvedVendorProduct.vendor_id,
@@ -433,10 +449,33 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
           dispute_raised: false,
           dispute_reason: null,
           dispute_raised_at: null,
-          updated_by_user_id: user.id
+          updated_by_user_id: user.id,
+          order_type: 'request' // Mark as quick order
         });
 
         if (orderError) throw orderError;
+
+        // Send notification to vendor
+        if (resolvedVendorProduct.vendor_id) {
+          const vendorUserIdRes = await supabase
+            .from('vendors')
+            .select('user_id')
+            .eq('id', resolvedVendorProduct.vendor_id)
+            .maybeSingle();
+          const vendorUserId = vendorUserIdRes?.data?.user_id;
+          if (vendorUserId) {
+            await supabase.from('notifications').insert({
+              recipient_user_id: vendorUserId,
+              sender_user_id: user.id,
+              order_id: null, // Optionally set order_id if available
+              vendor_id: resolvedVendorProduct.vendor_id,
+              message: `New order placed for ${quickOrderProduct.name} (${quickOrderQuantity} ${unit}) by customer`,
+              type: 'order_placed',
+              is_read: false,
+              created_at: new Date().toISOString(),
+            });
+          }
+        }
 
         // Reflect in local cart UI when available
         if (addToCart) {

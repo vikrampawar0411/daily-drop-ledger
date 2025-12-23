@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Milk, Newspaper, Users, Receipt, TrendingUp, Calendar, MapPin, ArrowLeft, LogOut, Package, User, Settings, DollarSign } from "lucide-react";
+import { Milk, Newspaper, Users, Receipt, TrendingUp, Calendar, MapPin, ArrowLeft, LogOut, Package, User, Settings, DollarSign, ShoppingCart, Bell } from "lucide-react";
+import { NotificationDropdown } from "./NotificationDropdown";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import VendorDashboard from "./VendorDashboard";
@@ -99,45 +100,48 @@ const VendorApp = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center justify-between min-h-16 py-2 gap-2">
             <div className="flex items-center space-x-3 flex-shrink-0">
-              <div className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-green-600 text-white px-3 py-2 rounded-lg">
-                <Milk className="h-6 w-6" />
-                <Newspaper className="h-6 w-6" />
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="p-0 h-10 w-10 rounded-full flex items-center justify-center">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-green-500 text-white">
+                        {vendorName ? vendorName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuItem onClick={() => setActiveTab('account')}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Account Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Vendor Dashboard</h1>
                 <p className="text-sm text-gray-600 hidden md:block">Manage your distribution network</p>
               </div>
               <WelcomeTourButton onClick={() => setWelcomeDialogOpen(true)} />
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center space-x-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-green-500 text-white">
-                      {vendorName ? vendorName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="text-left hidden md:block">
-                    <div className="text-sm font-medium">{vendorName || user?.email?.split('@')[0]}</div>
-                    <div className="text-xs text-gray-500">{user?.email}</div>
-                  </div>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => setActiveTab('account')}>
-                  <Settings className="h-4 w-4 mr-2" />
-                  Account Settings
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <div className="flex items-center space-x-2 text-sm text-gray-600 order-3 md:order-none w-full md:w-auto justify-start md:justify-center">
-              <Calendar className="h-4 w-4" />
-              <span>{new Date().toLocaleDateString()}</span>
+            {/* Notification and Cart Buttons - right aligned, borderless until hover */}
+            <div className="flex-1 flex justify-end items-center gap-2">
+              <NotificationDropdown />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative border border-transparent hover:border-gray-300 focus:border-gray-400 rounded-full"
+                aria-label="Cart"
+                // TODO: Implement vendor cart dialog if needed
+                disabled
+              >
+                <ShoppingCart className="h-4 w-4" />
+              </Button>
             </div>
+            {/* Date removed from top bar */}
           </div>
         </div>
       </div>

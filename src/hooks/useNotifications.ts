@@ -21,14 +21,23 @@ export const useNotifications = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchNotifications = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('[DEBUG] No user found in useNotifications');
+      return;
+    }
     setLoading(true);
+    console.log('[DEBUG] Fetching notifications for user.id:', user.id);
     const { data, error } = await supabase
       .from("notifications")
       .select("*")
       .eq("recipient_user_id", user.id)
       .order("created_at", { ascending: false });
-    if (!error) setNotifications(data || []);
+    if (error) {
+      console.error('[DEBUG] Error fetching notifications:', error);
+    } else {
+      console.log('[DEBUG] Notifications fetched:', data);
+    }
+    setNotifications(data || []);
     setLoading(false);
   }, [user]);
 
@@ -42,6 +51,7 @@ export const useNotifications = () => {
       .update({ is_read: true, read_at: new Date().toISOString() })
       .eq("id", id);
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true, read_at: new Date().toISOString() } : n));
+    console.log('[DEBUG] Marked notification as read:', id);
   };
 
   return { notifications, loading, fetchNotifications, markAsRead };

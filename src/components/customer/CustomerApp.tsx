@@ -41,65 +41,99 @@ const CustomerApp = () => {
   const { signOut, user } = useAuth();
   const [customerName, setCustomerName] = useState("");
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    try {
+      const stored = localStorage.getItem('customerCartItems');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
   const [cartDialogOpen, setCartDialogOpen] = useState(false);
   const { subscriptions, loading: subsLoading } = useSubscriptions();
 
   useEffect(() => {
-    const loadCustomerName = async () => {
+    const loadCustomerNameAndFilterCart = async () => {
       if (!user) return;
-      
+      // 1. Load customer name
       const { data } = await supabase
         .from('customers')
-        .select('name')
+        .select('name, id')
         .eq('user_id', user.id)
         .maybeSingle();
-      
       if (data) {
         setCustomerName(data.name);
+        // 2. Fetch delivered quick orders for this customer
+        const { data: deliveredOrders, error } = await supabase
+          .from('orders')
+          .select('id, vendor_id, product_id, status')
+          .eq('customer_id', data.id)
+          .eq('status', 'delivered');
+        if (!error && deliveredOrders) {
+          // 3. Remove delivered quick orders from cart
+          setCartItems(prev => {
+            const deliveredIds = new Set(
+              deliveredOrders.map(o => `${o.vendor_id}-${o.product_id}`)
+            );
+            const filtered = prev.filter(item => !deliveredIds.has(item.id));
+            localStorage.setItem('customerCartItems', JSON.stringify(filtered));
+            return filtered;
+          });
+        }
       }
     };
-
-    loadCustomerName();
+    loadCustomerNameAndFilterCart();
   }, [user]);
 
   const addToCart = (product: any, vendor: any, quantity: number = 1) => {
     const cartItemId = `${vendor.id}-${product.id}`;
     setCartItems(prev => {
       const existing = prev.find(item => item.id === cartItemId);
-      if (existing) {
-        return prev.map(item =>
-          item.id === cartItemId ? { ...item, quantity: item.quantity + quantity } : item
-        );
-      }
-      return [...prev, {
-        id: cartItemId,
-        productId: product.id,
-        productName: product.name,
-        vendorId: vendor.id,
-        vendorName: vendor.name,
-        price: product.price,
-        unit: product.unit,
-        quantity,
-        image_url: product.image_url
-      }];
+      const updated = existing
+        ? prev.map(item => item.id === cartItemId ? { ...item, quantity: item.quantity + quantity } : item)
+        : [...prev, {
+            id: cartItemId,
+            productId: product.id,
+            productName: product.name,
+            vendorId: vendor.id,
+            vendorName: vendor.name,
+            price: product.price,
+            unit: product.unit,
+            quantity,
+            image_url: product.image_url
+          }];
+      localStorage.setItem('customerCartItems', JSON.stringify(updated));
+      return updated;
     });
   };
 
   const removeFromCart = (cartItemId: string) => {
-    setCartItems(prev => prev.filter(item => item.id !== cartItemId));
+    setCartItems(prev => {
+      const updated = prev.filter(item => item.id !== cartItemId);
+      localStorage.setItem('customerCartItems', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const updateCartItemQuantity = (cartItemId: string, quantity: number) => {
     if (quantity <= 0) {
       removeFromCart(cartItemId);
     } else {
-      setCartItems(prev =>
-        prev.map(item =>
+      setCartItems(prev => {
+        const updated = prev.map(item =>
           item.id === cartItemId ? { ...item, quantity } : item
-        )
-      );
+        );
+        localStorage.setItem('customerCartItems', JSON.stringify(updated));
+        return updated;
+      });
     }
+    // On login, filter out delivered items from cart
+    useEffect(() => {
+      // You may want to fetch delivered order IDs from backend and filter them out here
+      // For now, this is a placeholder for future logic
+      // Example:
+      // setCartItems(prev => prev.filter(item => !deliveredOrderIds.includes(item.id)));
+    }, [user]);
   };
 
   const cartTotal = useMemo(() => {

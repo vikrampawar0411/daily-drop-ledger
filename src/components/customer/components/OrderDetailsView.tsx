@@ -43,6 +43,9 @@ const OrderDetailsView = ({ selectedDate, orders, onDeleteOrder, onShowOrderForm
                       <div>
                         <div className="font-medium">{order.product}</div>
                         <div className="text-sm text-gray-600">{order.vendor}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Order Type: {order.order_type === 'auto' ? 'Subscription' : order.order_type === 'request' ? 'Quick Order' : 'Unknown'}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
