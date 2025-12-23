@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,7 +41,7 @@ const VENDOR_CATEGORIES = [
   "Other",
 ];
 
-const Auth = () => {
+const Auth = (): JSX.Element => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { signIn, signUp } = useAuth();
@@ -49,12 +49,19 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' });
-  const [customerView, setCustomerView] = useState<'signin' | 'signup'>('signin');
-  const [vendorView, setVendorView] = useState<'signin' | 'signup'>('signin');
+  const [selectedRole, setSelectedRole] = useState<'customer' | 'vendor'>(() => {
+    const saved = localStorage.getItem('selectedRole');
+    return (saved === 'customer' || saved === 'vendor') ? saved : 'customer';
+  });
+  const [isSignUp, setIsSignUp] = useState(false);
   const [showForgotDialog, setShowForgotDialog] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
+
+  // Save selected role to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('selectedRole', selectedRole);
+  }, [selectedRole]);
   
   // Get redirect URL from query params (for post-auth navigation)
   const redirectUrl = searchParams.get("redirect") || null;
@@ -144,15 +151,15 @@ const Auth = () => {
   const vendorFullPhone = vendorPhone ? `${vendorCountryCode} ${vendorPhone}` : "";
 
   // Duplicate check hooks with debouncing (500ms)
-  const customerDuplicateCheck = useDuplicateCheck(customerEmail, customerFullPhone, 500, customerView === 'signup');
-  const vendorDuplicateCheck = useDuplicateCheck(vendorEmail, vendorFullPhone, 500, vendorView === 'signup');
+  const customerDuplicateCheck = useDuplicateCheck(customerEmail, customerFullPhone, 500, isSignUp && selectedRole === 'customer');
+  const vendorDuplicateCheck = useDuplicateCheck(vendorEmail, vendorFullPhone, 500, isSignUp && selectedRole === 'vendor');
 
   // Check area availability for customer signup (check if vendors exist)
   const customerAreaAvailability = useAreaAvailability(
     customerSignupForm.watch("area_id"),
     'customer',
     500,
-    customerView === 'signup'
+    isSignUp && selectedRole === 'customer'
   );
 
   // Note: For vendor signup, we'll show general service info since vendors serve all areas
@@ -192,115 +199,85 @@ const Auth = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    const { error } = await signIn(email, password);
+    try {
+      const { error } = await signIn(email, password);
 
-    if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (user) {
-      const { data: recordByUserId } = await supabase
-        .from('customers')
-        .select('id, user_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // First check if user is admin
+        const { data: isAdmin } = await supabase.rpc('has_role', {
+          _user_id: user.id,
+          _role: 'admin'
+        });
 
-      if (!recordByUserId) {
-        const { data: recordByEmail } = await supabase
-          .from('customers')
-          .select('id, user_id, email')
-          .eq('email', user.email)
-          .maybeSingle();
-
-        if (recordByEmail && !recordByEmail.user_id) {
-          await supabase
-            .from('customers')
-            .update({ user_id: user.id })
-            .eq('id', recordByEmail.id);
-
+        if (isAdmin) {
+          toast({
+            title: "Welcome Admin!",
+            description: "You have successfully signed in.",
+          });
           navigate(redirectUrl || "/");
           setIsLoading(false);
           return;
-        } else if (!recordByEmail) {
-          await supabase.auth.signOut();
-          toast({
-            title: "Account Not Found",
-            description: "No customer account found with this email. Please sign up or select the correct role.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
         }
-      }
-    }
 
-    navigate(redirectUrl || "/");
-    setIsLoading(false);
-  };
-
-  const handleVendorSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    const { error } = await signIn(email, password);
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (user) {
-      const { data: recordByUserId } = await supabase
-        .from('vendors')
-        .select('id, user_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!recordByUserId) {
-        const { data: recordByEmail } = await supabase
-          .from('vendors')
-          .select('id, user_id, email')
-          .eq('email', user.email)
+        // If not admin, proceed with role-based check
+        const tableName = selectedRole === 'customer' ? 'customers' : 'vendors';
+        
+        const { data: recordByUserId } = await supabase
+          .from(tableName)
+          .select('id, user_id')
+          .eq('user_id', user.id)
           .maybeSingle();
 
-        if (recordByEmail && !recordByEmail.user_id) {
-          await supabase
-            .from('vendors')
-            .update({ user_id: user.id })
-            .eq('id', recordByEmail.id);
+        if (!recordByUserId) {
+          const { data: recordByEmail } = await supabase
+            .from(tableName)
+            .select('id, user_id, email')
+            .eq('email', user.email)
+            .maybeSingle();
 
-          navigate(redirectUrl || "/");
-          setIsLoading(false);
-          return;
-        } else if (!recordByEmail) {
-          await supabase.auth.signOut();
-          toast({
-            title: "Account Not Found",
-            description: "No vendor account found with this email. Please sign up or select the correct role.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
+          if (recordByEmail && !recordByEmail.user_id) {
+            await supabase
+              .from(tableName)
+              .update({ user_id: user.id })
+              .eq('id', recordByEmail.id);
+
+            navigate(redirectUrl || "/");
+            setIsLoading(false);
+            return;
+          } else if (!recordByEmail) {
+            await supabase.auth.signOut();
+            toast({
+              title: "Account Not Found",
+              description: `No ${selectedRole} account found with this email. Please sign up or select the correct role.`,
+              variant: "destructive",
+            });
+            setIsLoading(false);
+            return;
+          }
         }
+
+        navigate(redirectUrl || "/");
       }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
     }
 
-    navigate(redirectUrl || "/");
     setIsLoading(false);
   };
 
@@ -323,63 +300,6 @@ const Auth = () => {
     } finally {
       setForgotLoading(false);
     }
-  };
-
-  const handleAdminSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const { error: signInError } = await signIn(
-        adminCredentials.username, 
-        adminCredentials.password
-      );
-      
-      if (signInError) {
-        toast({
-          title: "Authentication Failed",
-          description: signInError.message,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        const { data: isAdmin } = await supabase.rpc('has_role', {
-          _user_id: user.id,
-          _role: 'admin'
-        });
-
-        if (!isAdmin) {
-          await supabase.auth.signOut();
-          toast({
-            title: "Access Denied",
-            description: "You do not have admin privileges",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        toast({
-          title: "Welcome Admin!",
-          description: "You have successfully signed in.",
-        });
-
-        navigate(redirectUrl || "/");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "An unexpected error occurred.",
-        variant: "destructive",
-      });
-    }
-
-    setIsLoading(false);
   };
 
   const handleCustomerSignup = async (data: CustomerSignupFormData) => {
@@ -420,7 +340,7 @@ const Auth = () => {
         description: "Your customer account has been created. You can now sign in.",
       });
       // Switch to sign-in view after successful signup
-      setCustomerView('signin');
+      setIsSignUp(false);
     }
     
     // Clear all form fields after signup attempt (success or failure)
@@ -480,7 +400,7 @@ const Auth = () => {
         description: "Your vendor account has been created. You can now sign in.",
       });
       // Switch to sign-in view after successful signup
-      setVendorView('signin');
+      setIsSignUp(false);
     }
     
     // Clear all form fields after signup attempt (success or failure)
@@ -514,90 +434,120 @@ const Auth = () => {
         </div>
 
         <Card className="max-h-[90vh] overflow-y-auto">
-          <Tabs defaultValue="customer" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="customer">
-                <Users className="h-4 w-4 mr-1" />
-                Customer
-              </TabsTrigger>
-              <TabsTrigger value="vendor">
-                <Store className="h-4 w-4 mr-1" />
-                Vendor
-              </TabsTrigger>
-              <TabsTrigger value="admin">
-                <Shield className="h-4 w-4 mr-1" />
-                Admin
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Customer Tab */}
-            <TabsContent value="customer">
-              {customerView === 'signin' ? (
-                <>
-                  <CardHeader className="pt-4">
-                    <CardTitle>Customer Sign In</CardTitle>
-                    <CardDescription>
-                      Enter your credentials to access your customer account
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <form onSubmit={handleCustomerSignIn} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="customer-signin-email">Email</Label>
-                        <Input
-                          id="customer-signin-email"
-                          type="email"
-                          placeholder="your@email.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="customer-signin-password">Password</Label>
-                        <Input
-                          id="customer-signin-password"
-                          type="password"
-                          placeholder="••••••••"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
-                        />
-                        <div className="text-right mt-2">
-                          <button
-                            type="button"
-                            className="text-sm text-primary hover:underline"
-                            onClick={() => { setForgotEmail(email); setShowForgotDialog(true); }}
-                          >
-                            Forgot password?
-                          </button>
-                        </div>
-                      </div>
-                      <Button type="submit" className="w-full" disabled={isLoading}>
-                        {isLoading ? "Signing in..." : "Sign In as Customer"}
-                      </Button>
-                    </form>
-                    <p className="text-center text-sm text-muted-foreground mt-4">
-                      New User?{" "}
+          {!isSignUp ? (
+            <>
+              <CardHeader className="pt-4">
+                <CardTitle>Sign In</CardTitle>
+                <CardDescription>
+                  Enter your credentials to access your account
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCustomerSignIn} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signin-email">Username / Email</Label>
+                    <Input
+                      id="signin-email"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signin-password">Password</Label>
+                    <Input
+                      id="signin-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                    <div className="text-right mt-2">
                       <button
                         type="button"
-                        onClick={() => setCustomerView('signup')}
-                        className="text-primary hover:underline font-medium"
+                        className="text-sm text-primary hover:underline"
+                        onClick={() => { setForgotEmail(email); setShowForgotDialog(true); }}
                       >
-                        Sign Up
+                        Forgot password?
                       </button>
-                    </p>
-                  </CardContent>
-                </>
-              ) : (
-                <>
-                  <CardHeader className="pt-4">
-                    <CardTitle>Customer Sign Up</CardTitle>
-                    <CardDescription>
-                      Create a new customer account
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Select Role</Label>
+                    <RadioGroup 
+                      value={selectedRole} 
+                      onValueChange={(value) => setSelectedRole(value as 'customer' | 'vendor')}
+                      className="flex flex-row space-x-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="customer" id="role-customer" />
+                        <Label htmlFor="role-customer" className="flex items-center gap-2 cursor-pointer">
+                          <Users className="h-4 w-4" />
+                          Customer
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="vendor" id="role-vendor" />
+                        <Label htmlFor="role-vendor" className="flex items-center gap-2 cursor-pointer">
+                          <Store className="h-4 w-4" />
+                          Vendor
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Signing in..." : "Sign In"}
+                  </Button>
+                </form>
+                <p className="text-center text-sm text-muted-foreground mt-4">
+                  New User?{" "}
+                  <button
+                    type="button"
+                    onClick={() => setIsSignUp(true)}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Sign Up
+                  </button>
+                </p>
+              </CardContent>
+            </>
+          ) : (
+            <>
+              <CardHeader className="pt-4">
+                <CardTitle>Sign Up</CardTitle>
+                <CardDescription>
+                  Create a new account as {selectedRole}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 mb-4">
+                  <Label>Select Role</Label>
+                  <RadioGroup 
+                    value={selectedRole} 
+                    onValueChange={(value) => setSelectedRole(value as 'customer' | 'vendor')}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="customer" id="signup-role-customer" />
+                      <Label htmlFor="signup-role-customer" className="flex items-center gap-2 cursor-pointer">
+                        <Users className="h-4 w-4" />
+                        Customer
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="vendor" id="signup-role-vendor" />
+                      <Label htmlFor="signup-role-vendor" className="flex items-center gap-2 cursor-pointer">
+                        <Store className="h-4 w-4" />
+                        Vendor
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+                
+                {selectedRole === 'customer' ? (
+                  <>
                     <form onSubmit={customerSignupForm.handleSubmit(handleCustomerSignup)}>
                       <ScrollArea className="h-[50vh] pr-4">
                         <div className="space-y-4">
@@ -885,85 +835,15 @@ const Auth = () => {
                       Already have an account?{" "}
                       <button
                         type="button"
-                        onClick={() => setCustomerView('signin')}
+                        onClick={() => setIsSignUp(false)}
                         className="text-primary hover:underline font-medium"
                       >
                         Sign In
                       </button>
                     </p>
-                  </CardContent>
-                </>
-              )}
-            </TabsContent>
-
-            {/* Vendor Tab */}
-            <TabsContent value="vendor">
-              {vendorView === 'signin' ? (
-                <>
-                  <CardHeader className="pt-4">
-                    <CardTitle>Vendor Sign In</CardTitle>
-                    <CardDescription>
-                      Enter your credentials to access your vendor account
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <form onSubmit={handleVendorSignIn} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="vendor-signin-email">Email</Label>
-                        <Input
-                          id="vendor-signin-email"
-                          type="email"
-                          placeholder="your@email.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="vendor-signin-password">Password</Label>
-                        <Input
-                          id="vendor-signin-password"
-                          type="password"
-                          placeholder="••••••••"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
-                        />
-                        <div className="text-right mt-2">
-                          <button
-                            type="button"
-                            className="text-sm text-primary hover:underline"
-                            onClick={() => { setForgotEmail(email); setShowForgotDialog(true); }}
-                          >
-                            Forgot password?
-                          </button>
-                        </div>
-                      </div>
-                      <Button type="submit" className="w-full" disabled={isLoading}>
-                        {isLoading ? "Signing in..." : "Sign In as Vendor"}
-                      </Button>
-                    </form>
-                    <p className="text-center text-sm text-muted-foreground mt-4">
-                      New User?{" "}
-                      <button
-                        type="button"
-                        onClick={() => setVendorView('signup')}
-                        className="text-primary hover:underline font-medium"
-                      >
-                        Sign Up
-                      </button>
-                    </p>
-                  </CardContent>
-                </>
-              ) : (
-                <>
-                  <CardHeader className="pt-4">
-                    <CardTitle>Vendor Sign Up</CardTitle>
-                    <CardDescription>
-                      Create a new vendor account
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
+                  </>
+                ) : (
+                  <>
                     <form onSubmit={vendorSignupForm.handleSubmit(handleVendorSignup)}>
                       <ScrollArea className="h-[50vh] pr-4">
                         <div className="space-y-4">
@@ -1151,59 +1031,17 @@ const Auth = () => {
                       Already have an account?{" "}
                       <button
                         type="button"
-                        onClick={() => setVendorView('signin')}
+                        onClick={() => setIsSignUp(false)}
                         className="text-primary hover:underline font-medium"
                       >
                         Sign In
                       </button>
                     </p>
-                  </CardContent>
-                </>
-              )}
-            </TabsContent>
-
-            {/* Admin Tab */}
-            <TabsContent value="admin">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Shield className="h-5 w-5 mr-2 text-red-600" />
-                  Admin Login
-                </CardTitle>
-                <CardDescription>
-                  Administrator access only
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleAdminSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="admin-username">Email</Label>
-                    <Input
-                      id="admin-username"
-                      type="email"
-                      placeholder="admin@dailydropledger.com"
-                      value={adminCredentials.username}
-                      onChange={(e) => setAdminCredentials({ ...adminCredentials, username: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="admin-password">Password</Label>
-                    <Input
-                      id="admin-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={adminCredentials.password}
-                      onChange={(e) => setAdminCredentials({ ...adminCredentials, password: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" variant="outline" disabled={isLoading}>
-                    {isLoading ? "Signing in..." : "Sign In as Admin"}
-                  </Button>
-                </form>
+                  </>
+                )}
               </CardContent>
-            </TabsContent>
-          </Tabs>
+            </>
+          )}
         </Card>
       </div>
       {/* Forgot Password Dialog */}
