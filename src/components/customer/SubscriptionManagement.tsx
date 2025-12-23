@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Pause, Play, X, Calendar as CalendarIcon, Plus, Package, History, Download, Eye, Minus } from "lucide-react";
+import { Pause, Play, X, Calendar as CalendarIcon, Plus, Package, History, Download, Eye, Minus, ShoppingCart } from "lucide-react";
 import OrderCalendar from "./OrderCalendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -219,6 +219,22 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
   const [productComboOpen, setProductComboOpen] = useState(false);
   const [vendorSearchQuery, setVendorSearchQuery] = useState("");
   const [vendorComboOpen, setVendorComboOpen] = useState(false);
+
+  // Cart state for one-time orders
+  interface CartItem {
+    id: string;
+    productId: string;
+    productName: string;
+    vendorId: string;
+    vendorName: string;
+    price: number;
+    unit: string;
+    quantity: number;
+    image_url?: string;
+  }
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartDialogOpen, setCartDialogOpen] = useState(false);
+  const [showCartNotification, setShowCartNotification] = useState(false);
 
   // Handle highlighting subscription when navigated from vendor directory
   useEffect(() => {
@@ -864,6 +880,52 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
     }
   };
 
+  // Cart management functions
+  const addToCart = (product: any, vendor: any, quantity: number = 1) => {
+    const cartItemId = `${vendor.id}-${product.id}`;
+    setCartItems(prev => {
+      const existing = prev.find(item => item.id === cartItemId);
+      if (existing) {
+        return prev.map(item =>
+          item.id === cartItemId ? { ...item, quantity: item.quantity + quantity } : item
+        );
+      }
+      return [...prev, {
+        id: cartItemId,
+        productId: product.id,
+        productName: product.name,
+        vendorId: vendor.id,
+        vendorName: vendor.name,
+        price: product.price,
+        unit: product.unit,
+        quantity,
+        image_url: product.image_url
+      }];
+    });
+    setShowCartNotification(true);
+    setTimeout(() => setShowCartNotification(false), 2000);
+  };
+
+  const removeFromCart = (cartItemId: string) => {
+    setCartItems(prev => prev.filter(item => item.id !== cartItemId));
+  };
+
+  const updateCartItemQuantity = (cartItemId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(cartItemId);
+    } else {
+      setCartItems(prev =>
+        prev.map(item =>
+          item.id === cartItemId ? { ...item, quantity } : item
+        )
+      );
+    }
+  };
+
+  const cartTotal = useMemo(() => {
+    return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  }, [cartItems]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -882,10 +944,25 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
           <h2 className="text-2xl font-bold">Subscription Management</h2>
           <p className="text-sm text-muted-foreground">Manage recurring orders and view history</p>
         </div>
-        <Button onClick={() => { setCreateDialogVendors(availableVendors); setCreateDialogOpen(true); }} className="bg-green-600 hover:bg-green-700">
-          <Plus className="h-4 w-4 mr-2" />
-          New Subscription
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={() => setCartDialogOpen(true)}
+            className="relative"
+          >
+            <ShoppingCart className="h-4 w-4" />
+            {cartItems.length > 0 && (
+              <Badge className="absolute top-0 right-0 h-5 w-5 rounded-full p-0 flex items-center justify-center bg-red-500 text-white text-xs">
+                {cartItems.length}
+              </Badge>
+            )}
+          </Button>
+          <Button onClick={() => { setCreateDialogVendors(availableVendors); setCreateDialogOpen(true); }} className="bg-green-600 hover:bg-green-700">
+            <Plus className="h-4 w-4 mr-2" />
+            New Subscription
+          </Button>
+        </div>
       </div>
       
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="space-y-4">
@@ -1208,15 +1285,29 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
                       <Badge variant="outline" className="text-xs mt-1">{product.category}</Badge>
                       
                       <div className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => handleSubscribeFromProduct(product)}
-                        >
-                          <CalendarIcon className="h-3 w-3 mr-1" />
-                          Subscribe
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => handleSubscribeFromProduct(product)}
+                          >
+                            <CalendarIcon className="h-3 w-3 mr-1" />
+                            Subscribe
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => {
+                              const vendorName = vendors.find(v => v.id === product.vendor_id)?.name || 'Unknown';
+                              addToCart(product, { id: product.vendor_id, name: vendorName }, quantity);
+                            }}
+                          >
+                            <ShoppingCart className="h-3 w-3 mr-1" />
+                            Quick Order
+                          </Button>
+                        </div>
                         
                         <div className="flex items-center justify-between gap-1">
                           <Button
@@ -1808,6 +1899,128 @@ const SubscriptionManagement = ({ onNavigate, navigationParams }: SubscriptionMa
               <CalendarIcon className="h-4 w-4 mr-2" />
               Subscribe to this Product
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cart Dialog */}
+      <Dialog open={cartDialogOpen} onOpenChange={setCartDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5" />
+              Shopping Cart
+            </DialogTitle>
+          </DialogHeader>
+          
+          {cartItems.length === 0 ? (
+            <div className="py-12 text-center">
+              <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-lg font-medium">Your cart is empty</p>
+              <p className="text-sm text-muted-foreground mt-2">Add items using the Quick Order button</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Cart Items */}
+              <div className="space-y-3 max-h-[50vh] overflow-y-auto">
+                {cartItems.map((item) => (
+                  <Card key={item.id} className="p-3">
+                    <div className="flex gap-3">
+                      {item.image_url ? (
+                        <img 
+                          src={item.image_url} 
+                          alt={item.productName}
+                          className="h-16 w-16 object-cover rounded-lg"
+                        />
+                      ) : (
+                        <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                          <Package className="h-8 w-8 text-gray-400" />
+                        </div>
+                      )}
+                      
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-sm truncate">{item.productName}</h4>
+                        <p className="text-xs text-muted-foreground">{item.vendorName}</p>
+                        <p className="text-sm font-medium mt-1">₹{item.price}/{item.unit}</p>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="flex items-center gap-1 border rounded p-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="text-sm font-medium min-w-[2rem] text-center">{item.quantity}</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        
+                        <div className="text-right">
+                          <p className="text-sm font-semibold">₹{(item.price * item.quantity).toFixed(2)}</p>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => removeFromCart(item.id)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Cart Summary */}
+              <div className="border-t pt-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal:</span>
+                  <span>₹{cartTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Items:</span>
+                  <span>{cartItems.length}</span>
+                </div>
+                <div className="flex justify-between font-semibold text-lg pt-2 border-t">
+                  <span>Total:</span>
+                  <span>₹{cartTotal.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setCartDialogOpen(false)}
+              className="flex-1"
+            >
+              Continue Shopping
+            </Button>
+            {cartItems.length > 0 && (
+              <Button 
+                className="flex-1 bg-green-600 hover:bg-green-700"
+                onClick={() => {
+                  // TODO: Implement checkout logic
+                  // For now, show a simple notification
+                  console.log('Checkout clicked with items:', cartItems);
+                  // This would integrate with order creation
+                }}
+              >
+                Checkout
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
