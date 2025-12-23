@@ -19,4 +19,8 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    // Raise warning threshold to avoid noisy chunk size warnings in production builds
+    chunkSizeWarningLimit: 4096,
+  },
 }));

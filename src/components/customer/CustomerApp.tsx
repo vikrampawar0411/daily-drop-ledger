@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { X, Plus, Minus, Package } from "lucide-react";
+import { useSubscriptions } from "@/hooks/useSubscriptions";
 
 interface CartItem {
   id: string;
@@ -41,6 +42,7 @@ const CustomerApp = () => {
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartDialogOpen, setCartDialogOpen] = useState(false);
+  const { subscriptions, loading: subsLoading } = useSubscriptions();
 
   useEffect(() => {
     const loadCustomerName = async () => {
@@ -231,10 +233,12 @@ const CustomerApp = () => {
           </DialogHeader>
 
           {cartItems.length === 0 ? (
-            <div className="py-12 text-center">
-              <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-lg font-medium">Your cart is empty</p>
-              <p className="text-sm text-muted-foreground mt-2">Add items using the Quick Order button</p>
+            <div className="py-8 text-center space-y-3">
+              <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground" />
+              <div>
+                <p className="text-lg font-medium">Your cart is empty</p>
+                <p className="text-sm text-muted-foreground mt-1">Add items using the Quick Order button</p>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
@@ -316,6 +320,34 @@ const CustomerApp = () => {
               </div>
             </div>
           )}
+
+          {/* Subscribed Products (minimal info) */}
+          <div className="border-t pt-4 mt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold">Active Subscriptions</span>
+              {subsLoading && <span className="text-xs text-muted-foreground">Loading...</span>}
+            </div>
+            <div className="grid gap-2">
+              {subscriptions && subscriptions.filter(sub => sub.status !== 'cancelled').length > 0 ? (
+                subscriptions
+                  .filter(sub => sub.status !== 'cancelled')
+                  .slice(0, 6)
+                  .map((sub) => (
+                    <div key={sub.id} className="rounded-md border p-2 flex items-center justify-between text-sm">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{sub.product?.name || 'Product'}</div>
+                        <div className="text-xs text-muted-foreground truncate">{sub.vendor?.name || 'Vendor'} · {sub.frequency}</div>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Qty {sub.quantity} {sub.unit}
+                      </div>
+                    </div>
+                  ))
+              ) : (
+                <div className="text-sm text-muted-foreground">No active subscriptions</div>
+              )}
+            </div>
+          </div>
 
           <DialogFooter className="flex gap-2">
             <Button 

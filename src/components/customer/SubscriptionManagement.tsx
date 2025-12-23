@@ -319,23 +319,23 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
         const product = vp.product || products.find(p => p.id === vp.product_id);
         // Skip if product is already subscribed
         if (product && !subscribedProductIds.has(product.id)) {
+          const price = vp.price_override || product.price;
+          const candidate = {
+            ...product,
+            price,
+            vendor_id: vp.vendor_id,
+            vendor_product_id: vp.id
+          } as any;
+
           // If we haven't seen this product yet, or if this vendor offers a better price
           if (!uniqueProductsMap.has(product.id)) {
-            uniqueProductsMap.set(product.id, {
-              ...product,
-              price: vp.price_override || product.price,
-              vendor_id: vp.vendor_id
-            });
+            uniqueProductsMap.set(product.id, candidate);
           } else {
             // Keep the lowest price variant
             const existing = uniqueProductsMap.get(product.id);
-            const currentPrice = vp.price_override || product.price;
+            const currentPrice = price;
             if (currentPrice < existing.price) {
-              uniqueProductsMap.set(product.id, {
-                ...product,
-                price: currentPrice,
-                vendor_id: vp.vendor_id
-              });
+              uniqueProductsMap.set(product.id, candidate);
             }
           }
         }
@@ -352,7 +352,8 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
         return product && !subscribedProductIds.has(product.id) ? {
           ...product,
           price: vp.price_override || product.price,
-          vendor_id: vp.vendor_id
+          vendor_id: vp.vendor_id,
+          vendor_product_id: vp.id
         } : null;
       })
       .filter(p => p !== null);
@@ -387,14 +388,44 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
         }
 
         const orderDate = new Date().toISOString().slice(0, 10);
-        const total = quickOrderProduct.price * quickOrderQuantity;
+
+        const resolvedVendorProduct =
+          vendorProducts.find(vp => vp.id === quickOrderProduct.vendor_product_id) ||
+          vendorProducts.find(vp => vp.product_id === quickOrderProduct.id && vp.vendor_id === quickOrderProduct.vendor_id);
+
+        if (!resolvedVendorProduct) {
+          throw new Error('Selected vendor/product combination is unavailable. Please refresh and try again.');
+        }
+
+        // Derive price per unit; block if missing to avoid NOT NULL violations
+        const pricePerUnit = Number(
+          quickOrderProduct.price ??
+          quickOrderProduct.price_per_unit ??
+          resolvedVendorProduct.price_override ??
+          resolvedVendorProduct.product?.price ??
+          quickOrderProduct.default_price ??
+          quickOrderProduct.mrp
+        );
+
+        if (!pricePerUnit || Number.isNaN(pricePerUnit)) {
+          throw new Error('Price unavailable for this product. Please contact support.');
+        }
+
+        const total = pricePerUnit * quickOrderQuantity;
+
+        const unit = quickOrderProduct.unit || resolvedVendorProduct.product?.unit;
+        if (!unit) {
+          throw new Error('Unit is missing for this product. Please contact support.');
+        }
 
         const { error: orderError } = await supabase.from('orders').insert({
           customer_id: customerData.id,
-          vendor_id: quickOrderProduct.vendor_id,
+          vendor_id: resolvedVendorProduct.vendor_id,
           product_id: quickOrderProduct.id,
+          vendor_product_id: resolvedVendorProduct.id,
+          price_per_unit: pricePerUnit,
           quantity: quickOrderQuantity,
-          unit: quickOrderProduct.unit,
+          unit,
           total_amount: total,
           order_date: orderDate,
           status: 'pending',
@@ -407,10 +438,21 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
 
         if (orderError) throw orderError;
 
+        // Reflect in local cart UI when available
+        if (addToCart) {
+          const vendor = vendors.find(v => v.id === resolvedVendorProduct.vendor_id);
+          if (vendor) {
+            const productForCart = { ...quickOrderProduct, price: pricePerUnit };
+            addToCart(productForCart, vendor, quickOrderQuantity);
+          }
+        }
+
         toast({ title: "Order placed", description: `${quickOrderProduct.name} x${quickOrderQuantity} confirmed` });
         setQuickOrderDialogOpen(false);
       } catch (err: any) {
-        toast({ title: "Failed to place order", description: err.message, variant: "destructive" });
+        console.error('Quick order failed', err);
+        const description = err?.message || 'Could not place order. Please try again.';
+        toast({ title: "Failed to place order", description, variant: "destructive" });
       } finally {
         setQuickOrderSubmitting(false);
       }
