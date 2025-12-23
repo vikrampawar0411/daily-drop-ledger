@@ -791,7 +791,6 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                   mode="single"
                   selected={startDate}
                   onSelect={setStartDate}
-                  initialFocus
                 />
               </PopoverContent>
             </Popover>
@@ -807,7 +806,6 @@ const OrderHistory = ({ initialVendorFilter, initialStatusFilter }: OrderHistory
                   mode="single"
                   selected={endDate}
                   onSelect={setEndDate}
-                  initialFocus
                 />
               </PopoverContent>
             </Popover>
