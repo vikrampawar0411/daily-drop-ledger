@@ -888,129 +888,81 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {group.subscriptions.map((subscription) => (
-                  <Card key={subscription.id} id={`subscription-${subscription.id}`} className="hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3 flex-1">
-                          <div className="aspect-square w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
-                            {subscription.product?.image_url ? (
-                              <img src={subscription.product.image_url} alt={subscription.product.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <Package className="h-8 w-8 text-gray-400" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <CardTitle className="text-lg truncate">{subscription.product?.name}</CardTitle>
-                            <p className="text-sm text-muted-foreground">{subscription.vendor?.name}</p>
-                          </div>
-                        </div>
-                        {getStatusBadge(subscription.status)}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <span className="font-medium">Quantity:</span>
-                        <div className="text-muted-foreground">{subscription.quantity} {subscription.unit}</div>
-                      </div>
-                      <div>
-                        <span className="font-medium">Price:</span>
-                        <div className="text-muted-foreground">₹{subscription.price_per_unit}/{subscription.unit}</div>
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <span className="font-medium">Frequency:</span>
-                      <div className="text-muted-foreground">{getFrequencyLabel(subscription.frequency)}</div>
-                    </div>
-                    <div className="text-sm space-y-2">
-                      <div>
-                        <span className="font-medium">Originally Started:</span>
-                        <div className="text-muted-foreground">
-                          {format(new Date(subscription.original_start_date || subscription.start_date), 'MMM dd, yyyy')}
-                        </div>
-                      </div>
-
-                      {subscription.status === "paused" && subscription.paused_from && subscription.paused_until && (
-                        <div className="bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-200 dark:border-yellow-800">
-                          <span className="font-medium text-yellow-800 dark:text-yellow-200">Paused Period:</span>
-                          <div className="text-yellow-700 dark:text-yellow-300 text-sm">
-                            From: {format(new Date(subscription.paused_from), 'MMM dd, yyyy')}<br/>
-                            Until: {format(new Date(subscription.paused_until), 'MMM dd, yyyy')}
-                          </div>
-                        </div>
-                      )}
-
-                      {subscription.status === "active" && subscription.paused_from && (
-                        <div className="text-xs text-muted-foreground">
-                          Last resumed: {format(new Date(subscription.start_date), 'MMM dd, yyyy')}
-                        </div>
-                      )}
-
-                      {subscription.end_date && (
-                        <div>
-                          <span className="font-medium">Ended:</span>
-                          <div className="text-muted-foreground">
-                            {format(new Date(subscription.end_date), 'MMM dd, yyyy')}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-2 pt-2">
-                      <div className="flex space-x-2">
-                        {subscription.status === "active" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handlePause(subscription.id)}
-                            className="flex-1"
-                          >
-                            <Pause className="h-4 w-4 mr-2" />
-                            Pause
-                          </Button>
-                        )}
-                        {subscription.status === "paused" && (
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => handleResume(subscription.id)}
-                            className="flex-1"
-                          >
-                            <Play className="h-4 w-4 mr-2" />
-                            Resume
-                          </Button>
-                        )}
-                        {subscription.status !== "cancelled" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSubscriptionToCancel(subscription.id);
-                              setCancelDialogOpen(true);
-                            }}
-                            className="flex-1 border border-red-600 text-red-600 hover:bg-red-50"
-                          >
-                            <X className="h-4 w-4 mr-2" />
-                            Cancel
-                          </Button>
+                  <Card
+                    key={subscription.id}
+                    id={`subscription-${subscription.id}`}
+                    className="hover:shadow-lg transition-shadow cursor-pointer min-w-[140px] w-full"
+                    onClick={() => {
+                      // Always use full product details from products array if available
+                      const fullProduct = products.find(p => p.id === subscription.product_id);
+                      setSelectedProduct(fullProduct || subscription.product);
+                      setProductDetailsDialogOpen(true);
+                    }}
+                  >
+                    <CardContent className="p-3 flex flex-col items-center">
+                      <div className="aspect-square w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center mb-2">
+                        {subscription.product?.image_url ? (
+                          <img src={subscription.product.image_url} alt={subscription.product.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Package className="h-12 w-12 text-gray-400" />
                         )}
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          onNavigate?.('dashboard', {
-                            vendorId: subscription.vendor_id,
-                            productId: subscription.product_id
-                          });
-                        }}
-                        className="w-full"
-                      >
-                        <CalendarIcon className="h-4 w-4 mr-2" />
-                        See Calendar
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                      <div className="w-full text-center">
+                        <h4 className="font-semibold text-sm mb-1 truncate">{subscription.product?.name}</h4>
+                        <div className="text-xs text-muted-foreground truncate">{subscription.vendor?.name}</div>
+                      </div>
+                      <div className="flex gap-2 mt-3 justify-center">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              aria-label="Calendar"
+                              size="icon"
+                              variant="outline"
+                              onClick={e => {
+                                e.stopPropagation();
+                                onNavigate?.('dashboard', {
+                                  vendorId: subscription.vendor_id,
+                                  productId: subscription.product_id
+                                });
+                              }}
+                              className="relative bg-green-50 hover:bg-green-100"
+                            >
+                              <CalendarIcon className="h-4 w-4" />
+                              <span className="absolute -top-1 -right-1 bg-green-600 rounded-full p-[0.5px] flex items-center justify-center">
+                                <svg className="h-1 w-1 text-white" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth="2">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 8l3 3 5-5" />
+                                </svg>
+                              </span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Calendar</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              aria-label={subscription.status === 'paused' ? 'Resume' : subscription.status === 'active' ? 'Pause' : 'Cancel'}
+                              size="icon"
+                              variant="outline"
+                              onClick={e => {
+                                e.stopPropagation();
+                                if (subscription.status === 'active') handlePause(subscription.id);
+                                else if (subscription.status === 'paused') handleResume(subscription.id);
+                                else {
+                                  setSubscriptionToCancel(subscription.id);
+                                  setCancelDialogOpen(true);
+                                }
+                              }}
+                            >
+                              {subscription.status === 'active' ? <Pause className="h-4 w-4" /> : subscription.status === 'paused' ? <Play className="h-4 w-4" /> : <X className="h-4 w-4 text-red-600" />}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {subscription.status === 'active' ? 'Pause' : subscription.status === 'paused' ? 'Resume' : 'Cancel'}
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </CardContent>
+                  </Card>
               ))}
               </div>
             </div>
@@ -1117,85 +1069,54 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
               {availableProducts.slice(0, 12).map((product: any) => {
                 const quantity = productQuantities[product.id] || 1;
                 return (
-                  <Card 
-                    key={product.id} 
-                    className="hover:shadow-lg transition-shadow cursor-pointer"
+                  <Card
+                    key={product.id}
+                    className="hover:shadow-lg transition-shadow cursor-pointer h-full flex flex-col justify-between min-w-[140px] w-full"
                     onClick={() => {
                       setSelectedProduct(product);
                       setProductDetailsDialogOpen(true);
                     }}
                   >
-                    <CardContent className="p-3">
-                      <div className="aspect-square mb-2 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                    <CardContent className="p-3 flex flex-col items-center">
+                      <div className="aspect-square w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center mb-2">
                         {product.image_url ? (
                           <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
                         ) : (
                           <Package className="h-12 w-12 text-gray-400" />
                         )}
                       </div>
-                      <h4 className="font-semibold text-sm mb-1 truncate">{product.name}</h4>
-                      <p className="text-xs text-muted-foreground">₹{product.price}/{product.unit}</p>
-                      <Badge variant="outline" className="text-xs mt-1">{product.category}</Badge>
-                      
-                      <div className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex gap-1">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                aria-label="Subscribe"
-                                size="icon"
-                                variant="outline"
-                                onClick={() => handleSubscribeFromProduct(product)}
-                              >
-                                <CalendarIcon className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              Subscribe
-                            </TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                aria-label="Quick Order"
-                                size="icon"
-                                variant="outline"
-                                onClick={() => handleQuickOrderClick(product)}
-                              >
-                                <ShoppingCart className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              Quick Order
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                        
-                        <div className="flex items-center justify-between gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 w-7 p-0"
-                            onClick={() => {
-                              const newQty = Math.max(1, quantity - 1);
-                              setProductQuantities(prev => ({...prev, [product.id]: newQty}));
-                            }}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="text-sm font-medium min-w-[2rem] text-center">{quantity}</span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 w-7 p-0"
-                            onClick={() => {
-                              const newQty = Math.min(10, quantity + 1);
-                              setProductQuantities(prev => ({...prev, [product.id]: newQty}));
-                            }}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
+                      <div className="w-full text-center">
+                        <h4 className="font-semibold text-sm mb-1 truncate">{product.name}</h4>
+                        <p className="text-xs text-muted-foreground">₹{product.price}/{product.unit}</p>
+                        <Badge variant="outline" className="text-xs mt-1">{product.category}</Badge>
+                      </div>
+                      <div className="flex gap-2 mt-3" onClick={e => e.stopPropagation()}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              aria-label="Subscribe"
+                              size="icon"
+                              variant="outline"
+                              onClick={() => handleSubscribeFromProduct(product)}
+                            >
+                              <CalendarIcon className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Subscribe</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              aria-label="Quick Order"
+                              size="icon"
+                              variant="outline"
+                              onClick={() => handleQuickOrderClick(product)}
+                            >
+                              <ShoppingCart className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Quick Order</TooltipContent>
+                        </Tooltip>
                       </div>
                     </CardContent>
                   </Card>
@@ -1795,7 +1716,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm text-muted-foreground">Category</Label>
-                  <div className="font-medium">{selectedProduct.category}</div>
+                  <div className="font-medium">{selectedProduct.category || 'N/A'}</div>
                 </div>
                 <div>
                   <Label className="text-sm text-muted-foreground">Price</Label>
@@ -1803,20 +1724,16 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
                 </div>
                 <div>
                   <Label className="text-sm text-muted-foreground">Availability</Label>
-                  <div className="font-medium">{selectedProduct.availability}</div>
+                  <div className="font-medium">{selectedProduct.availability || 'Not specified'}</div>
                 </div>
-                {selectedProduct.subscribe_before && (
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Subscribe Before</Label>
-                    <div className="font-medium">{selectedProduct.subscribe_before}</div>
-                  </div>
-                )}
-                {selectedProduct.delivery_before && (
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Delivery Before</Label>
-                    <div className="font-medium">{selectedProduct.delivery_before}</div>
-                  </div>
-                )}
+                <div>
+                  <Label className="text-sm text-muted-foreground">Subscribe Before</Label>
+                  <div className="font-medium">{selectedProduct.subscribe_before || 'Not specified'}</div>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Delivery Before</Label>
+                  <div className="font-medium">{selectedProduct.delivery_before || 'Not specified'}</div>
+                </div>
               </div>
 
               {selectedProduct.description && (
