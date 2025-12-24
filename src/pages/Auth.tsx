@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Milk, Newspaper, Shield, Store, Users, Calendar, CheckCircle2, Info, Loader2 } from "lucide-react";
+import { Milk, Newspaper, Shield, Store, Users, Calendar, CheckCircle2, Info, Loader2, X } from "lucide-react";
 import { useAreaAvailability } from "@/hooks/useAreaAvailability";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -525,11 +525,12 @@ const Auth = (): JSX.Element => {
                     </CardDescription>
                   </div>
                   <Button 
-                    variant="outline" 
-                    size="sm"
+                    variant="ghost" 
+                    size="icon"
+                    className="h-8 w-8"
                     onClick={() => setIsSignUp(false)}
                   >
-                    Back to Sign In
+                    <X className="h-4 w-4" />
                   </Button>
                 </div>
               </CardHeader>
