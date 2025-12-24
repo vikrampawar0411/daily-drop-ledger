@@ -219,13 +219,14 @@ export const useSubscriptions = () => {
       // Remove pending orders only for the paused window (inclusive start, exclusive resume)
       const deleteRange = { gte: pausedFrom, lt: pausedUntil } as any;
 
-      const { error: deleteBySubId } = await supabase
+      const deleteBySubIdResult = await (supabase as any)
         .from("orders")
         .delete()
         .eq("status", "pending")
         .eq("created_from_subscription_id", id)
         .gte("order_date", deleteRange.gte)
         .lt("order_date", deleteRange.lt);
+      const deleteBySubId = deleteBySubIdResult?.error;
 
       if (deleteBySubId) {
         console.warn("Could not delete orders by subscription id", deleteBySubId);
@@ -310,12 +311,14 @@ export const useSubscriptions = () => {
       // 2. Orders matching customer_id, vendor_id, product_id for the same subscription (older orders without the field)
       
       // First, try to delete orders with created_from_subscription_id
-      const { error: deleteError1, data: deletedData1 } = await supabase
+      const deleteResult1 = await (supabase as any)
         .from("orders")
         .delete()
         .eq("created_from_subscription_id", id)
         .gte("order_date", today)
         .select();
+      const deleteError1 = deleteResult1?.error;
+      const deletedData1 = deleteResult1?.data;
 
       if (deleteError1) {
         console.error("Error deleting future orders by subscription_id:", deleteError1);

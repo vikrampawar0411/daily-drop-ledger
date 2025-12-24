@@ -213,7 +213,7 @@ export const useOrders = () => {
       // Send notification to customer if vendor marked as delivered
       if (sendNotification && order && order.customer?.user_id) {
         const message = `Your order for ${order.product?.name || 'a product'} from ${order.vendor?.name || 'the vendor'} has been marked as delivered.`;
-        await supabase.from("notifications").insert({
+        await (supabase.from("notifications" as any).insert({
           recipient_user_id: order.customer.user_id,
           sender_user_id: user.id,
           order_id: order.id,
@@ -222,7 +222,7 @@ export const useOrders = () => {
           type: "order_update",
           is_read: false,
           created_at: new Date().toISOString(),
-        });
+        }) as any);
       }
       // Refetch to get updated data with user info
       await fetchOrders();

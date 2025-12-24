@@ -517,10 +517,21 @@ const Auth = (): JSX.Element => {
           ) : (
             <>
               <CardHeader className="pt-4">
-                <CardTitle>Sign Up</CardTitle>
-                <CardDescription>
-                  Create a new account as {selectedRole}
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Sign Up</CardTitle>
+                    <CardDescription>
+                      Create a new account as {selectedRole}
+                    </CardDescription>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsSignUp(false)}
+                  >
+                    Back to Sign In
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 mb-4">
