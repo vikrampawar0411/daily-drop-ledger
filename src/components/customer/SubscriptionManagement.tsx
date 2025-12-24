@@ -464,7 +464,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
             .maybeSingle();
           const vendorUserId = vendorUserIdRes?.data?.user_id;
           if (vendorUserId) {
-            await supabase.from('notifications').insert({
+            await (supabase.from('notifications' as any).insert({
               recipient_user_id: vendorUserId,
               sender_user_id: user.id,
               order_id: null, // Optionally set order_id if available
@@ -473,7 +473,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
               type: 'order_placed',
               is_read: false,
               created_at: new Date().toISOString(),
-            });
+            }) as any);
           }
         }
 
@@ -577,7 +577,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
     if (selectedSubscription && pauseFromDate && pauseUntilDate) {
       try {
         const subscription = subscriptions.find(sub => sub.id === selectedSubscription);
-        const cutoffStr = subscription?.product?.subscribe_before || "";
+        const cutoffStr = (subscription?.product as any)?.subscribe_before || "";
 
         // If pause starts within next day and cutoff passed, block
         if (cutoffStr) {
@@ -625,7 +625,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
   
   const handleResume = (subscriptionId: string) => {
     const subscription = subscriptions.find(sub => sub.id === subscriptionId);
-    const cutoffStr = subscription?.product?.subscribe_before || "";
+    const cutoffStr = (subscription?.product as any)?.subscribe_before || "";
 
     // Always default to tomorrow for resume
     let defaultResumeDate = addDays(new Date(), 1);

@@ -167,9 +167,10 @@ Deno.serve(async (req) => {
             console.log(`Created ${ordersToInsert.length} orders for subscription ${subscription.id}`);
           }
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error(`Error processing subscription ${subscription.id}:`, error);
-        errors.push(`Subscription ${subscription.id}: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        errors.push(`Subscription ${subscription.id}: ${errorMessage}`);
       }
     }
 
@@ -187,12 +188,13 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in generate-subscription-orders:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message 
+        error: errorMessage 
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
