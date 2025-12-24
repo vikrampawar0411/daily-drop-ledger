@@ -143,9 +143,8 @@ const ProductManagement = () => {
         description: editProduct.description || null,
         subscribe_before: editProduct.subscribe_before || null,
         delivery_before: editProduct.delivery_before || null,
-        images: editProduct.images.length > 0 ? editProduct.images : null,
         image_url: editProduct.images.length > 0 ? editProduct.images[0] : null,
-      });
+      } as any);
 
       setShowEditDialog(false);
       setSelectedProductForEdit(null);

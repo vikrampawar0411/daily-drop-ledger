@@ -27,17 +27,17 @@ export const useNotifications = () => {
     }
     setLoading(true);
     console.log('[DEBUG] Fetching notifications for user.id:', user.id);
-    const { data, error } = await supabase
-      .from("notifications")
+    const { data, error } = await (supabase
+      .from("notifications" as any)
       .select("*")
       .eq("recipient_user_id", user.id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }) as any);
     if (error) {
       console.error('[DEBUG] Error fetching notifications:', error);
     } else {
       console.log('[DEBUG] Notifications fetched:', data);
     }
-    setNotifications(data || []);
+    setNotifications((data || []) as Notification[]);
     setLoading(false);
   }, [user]);
 
@@ -46,10 +46,10 @@ export const useNotifications = () => {
   }, [fetchNotifications]);
 
   const markAsRead = async (id: string) => {
-    await supabase
-      .from("notifications")
+    await (supabase
+      .from("notifications" as any)
       .update({ is_read: true, read_at: new Date().toISOString() })
-      .eq("id", id);
+      .eq("id", id) as any);
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true, read_at: new Date().toISOString() } : n));
     console.log('[DEBUG] Marked notification as read:', id);
   };
