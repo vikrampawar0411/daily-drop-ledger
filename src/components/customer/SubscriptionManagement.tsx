@@ -915,15 +915,13 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
-                              aria-label="Calendar"
+                              aria-label="Cancel Subscription"
                               size="icon"
                               variant="outline"
                               onClick={e => {
                                 e.stopPropagation();
-                                onNavigate?.('dashboard', {
-                                  vendorId: subscription.vendor_id,
-                                  productId: subscription.product_id
-                                });
+                                setSubscriptionToCancel(subscription.id);
+                                setCancelDialogOpen(true);
                               }}
                               className="relative bg-green-50 hover:bg-green-100"
                             >
@@ -935,7 +933,7 @@ const SubscriptionManagement = ({ onNavigate, navigationParams, addToCart }: Sub
                               </span>
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Calendar</TooltipContent>
+                          <TooltipContent>Cancel Subscription</TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
