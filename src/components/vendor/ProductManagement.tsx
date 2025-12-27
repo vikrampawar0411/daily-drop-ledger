@@ -30,12 +30,6 @@ const ProductManagement = () => {
   const { editRequests, createEditRequest } = useProductEditRequests(vendorId);
   
   const [showAddDialog, setShowAddDialog] = useState(false);
-  // State for adding existing product
-  const [addProductCategory, setAddProductCategory] = useState("");
-  const [addProductPrice, setAddProductPrice] = useState("");
-  const [addProductUnit, setAddProductUnit] = useState("Nos");
-  const [addProductSubscribeBefore, setAddProductSubscribeBefore] = useState("23:00");
-  const [addProductInStock, setAddProductInStock] = useState(true);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<string>("");
@@ -144,29 +138,10 @@ const ProductManagement = () => {
         return;
       }
 
-      // Validate required fields
-      if (!addProductPrice || !addProductUnit || !addProductSubscribeBefore) {
-        toast({
-          title: "Missing required fields",
-          description: "Please fill in all required fields.",
-          variant: "destructive",
-        });
-        return;
-      }
-
       try {
-        // Add vendor product with price_override, unit, subscribe_before, in_stock
-        await addVendorProduct(selectedProduct, parseFloat(addProductPrice), {
-          unit: addProductUnit,
-          subscribe_before: addProductSubscribeBefore,
-          in_stock: addProductInStock,
-        });
+        await addVendorProduct(selectedProduct);
         setShowAddDialog(false);
         setSelectedProduct("");
-        setAddProductPrice("");
-        setAddProductUnit("Nos");
-        setAddProductSubscribeBefore("23:00");
-        setAddProductInStock(true);
       } catch (error) {
         // Error handled by hook
       }
@@ -438,51 +413,33 @@ const ProductManagement = () => {
   if (productsLoading || vendorProductsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Category *</label>
-                <Select
-                  value={addProductCategory || ""}
-                  onValueChange={v => {
-                    setAddProductCategory(v);
-                    setSelectedProduct("");
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRODUCT_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Select Product *</label>
-                <Select
-                  value={selectedProduct}
-                  onValueChange={setSelectedProduct}
-                  disabled={!addProductCategory}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={addProductCategory ? (availableProducts.filter((product) => product.category === addProductCategory).length ? "Select a product" : "No products in this category") : "Select category first"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableProducts.filter((product) => product.category === addProductCategory).length === 0 && addProductCategory ? (
-                      <div className="px-3 py-2 text-muted-foreground">No products found in this category</div>
-                    ) : (
-                      availableProducts
-                        .filter((product) => product.category === addProductCategory)
-                        .map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.name}
-                          </SelectItem>
-                        ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading products...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Product Management</h2>
+      </div>
+
+      {/* UNIFIED VIEW: All product information in one place */}
+      <div className="space-y-6">
+        {/* MY PRODUCTS SECTION */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              <span className="text-lg font-semibold">My Products ({vendorProducts.length})</span>
+            </div>
+            <Button onClick={() => setShowAddDialog(true)} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Existing Product
+            </Button>
           </CardHeader>
           <CardContent>
             {vendorProducts.length === 0 ? (
@@ -966,95 +923,24 @@ const ProductManagement = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Category *</label>
-              <Select
-                value={addProductCategory || ""}
-                onValueChange={v => {
-                  setAddProductCategory(v);
-                  setSelectedProduct("");
-                }}
-              >
+              <label className="block text-sm font-medium mb-1">Select Product</label>
+              <Select value={selectedProduct} onValueChange={setSelectedProduct}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder="Select a product" />
                 </SelectTrigger>
                 <SelectContent>
-                  {PRODUCT_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  {availableProducts.map((product) => (
+                    <SelectItem key={product.id} value={product.id}>
+                      {product.name} ({product.category})
+                    </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Select Product *</label>
-              <Select
-                value={selectedProduct}
-                onValueChange={setSelectedProduct}
-                disabled={!addProductCategory}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={addProductCategory ? "Select a product" : "Select category first"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableProducts
-                    .filter((product) => product.category === addProductCategory)
-                    .map((product) => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Price *</label>
-              <Input
-                type="number"
-                step="0.01"
-                value={addProductPrice}
-                onChange={e => setAddProductPrice(e.target.value)}
-                placeholder="Enter price"
-                disabled={!selectedProduct}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Unit *</label>
-              <Input
-                value={addProductUnit}
-                onChange={e => setAddProductUnit(e.target.value)}
-                placeholder="Nos"
-                disabled={!selectedProduct}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Subscription Time *</label>
-              <Input
-                type="time"
-                value={addProductSubscribeBefore}
-                onChange={e => setAddProductSubscribeBefore(e.target.value)}
-                placeholder="23:00"
-                disabled={!selectedProduct}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Stock Status (optional)</label>
-              <Select
-                value={addProductInStock ? "in-stock" : "out-of-stock"}
-                onValueChange={v => setAddProductInStock(v === "in-stock")}
-                disabled={!selectedProduct}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="in-stock">In Stock</SelectItem>
-                  <SelectItem value="out-of-stock">Out of Stock</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
-            <Button onClick={handleAddProduct} disabled={!addProductCategory || !selectedProduct || !addProductPrice || !addProductUnit || !addProductSubscribeBefore}>Add Product</Button>
+            <Button onClick={handleAddProduct} disabled={!selectedProduct}>Add Product</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1067,28 +953,27 @@ const ProductManagement = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Select
-                value={selectedProduct}
-                onValueChange={setSelectedProduct}
-                disabled={!addProductCategory}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={addProductCategory ? (availableProducts.filter((product) => product.category === addProductCategory).length ? "Select a product" : "No products in this category") : "Select category first"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableProducts.filter((product) => product.category === addProductCategory).length === 0 && addProductCategory ? (
-                    <div className="px-3 py-2 text-muted-foreground">No products found in this category</div>
-                  ) : (
-                    availableProducts
-                      .filter((product) => product.category === addProductCategory)
-                      .map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name}
-                        </SelectItem>
-                      ))
-                  )}
-                </SelectContent>
-              </Select>
+              <div>
+                <Label htmlFor="product-name">Product Name and Pack Size *</Label>
+                <Input
+                  id="product-name"
+                  value={newRequest.name}
+                  onChange={(e) => setNewRequest({...newRequest, name: e.target.value})}
+                  placeholder="Enter product name and pack size"
+                />
+              </div>
+              <div>
+                <Label htmlFor="category">Category *</Label>
+                <Select value={newRequest.category} onValueChange={(value) => setNewRequest({...newRequest, category: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRODUCT_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="price">Price *</Label>
