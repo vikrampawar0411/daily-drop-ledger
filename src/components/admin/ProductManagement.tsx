@@ -85,12 +85,7 @@ const ProductManagement = () => {
   const [productRequestForm, setProductRequestForm] = useState({
     name: "",
     category: "",
-    price: "",
-    unit: "Nos",
     description: "",
-    availability: "in_stock",
-    subscribe_before: "23:00",
-    delivery_before: "07:00",
     images: [] as string[]
   });
   
@@ -335,28 +330,13 @@ const ProductManagement = () => {
     if (!selectedProductRequest) return;
 
     try {
-      const priceNum = parseFloat(productRequestForm.price);
-      if (isNaN(priceNum)) {
-        toast({
-          title: "Invalid price",
-          description: "Please enter a valid price",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Create the product with modified details
+      // Create the product with only admin-approvable details
       const { data: newProduct, error: productError } = await supabase
         .from("products")
         .insert([{
           name: productRequestForm.name,
           category: productRequestForm.category,
-          price: priceNum,
-          unit: productRequestForm.unit,
-          availability: productRequestForm.availability,
           description: productRequestForm.description || null,
-          subscribe_before: productRequestForm.subscribe_before,
-          delivery_before: productRequestForm.delivery_before,
           image_url: productRequestForm.images.length > 0 ? productRequestForm.images[0] : null,
           images: productRequestForm.images.length > 0 ? productRequestForm.images : null,
           status: "active",
@@ -1056,60 +1036,7 @@ const ProductManagement = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="request-price">Price *</Label>
-                <Input
-                  id="request-price"
-                  type="number"
-                  step="0.01"
-                  value={productRequestForm.price}
-                  onChange={(e) => setProductRequestForm({...productRequestForm, price: e.target.value})}
-                  placeholder="Enter price"
-                />
-              </div>
-              <div>
-                <Label htmlFor="request-unit">Unit *</Label>
-                <Input
-                  id="request-unit"
-                  value={productRequestForm.unit}
-                  onChange={(e) => setProductRequestForm({...productRequestForm, unit: e.target.value})}
-                  placeholder="Nos, kg, litre, etc."
-                />
-              </div>
-              <div>
-                <Label htmlFor="request-availability">Availability *</Label>
-                <Select 
-                  value={productRequestForm.availability} 
-                  onValueChange={(value) => setProductRequestForm({...productRequestForm, availability: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="in_stock">In Stock</SelectItem>
-                    <SelectItem value="out_of_stock">Out of Stock</SelectItem>
-                    <SelectItem value="Daily">Daily</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="request-subscribe">Subscribe Before</Label>
-                <Input
-                  id="request-subscribe"
-                  type="time"
-                  value={productRequestForm.subscribe_before}
-                  onChange={(e) => setProductRequestForm({...productRequestForm, subscribe_before: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label htmlFor="request-delivery">Delivery Before</Label>
-                <Input
-                  id="request-delivery"
-                  type="time"
-                  value={productRequestForm.delivery_before}
-                  onChange={(e) => setProductRequestForm({...productRequestForm, delivery_before: e.target.value})}
-                />
-              </div>
+              {/* Only show name, category, description for admin approval */}
             </div>
             <div>
               <Label htmlFor="request-description">Description</Label>
