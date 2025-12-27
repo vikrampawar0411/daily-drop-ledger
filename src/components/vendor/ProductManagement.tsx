@@ -21,6 +21,12 @@ import { Textarea } from "@/components/ui/textarea";
 const PRODUCT_CATEGORIES = ["Milk", "Newspaper", "Grocery", "Vegetables", "Fruits", "Other"];
 
 const ProductManagement = () => {
+    // State for stepwise add product dialog
+    const [addProductCategory, setAddProductCategory] = useState("");
+    const [addProductPrice, setAddProductPrice] = useState("");
+    const [addProductUnit, setAddProductUnit] = useState("");
+    const [addProductSubscriptionTime, setAddProductSubscriptionTime] = useState("");
+    const [addProductStockStatus, setAddProductStockStatus] = useState("");
   const { products, loading: productsLoading } = useProducts();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -922,25 +928,106 @@ const ProductManagement = () => {
             <DialogTitle>Add Product from Master List</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Step 1: Select Category */}
             <div>
-              <label className="block text-sm font-medium mb-1">Select Product</label>
-              <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+              <label className="block text-sm font-medium mb-1">Category *</label>
+              <Select
+                value={addProductCategory || ""}
+                onValueChange={v => {
+                  setAddProductCategory(v);
+                  setSelectedProduct("");
+                }}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a product" />
+                  <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableProducts.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name} ({product.category})
-                    </SelectItem>
+                  {PRODUCT_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+            {/* Step 2: Select Product (filtered by category) */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Product *</label>
+              <Select
+                value={selectedProduct}
+                onValueChange={setSelectedProduct}
+                disabled={!addProductCategory}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={addProductCategory ? (availableProducts.filter((product) => product.category === addProductCategory).length ? "Select a product" : "No products in this category") : "Select category first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableProducts.filter((product) => product.category === addProductCategory).length === 0 && addProductCategory ? (
+                    <div className="px-3 py-2 text-muted-foreground">No products found in this category</div>
+                  ) : (
+                    availableProducts
+                      .filter((product) => product.category === addProductCategory)
+                      .map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name}
+                        </SelectItem>
+                      ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Step 3: Price, Unit, Subscription Time, Stock Status */}
+            {selectedProduct && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="price">Price *</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    min="0"
+                    value={addProductPrice || ""}
+                    onChange={e => setAddProductPrice(e.target.value)}
+                    placeholder="Enter price"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="unit">Unit *</Label>
+                  <Input
+                    id="unit"
+                    value={addProductUnit || ""}
+                    onChange={e => setAddProductUnit(e.target.value)}
+                    placeholder="e.g. Litre, Piece, Kg"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="subscriptionTime">Subscription Time *</Label>
+                  <Input
+                    id="subscriptionTime"
+                    value={addProductSubscriptionTime || ""}
+                    onChange={e => setAddProductSubscriptionTime(e.target.value)}
+                    placeholder="e.g. Morning, Evening, 7am-9am"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="stockStatus">Stock Status (optional)</Label>
+                  <Input
+                    id="stockStatus"
+                    value={addProductStockStatus || ""}
+                    onChange={e => setAddProductStockStatus(e.target.value)}
+                    placeholder="e.g. In Stock, Out of Stock"
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
-            <Button onClick={handleAddProduct} disabled={!selectedProduct}>Add Product</Button>
+            <Button
+              onClick={handleAddProduct}
+              disabled={
+                !selectedProduct || !addProductCategory || !addProductPrice || !addProductUnit || !addProductSubscriptionTime
+              }
+            >
+              Add Product
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
