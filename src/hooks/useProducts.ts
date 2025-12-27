@@ -6,15 +6,13 @@ export interface Product {
   id: string;
   name: string;
   category: string;
-  price: number;
-  unit: string;
-  availability: string;
+  // price, unit, availability removed for admin add
   description: string | null;
   is_active: boolean;
-  status: string;
+  // status removed for admin add
   image_url: string | null;
-  subscribe_before: string | null;
-  delivery_before: string | null;
+  images?: string[];
+  // subscribe_before, delivery_before removed for admin add
 }
 
 export const useProducts = () => {
@@ -36,16 +34,10 @@ export const useProducts = () => {
         id: product.id,
         name: product.name,
         category: product.category,
-        price: product.price,
-        unit: product.unit,
-        availability: product.availability,
         description: product.description,
         is_active: product.is_active,
-        status: product.status,
         image_url: product.image_url,
         images: product.images || [],
-        subscribe_before: product.subscribe_before || null,
-        delivery_before: product.delivery_before || null,
       }));
       
       setProducts(mappedData);
@@ -66,9 +58,17 @@ export const useProducts = () => {
 
   const addProduct = async (product: Omit<Product, "id">) => {
     try {
+      const allowed = {
+        name: product.name,
+        category: product.category,
+        description: product.description,
+        image_url: product.image_url,
+        images: product.images || [],
+        is_active: product.is_active !== undefined ? product.is_active : true,
+      };
       const { data, error } = await supabase
         .from("products")
-        .insert([product])
+        .insert([allowed])
         .select()
         .single();
 
@@ -78,15 +78,10 @@ export const useProducts = () => {
         id: data.id,
         name: data.name,
         category: data.category,
-        price: data.price,
-        unit: data.unit,
-        availability: data.availability,
         description: data.description,
         is_active: data.is_active,
-        status: data.status,
         image_url: data.image_url,
-        subscribe_before: (data as any).subscribe_before || null,
-        delivery_before: (data as any).delivery_before || null,
+        images: data.images || [],
       };
 
       setProducts((prev) => [mappedProduct, ...prev]);
@@ -107,9 +102,17 @@ export const useProducts = () => {
 
   const updateProduct = async (id: string, updates: Partial<Product>) => {
     try {
+      const allowed: Partial<Product> = {
+        name: updates.name,
+        category: updates.category,
+        description: updates.description,
+        image_url: updates.image_url,
+        images: updates.images,
+        is_active: updates.is_active,
+      };
       const { data, error } = await supabase
         .from("products")
-        .update(updates)
+        .update(allowed)
         .eq("id", id)
         .select()
         .single();
@@ -120,15 +123,10 @@ export const useProducts = () => {
         id: data.id,
         name: data.name,
         category: data.category,
-        price: data.price,
-        unit: data.unit,
-        availability: data.availability,
         description: data.description,
         is_active: data.is_active,
-        status: data.status,
         image_url: data.image_url,
-        subscribe_before: (data as any).subscribe_before || null,
-        delivery_before: (data as any).delivery_before || null,
+        images: data.images || [],
       };
 
       setProducts((prev) =>

@@ -1,3 +1,49 @@
+  // Handle new product image upload
+  const handleNewProductImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) {
+      return;
+    }
+
+    const file = event.target.files[0];
+    setUploading(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `product-${Date.now()}.${fileExt}`;
+      const filePath = `products/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+
+      setNewProduct({
+        ...newProduct,
+        images: [...(newProduct.images || []), publicUrl]
+      });
+
+      toast({
+        title: "Success",
+        description: "Image uploaded successfully",
+      });
+
+      // Reset file input
+      event.target.value = '';
+    } catch (error: any) {
+      toast({
+        title: "Error uploading image",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,30 +97,30 @@ const ProductManagement = () => {
   const [newProduct, setNewProduct] = useState({
     name: "",
     category: "",
-    price: "",
-    unit: "Nos",
     description: "",
-    inStock: true,
-    subscribe_before: "23:00",
-    delivery_before: "07:00"
+    images: [] as string[]
   });
 
   const [editProduct, setEditProduct] = useState({
     name: "",
     category: "",
-    price: "",
-    unit: "",
     description: "",
-    subscribe_before: "",
-    delivery_before: "",
     images: [] as string[]
   });
 
   const handleAddProduct = async () => {
-    if (!newProduct.name || !newProduct.category || !newProduct.price) {
+    if (!newProduct.name || !newProduct.category) {
       toast({
         title: "Missing information",
         description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!newProduct.images || newProduct.images.length === 0) {
+      toast({
+        title: "Product image required",
+        description: "Please upload at least one product image.",
         variant: "destructive",
       });
       return;
@@ -97,26 +143,17 @@ const ProductManagement = () => {
       await addProduct({
         name: newProduct.name,
         category: newProduct.category,
-        price: parseFloat(newProduct.price),
-        unit: newProduct.unit,
-        availability: "Daily",
         description: newProduct.description || null,
         status: "active",
-        is_active: newProduct.inStock,
-        image_url: null,
-        subscribe_before: newProduct.subscribe_before || null,
-        delivery_before: newProduct.delivery_before || null,
+        image_url: newProduct.images.length > 0 ? newProduct.images[0] : null,
+        images: newProduct.images.length > 0 ? newProduct.images : null,
       });
 
       setNewProduct({
         name: "",
         category: "",
-        price: "",
-        unit: "Nos",
         description: "",
-        inStock: true,
-        subscribe_before: "23:00",
-        delivery_before: "07:00"
+        images: []
       });
       setShowAddDialog(false);
     } catch (error) {
@@ -138,12 +175,9 @@ const ProductManagement = () => {
       await updateProduct(selectedProductForEdit.id, {
         name: editProduct.name,
         category: editProduct.category,
-        price: parseFloat(editProduct.price),
-        unit: editProduct.unit,
         description: editProduct.description || null,
-        subscribe_before: editProduct.subscribe_before || null,
-        delivery_before: editProduct.delivery_before || null,
         image_url: editProduct.images.length > 0 ? editProduct.images[0] : null,
+        images: editProduct.images.length > 0 ? editProduct.images : null,
       } as any);
 
       setShowEditDialog(false);
@@ -474,34 +508,7 @@ const ProductManagement = () => {
                     </div>
                   )}
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Category:</span>
-                      <span className="font-medium">{product.category}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Price:</span>
-                      <span className="font-medium">₹{product.price}/{product.unit}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Availability:</span>
-                      <span className="font-medium text-xs">{product.availability}</span>
-                    </div>
-                    {(product.subscribe_before || product.delivery_before) && (
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        {product.subscribe_before && (
-                          <div>
-                            <span className="text-muted-foreground">Subscribe:</span>
-                            <div className="font-medium">{product.subscribe_before}</div>
-                          </div>
-                        )}
-                        {product.delivery_before && (
-                          <div>
-                            <span className="text-muted-foreground">Delivery:</span>
-                            <div className="font-medium">{product.delivery_before}</div>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    {/* Only show description for admin */}
                     {product.description && (
                       <p className="text-muted-foreground text-xs mt-2">{product.description}</p>
                     )}
@@ -516,11 +523,7 @@ const ProductManagement = () => {
                         setEditProduct({
                           name: product.name,
                           category: product.category,
-                          price: product.price.toString(),
-                          unit: product.unit,
                           description: product.description || "",
-                          subscribe_before: product.subscribe_before || "",
-                          delivery_before: product.delivery_before || "",
                           images: (product as any).images || (product.image_url ? [product.image_url] : []),
                         });
                         setShowEditDialog(true);
@@ -745,11 +748,61 @@ const ProductManagement = () => {
             <DialogTitle>Add New Product</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+                        {/* Image Upload Section */}
+                        <div className="border rounded-lg p-4 space-y-3">
+                          <Label>Product Images (Multiple)</Label>
+                          {newProduct.images && newProduct.images.length > 0 && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              {newProduct.images.map((imageUrl, index) => (
+                                <div key={index} className="relative group">
+                                  <div className="w-full h-32 rounded-lg overflow-hidden bg-gray-100 border">
+                                    <img 
+                                      src={imageUrl} 
+                                      alt={`Product ${index + 1}`}
+                                      className="w-full h-full object-contain"
+                                    />
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={() => {
+                                      setNewProduct({
+                                        ...newProduct,
+                                        images: newProduct.images.filter((_, i) => i !== index)
+                                      });
+                                    }}
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                  </Button>
+                                  {index === 0 && (
+                                    <Badge className="absolute bottom-1 left-1 text-xs">Primary</Badge>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div>
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleNewProductImageUpload}
+                              disabled={uploading}
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {(!newProduct.images || newProduct.images.length === 0) 
+                                ? "Add product images (first image will be primary)" 
+                                : `${newProduct.images.length} image(s) added`}
+                            </p>
+                          </div>
+                          {uploading && <p className="text-sm text-muted-foreground">Uploading...</p>}
+                        </div>
             <div>
-              <Label htmlFor="name">Product Name and Pack Size *</Label>
+              <Label htmlFor="name">Product Name *</Label>
               <Input
                 id="name"
-                placeholder="Enter product name and pack size"
+                placeholder="Enter product name"
                 value={newProduct.name}
                 onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
               />
@@ -764,63 +817,6 @@ const ProductManagement = () => {
                   {PRODUCT_CATEGORIES.map((cat) => (
                     <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="price">Price *</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={newProduct.price}
-                  onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="unit">Unit *</Label>
-                <Input
-                  id="unit"
-                  placeholder="Nos"
-                  value={newProduct.unit}
-                  onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="subscribe-before">Subscribe Before Time</Label>
-                <Input
-                  id="subscribe-before"
-                  type="time"
-                  value={newProduct.subscribe_before}
-                  onChange={(e) => setNewProduct({ ...newProduct, subscribe_before: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="delivery-before">Delivery Before Time</Label>
-                <Input
-                  id="delivery-before"
-                  type="time"
-                  value={newProduct.delivery_before}
-                  onChange={(e) => setNewProduct({ ...newProduct, delivery_before: e.target.value })}
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="stock-status">Stock Status *</Label>
-              <Select 
-                value={newProduct.inStock ? "in-stock" : "out-of-stock"} 
-                onValueChange={(value) => setNewProduct({ ...newProduct, inStock: value === "in-stock" })}
-              >
-                <SelectTrigger id="stock-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="in-stock">In Stock</SelectItem>
-                  <SelectItem value="out-of-stock">Out of Stock</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -919,46 +915,6 @@ const ProductManagement = () => {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-price">Price *</Label>
-                <Input
-                  id="edit-price"
-                  type="number"
-                  step="0.01"
-                  value={editProduct.price}
-                  onChange={(e) => setEditProduct({ ...editProduct, price: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-unit">Unit *</Label>
-                <Input
-                  id="edit-unit"
-                  value={editProduct.unit}
-                  onChange={(e) => setEditProduct({ ...editProduct, unit: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-subscribe-before">Subscribe Before Time</Label>
-                <Input
-                  id="edit-subscribe-before"
-                  type="time"
-                  value={editProduct.subscribe_before}
-                  onChange={(e) => setEditProduct({ ...editProduct, subscribe_before: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-delivery-before">Delivery Before Time</Label>
-                <Input
-                  id="edit-delivery-before"
-                  type="time"
-                  value={editProduct.delivery_before}
-                  onChange={(e) => setEditProduct({ ...editProduct, delivery_before: e.target.value })}
-                />
-              </div>
             </div>
             <div>
               <Label htmlFor="edit-description">Description</Label>
