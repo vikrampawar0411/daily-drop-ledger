@@ -1388,13 +1388,13 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                 // Apply cut-off logic based on selected product
                 if (productId) {
                   const productFromOrders = orders.find(o => o.product.id === productId)?.product;
-                  const subscribeBeforeTime = productFromOrders?.subscribe_before;
+                  const orderCutoffTime = productFromOrders?.order_cutoff;
                   
-                  if (subscribeBeforeTime) {
-                    const [hours, minutes] = subscribeBeforeTime.split(':').map(Number);
+                  if (orderCutoffTime) {
+                    const [hours, minutes] = orderCutoffTime.split(':').map(Number);
                     
                     // Calculate cutoff for today's delivery
-                    // Cutoff = (today - 1 day) at subscribe_before time = yesterday at cutoff time
+                    // Cutoff = (today - 1 day) at order_cutoff time = yesterday at cutoff time
                     const todayCutoff = new Date();
                     todayCutoff.setDate(todayCutoff.getDate() - 1);
                     todayCutoff.setHours(hours, minutes, 0, 0);
@@ -1407,9 +1407,9 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                     }
                     
                     // Actually, let me recalculate this properly
-                    // For an order on date X, the cutoff is (X-1 day) at subscribe_before time
-                    // So for today's order, cutoff was yesterday at subscribe_before
-                    // For tomorrow's order, cutoff is today at subscribe_before
+                    // For an order on date X, the cutoff is (X-1 day) at order_cutoff time
+                    // So for today's order, cutoff was yesterday at order_cutoff
+                    // For tomorrow's order, cutoff is today at order_cutoff
                     
                     const tomorrowCutoff = new Date();
                     tomorrowCutoff.setHours(hours, minutes, 0, 0);
@@ -1821,7 +1821,7 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                       if (!productId) return null;
                       
                       const productFromOrders = orders.find(o => o.product.id === productId)?.product;
-                      return productFromOrders?.subscribe_before || null;
+                      return productFromOrders?.order_cutoff || null;
                     })()}
                     subscriptionCount={subscriptions.filter(sub => sub.status === 'active').length}
                     onNavigateToSubscriptions={() => setActiveTab?.("subscriptions")}
@@ -2105,17 +2105,17 @@ const CustomerDashboard = ({ onNavigate, activeTab, setActiveTab, navigationPara
                             {/* Order Cutoff Banner */}
                             {selectedProduct && selectedProduct !== 'all' && (() => {
                               const productFromOrders = orders.find(o => o.product.id === selectedProduct)?.product;
-                              const subscribeBeforeTime = productFromOrders?.subscribe_before;
+                              const orderCutoffTime = productFromOrders?.order_cutoff;
                               
-                              if (subscribeBeforeTime) {
+                              if (orderCutoffTime) {
                                 return (
                                   <Alert className="mt-3 bg-amber-50 border-amber-200">
                                     <AlertCircle className="h-4 w-4 text-amber-600" />
                                     <AlertTitle className="text-amber-900">Order Deadline</AlertTitle>
                                     <AlertDescription className="text-amber-800">
-                                      Orders must be placed before <strong>{formatTimeString(subscribeBeforeTime)}</strong> daily
-                                      {productFromOrders?.delivery_before && (
-                                        <> for delivery by {formatTimeString(productFromOrders.delivery_before)} the next day</>
+                                      Orders must be placed before <strong>{formatTimeString(orderCutoffTime)}</strong> daily
+                                      {productFromOrders?.delivery_time && (
+                                        <> for delivery by {formatTimeString(productFromOrders.delivery_time)} the next day</>
                                       )}
                                     </AlertDescription>
                                   </Alert>
