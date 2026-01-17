@@ -114,8 +114,6 @@ export const useVendorProducts = (vendorId?: string) => {
             vendor_id: vendorId,
             product_id: productId,
             price_override: priceOverride || null,
-            order_cutoff: arguments[2] || null,
-            delivery_time: arguments[3] || null,
           }])
           .select(`
             *,
@@ -159,17 +157,9 @@ export const useVendorProducts = (vendorId?: string) => {
           *,
           product:products(*)
         `)
-        .maybeSingle();
+        .single();
 
       if (error) throw error;
-      if (!data) {
-        toast({
-          title: "Error updating product",
-          description: "Product not found or could not be updated.",
-          variant: "destructive",
-        });
-        throw new Error("Product not found or could not be updated.");
-      }
 
       setVendorProducts((prev) =>
         prev.map((vp) => (vp.id === id ? data : vp))

@@ -24,9 +24,8 @@ const ProductManagement = () => {
     // State for stepwise add product dialog
     const [addProductCategory, setAddProductCategory] = useState("");
     const [addProductPrice, setAddProductPrice] = useState("");
-    const [addProductUnit, setAddProductUnit] = useState("Nos");
-    const [addProductOrderCutoff, setAddProductOrderCutoff] = useState("23:00");
-    const [addProductDeliveryTime, setAddProductDeliveryTime] = useState("07:30");
+    const [addProductUnit, setAddProductUnit] = useState("");
+    const [addProductSubscriptionTime, setAddProductSubscriptionTime] = useState("");
     const [addProductStockStatus, setAddProductStockStatus] = useState("");
   const { products, loading: productsLoading } = useProducts();
   const { user } = useAuth();
@@ -146,11 +145,9 @@ const ProductManagement = () => {
       }
 
       try {
-        await addVendorProduct(selectedProduct, undefined, addProductOrderCutoff, addProductDeliveryTime);
+        await addVendorProduct(selectedProduct);
         setShowAddDialog(false);
         setSelectedProduct("");
-        setAddProductOrderCutoff("23:00");
-        setAddProductDeliveryTime("07:30");
       } catch (error) {
         // Error handled by hook
       }
@@ -202,31 +199,28 @@ const ProductManagement = () => {
         }
       }
 
-      // Update order cutoff and delivery time immediately if changed
-      if (editForm.order_cutoff !== (selectedForEdit?.product as any)?.order_cutoff ||
-          editForm.delivery_time !== (selectedForEdit?.product as any)?.delivery_time) {
+      // Update times immediately if changed
+      if (editForm.subscribe_before !== (selectedForEdit?.product as any)?.subscribe_before ||
+          editForm.delivery_before !== (selectedForEdit?.product as any)?.delivery_before) {
         await handleUpdateTimesImmediate(
           selectedForEdit.product.id,
-          editForm.order_cutoff,
-          editForm.delivery_time
+          editForm.subscribe_before,
+          editForm.delivery_before
         );
       }
 
-      // Only send edit request if name, category, or image changed
-      const nameChanged = editForm.name && editForm.name !== selectedForEdit.product.name;
-      const categoryChanged = editForm.category && editForm.category !== selectedForEdit.product.category;
-      const imageChanged = editForm.image_url && editForm.image_url !== selectedForEdit.product.image_url;
-      if (nameChanged || categoryChanged || imageChanged) {
-        await createEditRequest({
-          product_id: selectedForEdit.product.id,
-          vendor_id: vendorId,
-          requested_by_user_id: user.id,
-          proposed_name: nameChanged ? editForm.name : undefined,
-          proposed_category: categoryChanged ? editForm.category : undefined,
-          proposed_image_url: imageChanged ? editForm.image_url : undefined,
-        });
-      }
-
+      // Submit edit request for name, category, unit, description, and image
+      await createEditRequest({
+        product_id: selectedForEdit.product.id,
+        vendor_id: vendorId,
+        requested_by_user_id: user.id,
+        proposed_name: editForm.name || undefined,
+        proposed_category: editForm.category || undefined,
+        proposed_unit: editForm.unit || undefined,
+        proposed_description: editForm.description || undefined,
+        proposed_image_url: editForm.image_url || undefined,
+      });
+      
       setShowEditDialog(false);
       setSelectedForEdit(null);
       setEditForm({
@@ -234,8 +228,8 @@ const ProductManagement = () => {
         category: "",
         unit: "",
         description: "",
-        order_cutoff: "",
-        delivery_time: "",
+        subscribe_before: "",
+        delivery_before: "",
         price_override: "",
         image_url: ""
       });
@@ -439,179 +433,107 @@ const ProductManagement = () => {
         <h2 className="text-2xl font-bold">Product Management</h2>
       </div>
 
-      {/* MY PRODUCTS SECTION */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            <span className="text-lg font-semibold">My Products ({vendorProducts.length})</span>
-          </div>
-          <div className="flex gap-2">
+      {/* UNIFIED VIEW: All product information in one place */}
+      <div className="space-y-6">
+        {/* MY PRODUCTS SECTION */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              <span className="text-lg font-semibold">My Products ({vendorProducts.length})</span>
+            </div>
             <Button onClick={() => setShowAddDialog(true)} size="sm">
               <Plus className="h-4 w-4 mr-2" />
               Add Existing Product
             </Button>
-            <Button variant="outline" onClick={() => setShowRequestDialog(true)} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Request New Product
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {vendorProducts.length === 0 ? (
-            <div className="text-center py-8">
-              <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-lg font-medium">No products added yet</p>
-              <p className="text-sm text-muted-foreground mt-2">Add products from the master list to start</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {vendorProducts.map((vp) => (
-                <Card key={vp.id} className="hover:shadow-lg transition-shadow overflow-hidden flex flex-col">
-                  {/* Product Image */}
-                  <div className="relative w-full h-40 bg-gray-100">
-                    {(vp.product as any)?.image_url ? (
-                      <img 
-                        src={(vp.product as any).image_url} 
-                        alt={vp.product.name}
-                        className="w-full h-full object-contain"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Package className="h-12 w-12 text-muted-foreground" />
-                      </div>
-                    )}
-                    {/* Active Status Badge */}
-                    <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full px-3 py-1 text-xs font-medium">
-                      {vp.is_active ? (
-                        <span className="text-green-600">Active</span>
+          </CardHeader>
+          <CardContent>
+            {vendorProducts.length === 0 ? (
+              <div className="text-center py-8">
+                <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-lg font-medium">No products added yet</p>
+                <p className="text-sm text-muted-foreground mt-2">Add products from the master list to start</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {vendorProducts.map((vp) => (
+                  <Card key={vp.id} className="hover:shadow-lg transition-shadow overflow-hidden flex flex-col">
+                    {/* Product Image */}
+                    <div className="relative w-full h-40 bg-gray-100">
+                      {(vp.product as any)?.image_url ? (
+                        <img 
+                          src={(vp.product as any).image_url} 
+                          alt={vp.product.name}
+                          className="w-full h-full object-contain"
+                        />
                       ) : (
-                        <span className="text-red-600">Inactive</span>
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package className="h-12 w-12 text-muted-foreground" />
+                        </div>
                       )}
-                    </div>
-                  </div>
-
-                  {/* Product Info */}
-                  <CardContent className="flex-1 flex flex-col p-4 space-y-3">
-                    {/* Product Name */}
-                    <div>
-                      <h3 className="font-semibold text-base line-clamp-2">{vp.product?.name}</h3>
-                    </div>
-
-                    {/* Category and Price */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">{vp.product?.category}</span>
-                      <span className="text-lg font-bold text-primary">
-                        {vp.price_override !== null && vp.price_override !== undefined && vp.price_override !== ''
-                          ? `₹${vp.price_override}`
-                          : <span className="text-red-500">Not set</span>}
-                      </span>
-                    </div>
-
-                    {/* Stats */}
-                    {productStats[vp.id] && (
-                      <div className="flex gap-2 text-xs">
-                        <div className="bg-blue-50 dark:bg-blue-950/30 px-2 py-1 rounded flex-1 text-center">
-                          <div className="text-blue-700 dark:text-blue-400 font-medium">{productStats[vp.id].connectedCustomersCount} Customers</div>
-                        </div>
-                        <div className="bg-purple-50 dark:bg-purple-950/30 px-2 py-1 rounded flex-1 text-center">
-                          <div className="text-purple-700 dark:text-purple-400 font-medium">{productStats[vp.id].futureOrdersCount} Orders</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 pt-2 mt-auto">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="flex-1"
-                        onClick={async () => {
-                          setSelectedForDetails(vp);
-                          setShowDetailsDialog(true);
-                        }}
-                      >
-                        View Details
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="default"
-                        className="flex-1"
-                        onClick={async () => {
-                          await refetch();
-                          setSelectedForEdit(vendorProducts.find(v => v.id === vp.id));
-                          setShowEditDialog(true);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="destructive"
-                        onClick={() => removeVendorProduct(vp.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* OTHER PRODUCTS SECTION */}
-      <div className="space-y-8">
-        {PRODUCT_CATEGORIES.map((cat) => {
-          const otherProducts = products.filter(
-            (p) => p.is_active && p.category === cat && !vendorProducts.some((vp) => vp.product_id === p.id)
-          );
-          if (otherProducts.length === 0) return null;
-          return (
-            <Card key={cat}>
-              <CardHeader>
-                <CardTitle className="text-lg">{cat} (Other Products)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {otherProducts.map((p) => (
-                    <Card key={p.id} className="border">
-                      <div className="relative w-full h-40 bg-gray-100">
-                        {p.image_url ? (
-                          <img 
-                            src={p.image_url} 
-                            alt={p.name}
-                            className="w-full h-full object-contain"
-                          />
+                      {/* Active Status Badge */}
+                      <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full px-3 py-1 text-xs font-medium">
+                        {vp.is_active ? (
+                          <span className="text-green-600">Active</span>
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="h-12 w-12 text-muted-foreground" />
-                          </div>
+                          <span className="text-red-600">Inactive</span>
                         )}
                       </div>
-                      <CardContent className="p-4 space-y-2">
-                        <div className="font-semibold text-base line-clamp-2">{p.name}</div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">{p.category}</span>
-                          <span className="text-lg font-bold text-primary">₹{p.price} {p.unit}</span>
+                    </div>
+
+                    {/* Product Info */}
+                    <CardContent className="flex-1 flex flex-col p-4 space-y-3">
+                      {/* Product Name */}
+                      <div>
+                        <h3 className="font-semibold text-base line-clamp-2">{vp.product?.name}</h3>
+                      </div>
+
+                      {/* Category and Price */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">{vp.product?.category}</span>
+                        <span className="text-lg font-bold text-primary">₹{vp.price_override || vp.product?.price}</span>
+                      </div>
+
+                      {/* Stats */}
+                      {productStats[vp.id] && (
+                        <div className="flex gap-2 text-xs">
+                          <div className="bg-blue-50 dark:bg-blue-950/30 px-2 py-1 rounded flex-1 text-center">
+                            <div className="text-blue-700 dark:text-blue-400 font-medium">{productStats[vp.id].connectedCustomersCount} Customers</div>
+                          </div>
+                          <div className="bg-purple-50 dark:bg-purple-950/30 px-2 py-1 rounded flex-1 text-center">
+                            <div className="text-purple-700 dark:text-purple-400 font-medium">{productStats[vp.id].futureOrdersCount} Orders</div>
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground line-clamp-2">{p.description}</div>
-                        <Button size="sm" className="mt-2" onClick={() => {
-                          setSelectedProduct(p.id);
-                          setShowAddDialog(true);
-                        }}>
-                          Add Product
+                      )}
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-2 pt-2 mt-auto">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => {
+                            setSelectedForDetails(vp);
+                            setShowDetailsDialog(true);
+                          }}
+                        >
+                          View Details
                         </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={() => removeVendorProduct(vp.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* EDIT REQUESTS SECTION */}
         <Card>
@@ -652,8 +574,8 @@ const ProductManagement = () => {
                     category: latestRequest.proposed_category || latestRequest.product?.category,
                     unit: latestRequest.proposed_unit || latestRequest.product?.unit,
                     description: latestRequest.proposed_description || latestRequest.product?.description,
-                    order_cutoff: latestRequest.proposed_order_cutoff || (latestRequest.product as any)?.order_cutoff,
-                    delivery_time: latestRequest.proposed_delivery_time || (latestRequest.product as any)?.delivery_time,
+                    subscribe_before: latestRequest.proposed_subscribe_before || (latestRequest.product as any)?.subscribe_before,
+                    delivery_before: latestRequest.proposed_delivery_before || (latestRequest.product as any)?.delivery_before,
                     image_url: latestRequest.proposed_image_url || latestRequest.product?.image_url,
                   };
 
@@ -680,16 +602,16 @@ const ProductManagement = () => {
                                   <span className="text-muted-foreground text-xs">Unit</span>
                                   <div className="font-medium">{proposedProduct.unit}</div>
                                 </div>
-                                {proposedProduct.order_cutoff && (
+                                {proposedProduct.subscribe_before && (
                                   <div>
-                                    <span className="text-muted-foreground text-xs">Order Cutoff</span>
-                                    <div className="font-medium">{proposedProduct.order_cutoff}</div>
+                                    <span className="text-muted-foreground text-xs">Subscribe Before</span>
+                                    <div className="font-medium">{proposedProduct.subscribe_before}</div>
                                   </div>
                                 )}
-                                {proposedProduct.delivery_time && (
+                                {proposedProduct.delivery_before && (
                                   <div>
-                                    <span className="text-muted-foreground text-xs">Delivery Time</span>
-                                    <div className="font-medium">{proposedProduct.delivery_time}</div>
+                                    <span className="text-muted-foreground text-xs">Delivery Before</span>
+                                    <div className="font-medium">{proposedProduct.delivery_before}</div>
                                   </div>
                                 )}
                               </div>
@@ -786,13 +708,13 @@ const ProductManagement = () => {
                                 changedFields.push('Unit');
                                 actualChanges.unit = true;
                               }
-                              if (request.proposed_order_cutoff && request.proposed_order_cutoff !== (latestRequest.product as any)?.order_cutoff) {
-                                changedFields.push('Order Cutoff');
-                                actualChanges.order_cutoff = true;
+                              if (request.proposed_subscribe_before && request.proposed_subscribe_before !== (latestRequest.product as any)?.subscribe_before) {
+                                changedFields.push('Subscribe Before');
+                                actualChanges.subscribe_before = true;
                               }
-                              if (request.proposed_delivery_time && request.proposed_delivery_time !== (latestRequest.product as any)?.delivery_time) {
-                                changedFields.push('Delivery Time');
-                                actualChanges.delivery_time = true;
+                              if (request.proposed_delivery_before && request.proposed_delivery_before !== (latestRequest.product as any)?.delivery_before) {
+                                changedFields.push('Delivery Before');
+                                actualChanges.delivery_before = true;
                               }
                               if (request.proposed_image_url) {
                                 changedFields.push('Image');
@@ -871,30 +793,30 @@ const ProductManagement = () => {
                                         </div>
                                       </div>
                                     )}
-                                    {actualChanges.order_cutoff && (
+                                    {actualChanges.subscribe_before && (
                                       <div>
-                                        <span className="text-muted-foreground">Order Cutoff:</span>
+                                        <span className="text-muted-foreground">Subscribe Before:</span>
                                         <div className="flex items-center gap-2 mt-1">
                                           <span className="text-xs bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 px-2 py-1 rounded">
-                                            {(latestRequest.product as any)?.order_cutoff}
+                                            {(latestRequest.product as any)?.subscribe_before}
                                           </span>
                                           <span className="text-xs">→</span>
                                           <span className="text-xs bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 px-2 py-1 rounded font-medium">
-                                            {request.proposed_order_cutoff}
+                                            {request.proposed_subscribe_before}
                                           </span>
                                         </div>
                                       </div>
                                     )}
-                                    {actualChanges.delivery_time && (
+                                    {actualChanges.delivery_before && (
                                       <div>
-                                        <span className="text-muted-foreground">Delivery Time:</span>
+                                        <span className="text-muted-foreground">Delivery Before:</span>
                                         <div className="flex items-center gap-2 mt-1">
                                           <span className="text-xs bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 px-2 py-1 rounded">
-                                            {(latestRequest.product as any)?.delivery_time}
+                                            {(latestRequest.product as any)?.delivery_before}
                                           </span>
                                           <span className="text-xs">→</span>
                                           <span className="text-xs bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 px-2 py-1 rounded font-medium">
-                                            {request.proposed_delivery_time}
+                                            {request.proposed_delivery_before}
                                           </span>
                                         </div>
                                       </div>
@@ -926,6 +848,77 @@ const ProductManagement = () => {
           </CardContent>
         </Card>
 
+        {/* NEW PRODUCT REQUESTS SECTION */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              <span className="text-lg font-semibold">New Product Requests ({productRequests.filter(r => r.status === 'pending').length})</span>
+            </div>
+            <Button variant="outline" onClick={() => setShowRequestDialog(true)} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Request New Product
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {productRequests.length === 0 ? (
+              <div className="text-center py-8">
+                <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-lg font-medium">No product requests</p>
+                <p className="text-sm text-muted-foreground mt-2">Request new products for admin approval</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {productRequests.map((request) => (
+                  <Card key={request.id}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">{request.name}</CardTitle>
+                        {getStatusBadge(request.status)}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <div>
+                          <span className="font-medium">Category:</span>
+                          <div className="text-muted-foreground">{request.category}</div>
+                        </div>
+                        <div>
+                          <span className="font-medium">Price:</span>
+                          <div className="text-muted-foreground">₹{request.price} {request.unit}</div>
+                        </div>
+                        <div>
+                          <span className="font-medium">Availability:</span>
+                          <div className="text-muted-foreground">{request.availability}</div>
+                        </div>
+                        <div>
+                          <span className="font-medium">Requested:</span>
+                          <div className="text-muted-foreground">
+                            {new Date(request.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {request.description && (
+                        <div className="text-sm">
+                          <span className="font-medium">Description:</span>
+                          <div className="text-muted-foreground">{request.description}</div>
+                        </div>
+                      )}
+
+                      {request.admin_notes && (
+                        <div className="text-sm">
+                          <span className="font-medium">Admin Notes:</span>
+                          <div className="text-muted-foreground">{request.admin_notes}</div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Add Product Dialog */}
@@ -1005,23 +998,12 @@ const ProductManagement = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="orderCutoff">Order Cut-off Time *</Label>
+                  <Label htmlFor="subscriptionTime">Subscription Time *</Label>
                   <Input
-                    id="orderCutoff"
-                    type="time"
-                    value={addProductOrderCutoff}
-                    onChange={e => setAddProductOrderCutoff(e.target.value)}
-                    placeholder="e.g. 23:00"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="deliveryTime">Delivery Time *</Label>
-                  <Input
-                    id="deliveryTime"
-                    type="time"
-                    value={addProductDeliveryTime}
-                    onChange={e => setAddProductDeliveryTime(e.target.value)}
-                    placeholder="e.g. 07:30"
+                    id="subscriptionTime"
+                    value={addProductSubscriptionTime || ""}
+                    onChange={e => setAddProductSubscriptionTime(e.target.value)}
+                    placeholder="e.g. Morning, Evening, 7am-9am"
                   />
                 </div>
                 <div>
@@ -1041,7 +1023,7 @@ const ProductManagement = () => {
             <Button
               onClick={handleAddProduct}
               disabled={
-                !selectedProduct || !addProductCategory || !addProductPrice || !addProductUnit || !addProductOrderCutoff || !addProductDeliveryTime
+                !selectedProduct || !addProductCategory || !addProductPrice || !addProductUnit || !addProductSubscriptionTime
               }
             >
               Add Product
@@ -1252,24 +1234,7 @@ const ProductManagement = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancel</Button>
-            {(() => {
-              const nameChanged = editForm.name && editForm.name !== selectedForEdit?.product?.name;
-              const categoryChanged = editForm.category && editForm.category !== selectedForEdit?.product?.category;
-              const imageChanged = editForm.image_url && editForm.image_url !== selectedForEdit?.product?.image_url;
-              if (nameChanged || categoryChanged || imageChanged) {
-                return <Button onClick={handleSubmitEditRequest}>Submit for Approval</Button>;
-              }
-              // If any immediate fields changed, show Update button
-              const priceChanged = editForm.price_override !== undefined && editForm.price_override !== '' && parseFloat(editForm.price_override) !== selectedForEdit?.price_override;
-              const orderCutoffChanged = editForm.order_cutoff !== (selectedForEdit?.product as any)?.order_cutoff;
-              const deliveryTimeChanged = editForm.delivery_time !== (selectedForEdit?.product as any)?.delivery_time;
-              const unitChanged = editForm.unit && editForm.unit !== selectedForEdit?.product?.unit;
-              const descriptionChanged = editForm.description && editForm.description !== selectedForEdit?.product?.description;
-              if (priceChanged || orderCutoffChanged || deliveryTimeChanged || unitChanged || descriptionChanged) {
-                return <Button onClick={handleSubmitEditRequest}>Update</Button>;
-              }
-              return null;
-            })()}
+            <Button onClick={handleSubmitEditRequest}>Submit for Approval</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
