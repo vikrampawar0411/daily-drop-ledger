@@ -12,18 +12,24 @@ export interface Area {
   updated_at: string;
 }
 
-export const useAreas = (vendorId?: string) => {
+export const useAreas = (cityId?: string) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: areas = [], isLoading } = useQuery({
-    queryKey: ["areas"],
+    queryKey: ["areas", cityId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("areas")
         .select("*")
-        .eq("status", "active")
-        .order("name");
+        .eq("status", "active");
+      
+      // Filter by city_id if provided
+      if (cityId) {
+        query = query.eq("city_id", cityId);
+      }
+      
+      const { data, error } = await query.order("name");
 
       if (error) throw error;
       return data as Area[];

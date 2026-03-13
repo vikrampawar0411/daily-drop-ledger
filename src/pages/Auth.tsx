@@ -95,13 +95,14 @@ const Auth = (): JSX.Element => {
 
   const { states } = useStates();
   const { cities } = useCities(selectedStateId);
-  const { areas } = useAreas();
+  const { areas } = useAreas(selectedCityId);
   const { societies } = useSocieties(selectedAreaId);
 
   // Initialize react-hook-form for customer signup with Zod validation
+  // `mode: "onChange"` keeps `formState.isValid` updated as the user types
   const customerSignupForm = useForm<CustomerSignupFormData>({
     resolver: zodResolver(customerSignupSchema),
-    mode: "onBlur", // Validate on blur for better UX
+    mode: "onChange",
     defaultValues: {
       email: "",
       password: "",
@@ -119,9 +120,10 @@ const Auth = (): JSX.Element => {
   });
 
   // Initialize react-hook-form for vendor signup with Zod validation
+  // `mode: "onChange"` keeps `formState.isValid` updated as the user types
   const vendorSignupForm = useForm<VendorSignupFormData>({
     resolver: zodResolver(vendorSignupSchema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: {
       email: "",
       password: "",
@@ -146,6 +148,39 @@ const Auth = (): JSX.Element => {
   const vendorPhone = vendorSignupForm.watch("phone");
   const vendorPassword = vendorSignupForm.watch("password");
 
+  // Ensure the submit button enables once required fields are filled and there are no validation errors
+  const customerValues = customerSignupForm.watch();
+  const customerHasAllRequiredFields = [
+    customerValues.email,
+    customerValues.password,
+    customerValues.confirmPassword,
+    customerValues.name,
+    customerValues.country_code,
+    customerValues.phone,
+    customerValues.state_id,
+    customerValues.city_id,
+    customerValues.area_id,
+    customerValues.society_id,
+    customerValues.flat_plot_house_number,
+  ].every((value) => (typeof value === "string" ? value.trim().length > 0 : Boolean(value)));
+
+  const customerHasNoValidationErrors = Object.keys(customerSignupForm.formState.errors).length === 0;
+
+  const vendorValues = vendorSignupForm.watch();
+  const vendorHasAllRequiredFields = [
+    vendorValues.email,
+    vendorValues.password,
+    vendorValues.confirmPassword,
+    vendorValues.businessName,
+    vendorValues.category,
+    vendorValues.contactPerson,
+    vendorValues.country_code,
+    vendorValues.phone,
+    vendorValues.address,
+  ].every((value) => (typeof value === "string" ? value.trim().length > 0 : Boolean(value)));
+
+  const vendorHasNoValidationErrors = Object.keys(vendorSignupForm.formState.errors).length === 0;
+
   // Combine country code with phone number for duplicate checking
   const customerFullPhone = customerPhone ? `${customerCountryCode} ${customerPhone}` : "";
   const vendorFullPhone = vendorPhone ? `${vendorCountryCode} ${vendorPhone}` : "";
@@ -153,6 +188,22 @@ const Auth = (): JSX.Element => {
   // Duplicate check hooks with debouncing (500ms)
   const customerDuplicateCheck = useDuplicateCheck(customerEmail, customerFullPhone, 500, isSignUp && selectedRole === 'customer');
   const vendorDuplicateCheck = useDuplicateCheck(vendorEmail, vendorFullPhone, 500, isSignUp && selectedRole === 'vendor');
+
+  const canSubmitCustomer =
+    customerHasAllRequiredFields &&
+    customerHasNoValidationErrors &&
+    !customerDuplicateCheck.isChecking &&
+    !customerDuplicateCheck.result?.emailExists &&
+    !customerDuplicateCheck.result?.phoneExists &&
+    !isLoading;
+
+  const canSubmitVendor =
+    vendorHasAllRequiredFields &&
+    vendorHasNoValidationErrors &&
+    !vendorDuplicateCheck.isChecking &&
+    !vendorDuplicateCheck.result?.emailExists &&
+    !vendorDuplicateCheck.result?.phoneExists &&
+    !isLoading;
 
   // Check area availability for customer signup (check if vendors exist)
   const customerAreaAvailability = useAreaAvailability(
@@ -831,13 +882,7 @@ const Auth = (): JSX.Element => {
                         <Button 
                           type="submit" 
                           className="w-full" 
-                          disabled={
-                            isLoading || 
-                            customerDuplicateCheck.isChecking || 
-                            !customerSignupForm.formState.isValid ||
-                            !!customerDuplicateCheck.result?.emailExists ||
-                            !!customerDuplicateCheck.result?.phoneExists
-                          }
+                          disabled={!canSubmitCustomer}
                         >
                           {isLoading ? "Creating account..." : "Create Customer Account"}
                         </Button>
@@ -1027,13 +1072,7 @@ const Auth = (): JSX.Element => {
                         <Button 
                           type="submit" 
                           className="w-full" 
-                          disabled={
-                            isLoading || 
-                            vendorDuplicateCheck.isChecking || 
-                            !vendorSignupForm.formState.isValid ||
-                            !!vendorDuplicateCheck.result?.emailExists ||
-                            !!vendorDuplicateCheck.result?.phoneExists
-                          }
+                          disabled={!canSubmitVendor}
                         >
                           {isLoading ? "Creating account..." : "Create Vendor Account"}
                         </Button>

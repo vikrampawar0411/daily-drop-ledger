@@ -137,7 +137,30 @@ export function useAreaAvailability(
       // Handle RPC errors
       if (rpcError) {
         console.error("Area availability check error:", rpcError);
-        setError("Failed to check availability. Please try again.");
+
+        // If the function is missing (migration not applied), show a non-blocking fallback
+        // so users can still sign up even if availability check isn't properly configured.
+        if (
+          rpcError?.message?.includes("Could not find the function") ||
+          rpcError?.message?.includes("function does not exist")
+        ) {
+          setError(null);
+          const fallbackResult: AreaAvailabilityResult = {
+            areaName: null,
+            hasVendors: true,
+            message:
+              "Service availability check is currently unavailable. You can still sign up.",
+          };
+          setResult(fallbackResult);
+          return fallbackResult;
+        }
+
+        // Surface the server error message where possible, while keeping a user-friendly fallback.
+        setError(
+          rpcError?.message
+            ? `Failed to check availability: ${rpcError.message}`
+            : "Failed to check availability. Please try again."
+        );
         return null;
       }
 
@@ -179,6 +202,7 @@ export function useAreaAvailability(
     // Skip if hook is disabled or no inputs provided
     if (!enabled || !areaId || !type) {
       setResult(null); // Clear previous results
+      setError(null);
       return;
     }
 
